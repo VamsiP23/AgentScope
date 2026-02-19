@@ -19,6 +19,13 @@ kubectl cluster-info
 
 ---
 
+## Cloning Repo
+Clone repository using recursive to get the online boutique cloned
+```bash
+git clone --recursive https://github.com/VamsiP23/AgentScope.git
+cd AgentScope
+```
+
 ## Run the System (3 steps)
 
 ### 1. Deploy Online Boutique
