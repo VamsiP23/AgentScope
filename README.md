@@ -1,4 +1,4 @@
-# AgentScope – Online Boutique Setup
+# AgentScope
 
 This project uses **Google’s Online Boutique** microservices demo as the test system for our AI Agent Observability project.
 
