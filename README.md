@@ -1,132 +1,241 @@
 # AgentScope
 
-This project uses **Google’s Online Boutique** microservices demo as the test system for our AI Agent Observability project.
+AgentScope uses Google's Online Boutique as a distributed microservices system for failure monitoring, observability baselining, and agent-driven recovery experiments.
 
-We included **fixed Kubernetes manifests** so the system runs locally without debugging.
+## What This Repo Gives You
 
----
+- Baseline metric collector for Kubernetes health/resource snapshots
+- Synthetic traffic generator for repeatable load
+- Local observability stack on Kubernetes:
+  - OpenTelemetry Collector
+  - Jaeger
+  - Prometheus
+  - Grafana
+- Setup scripts to wire Online Boutique services to OTel automatically
 
-## Requirements
+## Prerequisites
 
-- Docker Desktop installed
+- Docker Desktop
 - Kubernetes enabled in Docker Desktop
-- kubectl installed
+- `kubectl`
+- `curl`
 
-Check Kubernetes is running:
+Verify cluster access:
+
 ```bash
 kubectl cluster-info
+kubectl config current-context
 ```
 
----
+Expected context on Docker Desktop: `docker-desktop`
 
-## Cloning Repo
-Clone repository using recursive to get the online boutique cloned
+## Clone
+
 ```bash
 git clone --recursive https://github.com/VamsiP23/AgentScope.git
 cd AgentScope
 ```
 
-## Run the System (3 steps)
+## Deploy Online Boutique
 
-### 1. Deploy Online Boutique
+Use the full upstream manifest (recommended for observability work):
+
 ```bash
-kubectl apply -f saved_manifests/onlineboutique.yaml
+kubectl apply -f vendor/microservices-demo/release/kubernetes-manifests.yaml
+kubectl get pods -n default
 ```
 
----
+Note: `saved_manifests/onlineboutique.yaml` in this repo is a reduced manifest and may not include all services.
 
-### 2. Wait for pods to start
+## Bring Up Observability Stack
+
+Deploy OTel Collector + Jaeger + Prometheus + Grafana and patch service env vars:
+
 ```bash
-kubectl get pods
+./scripts/setup_observability.sh -n default
 ```
 
-Wait until most pods say:
-```
-Running
-```
+This patches Online Boutique deployments (if present) with:
 
----
+- `ENABLE_TRACING=1`
+- `ENABLE_STATS=1`
+- `COLLECTOR_SERVICE_ADDR=opentelemetrycollector:4317`
+- `OTEL_SERVICE_NAME=<deployment>`
+- `OTEL_RESOURCE_ATTRIBUTES=service.name=<deployment>,deployment.environment=local`
 
-### 3️. Open the frontend
+## Open UIs (3 Terminals)
+
 ```bash
-kubectl port-forward svc/frontend 8080:80
+kubectl port-forward -n default svc/jaeger 16686:16686
+kubectl port-forward -n default svc/prometheus 9090:9090
+kubectl port-forward -n default svc/grafana 3000:3000
 ```
 
-Then go to:
-👉 http://localhost:8080
+- Jaeger: http://localhost:16686
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3000
+  - Login: `admin` / `admin`
 
-Keep this terminal open while using the site.
+Frontend:
 
----
-
-## 4. Collect baseline observability metrics
-
-Run the baseline collector in a second terminal after deployment:
 ```bash
-./scripts/collect_baseline.sh -n default -i 15 -d 300
+kubectl port-forward -n default svc/frontend 8080:80
 ```
 
-This captures pod health, restart counts, events, and `kubectl top` metrics every 15 seconds for 5 minutes.
+- App: http://localhost:8080
 
-Results are written to:
-```bash
-baseline_runs/<timestamp-utc>/
-```
+## Generate Load
 
-If `metrics-server` is not installed, `top` files are still generated with a warning.
-
----
-
-## 5. Generate synthetic traffic
-
-With port-forward running, generate steady frontend traffic in another terminal:
 ```bash
 ./scripts/generate_traffic.sh -u http://localhost:8080 -d 300 -r 4
 ```
 
-This sends traffic to `/`, `/cart`, and discovered `/product/<id>` routes.
+Outputs:
 
-Results are written to:
+- `traffic_runs/<timestamp>/requests.csv`
+- `traffic_runs/<timestamp>/summary.txt`
+
+## Collect Baseline Kubernetes Metrics
+
 ```bash
-traffic_runs/<timestamp-utc>/
+./scripts/collect_baseline.sh -n default -i 15 -d 300
 ```
 
-Recommended baseline workflow:
-1. Start `kubectl port-forward svc/frontend 8080:80`
-2. Start `./scripts/collect_baseline.sh -n default -i 15 -d 300`
-3. Start `./scripts/generate_traffic.sh -u http://localhost:8080 -d 300 -r 4`
+Outputs:
 
----
+- `baseline_runs/<timestamp>/summary.csv`
+- pod snapshots, events, `kubectl top` outputs
 
-## 6. Restart if Add-to-Cart breaks
+If metrics-server is missing, top files will contain a warning but collection continues.
 
-Sometimes Redis or Cart service starts slowly.
+## Validate Jaeger
 
-Run:
-```bash
-kubectl rollout restart deploy/redis-cart
-kubectl rollout restart deploy/cartservice
+In Jaeger Search:
+
+1. Set `Service = frontend`
+2. Set `Lookback = Last 15 min`
+3. Optionally set `Min Duration = 10ms` to reduce health-check noise
+4. Click `Find Traces`
+
+Expected:
+
+- Service names like `frontend`, `checkoutservice`, `currencyservice`, etc.
+- Multi-span traces for real user flows
+
+If you mostly see `grpc.health.v1.Health/Check`, that is probe traffic. Keep synthetic traffic running and query `frontend`.
+
+## Validate Prometheus
+
+Important: ensure query time is set to **Now** (not a fixed old timestamp).
+
+Try these queries:
+
+```promql
+up{job="otel-collector"}
 ```
 
-Wait ~30 seconds and refresh the site.
-
----
-
-## 7. Stop the system
-```bash
-kubectl delete -f saved_manifests/onlineboutique.yaml
+```promql
+calls_total
 ```
 
----
+```promql
+sum(rate(calls_total[1m])) by (service_name)
+```
 
-## 8. Notes
+```promql
+histogram_quantile(0.95, sum(rate(duration_bucket[1m])) by (le, service_name))
+```
 
-- If frontend doesn’t load → restart port-forward
-- If add-to-cart fails → restart redis-cart + cartservice
-- EXTERNAL-IP pending is normal on Docker Desktop
+## Basic Grafana Workflow
 
----
+1. Open Grafana: http://localhost:3000
+2. `Connections -> Data sources -> Prometheus -> Save & test`
+3. `Dashboards -> New -> Add visualization`
+4. Paste queries like:
+
+```promql
+sum(rate(calls_total[1m])) by (service_name)
+```
+
+```promql
+sum(rate(calls_total{status_code="STATUS_CODE_ERROR"}[1m])) by (service_name)
+```
+
+```promql
+histogram_quantile(0.95, sum(rate(duration_bucket[1m])) by (le, service_name))
+```
+
+## Troubleshooting
+
+### `kubectl get pods` shows nothing
+
+- Check cluster/context:
+
+```bash
+kubectl config current-context
+kubectl get ns
+```
+
+- Re-apply manifest to current context:
+
+```bash
+kubectl apply -f vendor/microservices-demo/release/kubernetes-manifests.yaml
+```
+
+### Traffic script exits too quickly or outputs zero requests
+
+- Verify frontend is reachable:
+
+```bash
+curl -I http://localhost:8080
+```
+
+- Ensure frontend port-forward is running.
+
+### Jaeger shows `unknown_service:*`
+
+- Re-run setup to patch `OTEL_SERVICE_NAME`:
+
+```bash
+./scripts/setup_observability.sh -n default
+```
+
+### Prometheus shows empty results
+
+- Make sure query time is set to `Now`
+- Keep traffic running while querying
+- Confirm scrape target:
+
+```promql
+up{job="otel-collector"}
+```
+
+### Add-to-cart issues
+
+```bash
+kubectl rollout restart deploy/redis-cart -n default
+kubectl rollout restart deploy/cartservice -n default
+```
+
+## Teardown
+
+Remove observability stack:
+
+```bash
+./scripts/teardown_observability.sh -n default
+```
+
+Remove Online Boutique:
+
+```bash
+kubectl delete -f vendor/microservices-demo/release/kubernetes-manifests.yaml
+```
+
+## Additional Docs
+
+- Local observability details: `observability/README.md`
 
 ## Authors
-Aarnav Sawant  
-Sri Vamsi Putti
+
+- Aarnav Sawant
+- Sri Vamsi Putti
