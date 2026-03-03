@@ -231,9 +231,21 @@ Remove Online Boutique:
 kubectl delete -f vendor/microservices-demo/release/kubernetes-manifests.yaml
 ```
 
+## Failure Injection (for Agent Evaluation)
+
+Run deterministic failure scenarios for outage, dependency failure, latency, and CPU pressure:
+
+```bash
+./scripts/failure_inject.sh apply service_outage -n default -t checkoutservice -d 120
+./scripts/failure_inject.sh apply dependency_outage -n default -d 120
+./scripts/failure_inject.sh apply latency_spike -n default -l 5s -d 180
+./scripts/failure_inject.sh apply cpu_pressure -n default -d 180
+```
+
 ## Additional Docs
 
 - Local observability details: `observability/README.md`
+- Failure scenarios + evaluation rubric: `failure_scenarios/README.md`
 
 ## Authors
 
