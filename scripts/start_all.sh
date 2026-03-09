@@ -95,9 +95,11 @@ if [ "$STABLE_LOCAL_MODE" -eq 1 ]; then
       {"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/initialDelaySeconds","value":45},
       {"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/timeoutSeconds","value":10},
       {"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/failureThreshold","value":20},
-      {"op":"replace","path":"/spec/template/spec/containers/0/livenessProbe/initialDelaySeconds","value":90},
-      {"op":"replace","path":"/spec/template/spec/containers/0/livenessProbe/timeoutSeconds","value":10},
-      {"op":"replace","path":"/spec/template/spec/containers/0/livenessProbe/failureThreshold","value":20}
+      {"op":"remove","path":"/spec/template/spec/containers/0/livenessProbe"},
+      {"op":"replace","path":"/spec/template/spec/containers/0/resources/requests/cpu","value":"300m"},
+      {"op":"replace","path":"/spec/template/spec/containers/0/resources/requests/memory","value":"128Mi"},
+      {"op":"replace","path":"/spec/template/spec/containers/0/resources/limits/cpu","value":"1000m"},
+      {"op":"replace","path":"/spec/template/spec/containers/0/resources/limits/memory","value":"512Mi"}
     ]' >/dev/null
   fi
 fi
