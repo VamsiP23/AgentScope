@@ -1,0 +1,60 @@
+{
+  "run_id": "20260309T222208Z",
+  "started_at_utc": "2026-03-09T22:22:08Z",
+  "config": {
+    "namespace": "default",
+    "prom_url": "http://localhost:9090",
+    "target_deployment": "cartservice",
+    "window": "2m",
+    "error_ratio_threshold": 0.1,
+    "min_total_rps": 0.1,
+    "verify_wait_seconds": 45,
+    "verify_timeout_seconds": 180,
+    "out_dir": "agent_runs",
+    "dry_run": true
+  },
+  "detection": {
+    "timestamp_utc": "2026-03-09T22:22:08Z",
+    "total_rps": 7.599792732925463,
+    "error_rps": 1.7999509104297153,
+    "error_ratio": 0.23684210526315794,
+    "deployment_healthy": true,
+    "triggered": true,
+    "reason": "high_error_ratio=0.237 (threshold=0.100)"
+  },
+  "diagnosis": {
+    "timestamp_utc": "2026-03-09T22:22:08Z",
+    "target_deployment_health": {
+      "exists": true,
+      "desired": 1,
+      "available": 1,
+      "healthy": true
+    },
+    "top_error_services": [
+      {
+        "service_name": "frontend",
+        "error_rps": 1.7999509104297153
+      },
+      {
+        "service_name": "checkoutservice",
+        "error_rps": 0.0
+      }
+    ],
+    "top_pod_restarts": [
+      {
+        "pod": "jaeger-6b997c9486-hxrrm",
+        "container": "jaeger",
+        "restart_count": 2
+      }
+    ],
+    "hypothesis": "Top error service: frontend (1.800 rps). Highest restart pod: jaeger-6b997c9486-hxrrm (2 restarts)."
+  },
+  "action": {
+    "timestamp_utc": "2026-03-09T22:22:08Z",
+    "action": "kubectl rollout restart deployment/cartservice -n default",
+    "executed": false,
+    "result": "dry_run"
+  },
+  "result": "incident_detected_dry_run",
+  "finished_at_utc": "2026-03-09T22:22:08Z"
+}
