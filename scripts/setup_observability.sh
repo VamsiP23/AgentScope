@@ -68,6 +68,8 @@ for deploy in "${DEPLOYMENTS[@]}"; do
       OTEL_SERVICE_NAME="$deploy" \
       OTEL_RESOURCE_ATTRIBUTES="service.name=$deploy,deployment.environment=local"
     echo "  patched deployment/$deploy"
+    kubectl rollout status deployment/"$deploy" -n "$NAMESPACE" --timeout=300s >/dev/null
+    echo "  rollout complete for deployment/$deploy"
   else
     echo "  skipped deployment/$deploy (not found)"
   fi

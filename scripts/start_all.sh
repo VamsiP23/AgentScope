@@ -10,6 +10,9 @@ TRAFFIC_RPS=4
 BASELINE_DURATION=300
 BASELINE_INTERVAL=15
 RUNTIME_DIR=".runtime"
+PF_FAILED=0
+DISABLE_BUILTIN_LOADGEN=1
+STABLE_LOCAL_MODE=1
 
 usage() {
   cat <<USAGE
@@ -21,6 +24,8 @@ Usage:
 Options:
   -n <namespace>   Kubernetes namespace (default: default)
   -m <manifest>    App manifest path (default: vendor/microservices-demo/release/kubernetes-manifests.yaml)
+  -g               Keep built-in Online Boutique loadgenerator enabled
+  -s               Skip stable local hardening (cartservice probe tuning)
   -t               Also start synthetic traffic in background
   -b               Also start baseline collector in background
   -h               Show help
@@ -31,10 +36,12 @@ Examples:
 USAGE
 }
 
-while getopts ":n:m:tbh" opt; do
+while getopts ":n:m:gstbh" opt; do
   case "$opt" in
     n) NAMESPACE="$OPTARG" ;;
     m) MANIFEST="$OPTARG" ;;
+    g) DISABLE_BUILTIN_LOADGEN=0 ;;
+    s) STABLE_LOCAL_MODE=0 ;;
     t) ENABLE_TRAFFIC=1 ;;
     b) ENABLE_BASELINE=1 ;;
     h)
@@ -74,6 +81,27 @@ echo "Namespace: $NAMESPACE"
 echo "Applying app manifest: $MANIFEST"
 kubectl apply -n "$NAMESPACE" -f "$MANIFEST"
 
+if [ "$DISABLE_BUILTIN_LOADGEN" -eq 1 ]; then
+  if kubectl get deployment/loadgenerator -n "$NAMESPACE" >/dev/null 2>&1; then
+    echo "Scaling built-in loadgenerator to 0 for local stability..."
+    kubectl scale deployment/loadgenerator -n "$NAMESPACE" --replicas=0 >/dev/null
+  fi
+fi
+
+if [ "$STABLE_LOCAL_MODE" -eq 1 ]; then
+  if kubectl get deployment/cartservice -n "$NAMESPACE" >/dev/null 2>&1; then
+    echo "Applying stable local probe settings for cartservice..."
+    kubectl patch deployment cartservice -n "$NAMESPACE" --type='json' -p='[
+      {"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/initialDelaySeconds","value":45},
+      {"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/timeoutSeconds","value":10},
+      {"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/failureThreshold","value":20},
+      {"op":"replace","path":"/spec/template/spec/containers/0/livenessProbe/initialDelaySeconds","value":90},
+      {"op":"replace","path":"/spec/template/spec/containers/0/livenessProbe/timeoutSeconds","value":10},
+      {"op":"replace","path":"/spec/template/spec/containers/0/livenessProbe/failureThreshold","value":20}
+    ]' >/dev/null
+  fi
+fi
+
 echo "Waiting for frontend deployment..."
 kubectl rollout status deployment/frontend -n "$NAMESPACE" --timeout=300s
 
@@ -100,7 +128,35 @@ start_pf() {
     echo "Started port-forward $name -> $map (pid $(cat "$pid_file"))"
   else
     echo "Failed to start port-forward for $name. Check $log_file" >&2
+    PF_FAILED=1
   fi
+}
+
+wait_core_deployments() {
+  local deploy
+  local core=(
+    frontend
+    cartservice
+    checkoutservice
+    currencyservice
+    productcatalogservice
+    recommendationservice
+    shippingservice
+    paymentservice
+    emailservice
+    adservice
+    redis-cart
+  )
+
+  echo "Waiting for core Online Boutique deployments to be available..."
+  for deploy in "${core[@]}"; do
+    if kubectl get deployment "$deploy" -n "$NAMESPACE" >/dev/null 2>&1; then
+      kubectl rollout status deployment/"$deploy" -n "$NAMESPACE" --timeout=300s >/dev/null
+      echo "  deployment/$deploy ready"
+    else
+      echo "  deployment/$deploy not found, skipping"
+    fi
+  done
 }
 
 echo "Starting port-forwards..."
@@ -108,6 +164,16 @@ start_pf frontend frontend "8080:80"
 start_pf jaeger jaeger "16686:16686"
 start_pf prometheus prometheus "9090:9090"
 start_pf grafana grafana "3000:3000"
+
+wait_core_deployments
+
+if [ "$PF_FAILED" -ne 0 ]; then
+  echo ""
+  echo "One or more port-forwards failed. Check logs in: $RUN_DIR" >&2
+  echo "Most common cause: local ports already in use (8080, 16686, 9090, 3000)." >&2
+  echo "Fix: pkill -f \"kubectl port-forward\" and rerun ./scripts/start_all.sh" >&2
+  exit 1
+fi
 
 if [ "$ENABLE_TRAFFIC" -eq 1 ]; then
   echo "Starting synthetic traffic in background..."
