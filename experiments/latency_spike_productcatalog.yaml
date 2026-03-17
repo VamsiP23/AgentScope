@@ -1,0 +1,27 @@
+name: Latency Spike Productcatalog
+namespace: default
+startup:
+  enabled: true
+  args: []
+timings:
+  pre_fault_delay_seconds: 60
+  post_fault_delay_seconds: 30
+traffic:
+  enabled: true
+  base_url: http://localhost:8080
+  duration_seconds: 360
+  rps: 1
+baseline:
+  enabled: true
+  duration_seconds: 360
+  interval_seconds: 15
+fault:
+  scenario: latency_spike
+  latency: 5s
+  auto_revert: true
+  duration_seconds: 180
+detector:
+  enabled: true
+  prom_url: http://localhost:9090
+  target_deployment: productcatalogservice
+  interval_seconds: 10

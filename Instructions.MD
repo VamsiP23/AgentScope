@@ -56,7 +56,7 @@ kubectl port-forward -n default svc/grafana 3000:3000
 ## 4) Generate Baseline Traffic
 
 ```bash
-./scripts/generate_traffic.sh -u http://localhost:8080 -d 300 -r 1
+./scripts/generate_traffic.sh -u http://localhost:8080 -d 300 -r 1 -m full-flow
 ```
 
 Output:
@@ -91,6 +91,8 @@ sum(rate(calls_total[1m]))
 
 ## 7) Failure Injection
 
+Shared fault logic now lives in the Python package `faults/`. `./scripts/failure_inject.sh` remains the stable CLI wrapper.
+
 ### A) Single-service outage helper
 
 ```bash
@@ -112,26 +114,60 @@ Revert manually:
 ./scripts/failure_inject.sh apply cpu_pressure -n default -d 180
 ```
 
-## 8) Minimal Agent Workflow (Rule-Based)
+## 8) Detection Layer
 
-This is the current basic rule-based detect -> diagnose -> act -> verify loop.
+Use the detectors module to decide whether there is an issue before doing any diagnosis or remediation.
 
-Dry run (no action executed):
-
-```bash
-./scripts/agent_minimal.py --dry-run --namespace default --prom-url http://localhost:9090 --target-deployment cartservice
-```
-
-Real run (executes rollout restart if incident detected):
+Run detection once:
 
 ```bash
-./scripts/agent_minimal.py --namespace default --prom-url http://localhost:9090 --target-deployment cartservice
+./scripts/detect_issue.py --namespace default --prom-url http://localhost:9090 --target-deployment cartservice
 ```
 
-Output report:
-- `agent_runs/<timestamp>/incident_report.json`
+What it checks:
+- global error ratio
+- top service-level error rate
+- target deployment availability
+- pod restart spikes
 
-## 9) Full Experiment Sequence (Suggested)
+It prints a structured JSON report with:
+- `incident_detected`
+- `suspicious_services`
+- per-detector findings and thresholds
+
+## 9) YAML-Driven Experiments
+
+The experiment runner can now do the full loop in one command:
+- start the stack
+- generate traffic
+- start the monitor loop
+- inject the fault
+- capture before/during/after artifacts
+
+
+Reproducible experiments now live under `experiments/`.
+
+Run one experiment from a YAML file:
+
+```bash
+./scripts/run_experiment.sh experiments/service_outage_cartservice.yaml
+```
+
+Example experiment files:
+- `experiments/service_outage_cartservice.yaml`
+- `experiments/dependency_outage_redis_cart.yaml`
+- `experiments/latency_spike_productcatalog.yaml`
+
+Each run writes artifacts under:
+- `experiment_runs/<timestamp>_<experiment-name>/`
+
+Artifacts include:
+- copied experiment YAML
+- startup/fault logs
+- before/during/after Kubernetes snapshots
+- `summary.json` with the full run timeline
+
+## 10) Full Experiment Sequence (Suggested)
 
 1. Start stack
 ```bash
@@ -139,20 +175,16 @@ Output report:
 ```
 2. Run baseline traffic
 ```bash
-./scripts/generate_traffic.sh -u http://localhost:8080 -d 300 -r 1
+./scripts/generate_traffic.sh -u http://localhost:8080 -d 300 -r 1 -m full-flow
 ```
 3. Capture baseline screenshots (Prometheus/Grafana/Jaeger)
 4. Inject one failure (for example service outage)
 ```bash
 ./scripts/service_outage.sh apply -n default -s cartservice -d 120
 ```
-5. Run agent
-```bash
-./scripts/agent_minimal.py --namespace default --prom-url http://localhost:9090 --target-deployment cartservice
-```
-6. Capture during-failure and post-recovery screenshots + JSON report
+5. Capture during-failure and post-recovery screenshots + run artifacts
 
-## 10) Stop Everything
+## 11) Stop Everything
 
 Stop background processes from latest start run:
 
@@ -172,7 +204,7 @@ Remove Online Boutique:
 kubectl delete -f vendor/microservices-demo/release/kubernetes-manifests.yaml
 ```
 
-## 11) Authors
+## 12) Authors
 
 - Aarnav Sawant
 - Sri Vamsi Putti

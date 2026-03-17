@@ -6,29 +6,32 @@ DURATION=300
 RPS=4
 OUT_ROOT="traffic_runs"
 PROGRESS_EVERY=10
+MODE="full-flow"
 
 usage() {
   cat <<USAGE
 Generate synthetic HTTP traffic against Online Boutique frontend.
 
 Usage:
-  $(basename "$0") [-u base_url] [-d duration_seconds] [-r requests_per_second] [-o output_root]
+  $(basename "$0") [-u base_url] [-d duration_seconds] [-r requests_per_second] [-o output_root] [-m mode]
 
 Options:
   -u   Base URL for frontend (default: http://localhost:8080)
   -d   Total duration in seconds (default: 300)
   -r   Requests per second (default: 4)
   -o   Output root directory (default: traffic_runs)
+  -m   Traffic mode: basic | full-flow (default: full-flow)
   -h   Show this help
 USAGE
 }
 
-while getopts ":u:d:r:o:h" opt; do
+while getopts ":u:d:r:o:m:h" opt; do
   case "$opt" in
     u) BASE_URL="$OPTARG" ;;
     d) DURATION="$OPTARG" ;;
     r) RPS="$OPTARG" ;;
     o) OUT_ROOT="$OPTARG" ;;
+    m) MODE="$OPTARG" ;;
     h)
       usage
       exit 0
@@ -60,12 +63,21 @@ if [ "$DURATION" -le 0 ] || [ "$RPS" -le 0 ]; then
   exit 1
 fi
 
+case "$MODE" in
+  basic|full-flow) ;;
+  *)
+    echo "Mode must be one of: basic, full-flow." >&2
+    exit 1
+    ;;
+esac
+
 TS_UTC=$(date -u +"%Y%m%dT%H%M%SZ")
 OUT_DIR="$OUT_ROOT/$TS_UTC"
 mkdir -p "$OUT_DIR"
 
 REQUESTS_CSV="$OUT_DIR/requests.csv"
 SUMMARY_TXT="$OUT_DIR/summary.txt"
+COOKIE_JAR="$OUT_DIR/cookies.txt"
 
 cat > "$REQUESTS_CSV" <<CSV
 timestamp_utc,path,status_code,latency_ms
@@ -150,13 +162,24 @@ end_epoch=$(( $(date +%s) + DURATION ))
 request_count=0
 success_count=0
 failure_count=0
+checkout_count=0
 
 request_once() {
-  local path="$1"
+  local method="$1"
+  local path="$2"
+  local data="${3:-}"
   local now_ts code time_total latency_ms curl_out
+  local curl_args=()
 
   now_ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-  curl_out=$(curl -s -o /dev/null -w "%{http_code} %{time_total}" "$BASE_URL$path" 2>/dev/null || true)
+  curl_args=(-s -L -o /dev/null -w "%{http_code} %{time_total}" -c "$COOKIE_JAR" -b "$COOKIE_JAR")
+  if [ "$method" = "POST" ]; then
+    curl_args+=(-X POST)
+    if [ -n "$data" ]; then
+      curl_args+=(--data "$data")
+    fi
+  fi
+  curl_out=$(curl "${curl_args[@]}" "$BASE_URL$path" 2>/dev/null || true)
   if [ -z "$curl_out" ]; then
     code="000"
     time_total="0"
@@ -170,7 +193,7 @@ request_once() {
   fi
 
   latency_ms=$(awk -v t="$time_total" 'BEGIN {printf "%.2f", t*1000}')
-  echo "$now_ts,$path,$code,$latency_ms" >> "$REQUESTS_CSV"
+  echo "$now_ts,$method $path,$code,$latency_ms" >> "$REQUESTS_CSV"
 
   request_count=$((request_count + 1))
   if [ "$code" -ge 200 ] && [ "$code" -lt 500 ]; then
@@ -182,17 +205,57 @@ request_once() {
   return 0
 }
 
+random_quantity() {
+  local options=(1 2 3 4 5)
+  echo "${options[$((RANDOM % ${#options[@]}))]}"
+}
+
+request_basic() {
+  local idx=$((RANDOM % path_count))
+  request_once "GET" "${PATHS[$idx]}"
+}
+
+request_full_flow() {
+  local product_path product_id quantity
+  local roll=$((RANDOM % 100))
+
+  if [ "${#PRODUCT_PATHS[@]}" -eq 0 ]; then
+    request_basic
+    return 0
+  fi
+
+  request_once "GET" "/"
+
+  product_path="${PRODUCT_PATHS[$((RANDOM % ${#PRODUCT_PATHS[@]}))]}"
+  product_id="${product_path##*/}"
+  quantity="$(random_quantity)"
+
+  request_once "GET" "$product_path"
+  request_once "POST" "/cart" "product_id=$product_id&quantity=$quantity"
+  request_once "GET" "/cart"
+
+  if [ "$roll" -lt 20 ]; then
+    request_once \
+      "POST" \
+      "/cart/checkout" \
+      "email=someone%40example.com&street_address=1600+Amphitheatre+Parkway&zip_code=94043&city=Mountain+View&state=CA&country=United+States&credit_card_number=4432801561520454&credit_card_expiration_month=1&credit_card_expiration_year=2039&credit_card_cvv=672"
+    checkout_count=$((checkout_count + 1))
+  fi
+}
+
 echo "Output directory: $OUT_DIR"
 echo "Base URL: $BASE_URL"
-echo "Duration: ${DURATION}s | Target RPS: $RPS"
+echo "Duration: ${DURATION}s | Target RPS: $RPS | Mode: $MODE"
 echo "Discovered paths: ${PATHS[*]}"
 
 while [ "$(date +%s)" -lt "$end_epoch" ]; do
   second_start=$(date +%s)
 
   for ((i=0; i<RPS; i++)); do
-    idx=$((RANDOM % path_count))
-    request_once "${PATHS[$idx]}"
+    case "$MODE" in
+      basic) request_basic ;;
+      full-flow) request_full_flow ;;
+    esac
   done
 
   now=$(date +%s)
@@ -215,4 +278,5 @@ Traffic generation complete.
 Requests CSV: $REQUESTS_CSV
 Summary:      $SUMMARY_TXT
 Requests:     $request_count (success=${success_count}, failures=${failure_count})
+Checkouts:    $checkout_count
 DONE
