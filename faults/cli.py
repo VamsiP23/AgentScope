@@ -18,6 +18,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("-d", "--duration", type=int, default=0)
     parser.add_argument("-t", "--target", default="")
     parser.add_argument("-l", "--latency", default="3s")
+    parser.add_argument("-r", "--replicas", type=int, default=1)
+    parser.add_argument("--cpu-limit", default="100m")
+    parser.add_argument("--cpu-request", default="50m")
     return parser
 
 
@@ -30,7 +33,14 @@ def main() -> int:
         return 1
 
     scenario = SCENARIOS[args.scenario]
-    ctx = FaultContext(namespace=args.namespace, target=args.target, latency=args.latency)
+    ctx = FaultContext(
+        namespace=args.namespace,
+        target=args.target,
+        latency=args.latency,
+        replicas=args.replicas,
+        cpu_limit=args.cpu_limit,
+        cpu_request=args.cpu_request,
+    )
 
     try:
         if args.action == "apply":

@@ -59,14 +59,15 @@ class DependencyOutage(FaultScenario):
         return outage.revert(FaultContext(namespace=ctx.namespace, target="redis-cart", latency=ctx.latency))
 
 
-class LatencySpike(FaultScenario):
+class CpuThrottling(FaultScenario):
     def __init__(self) -> None:
-        super().__init__("latency_spike")
+        super().__init__("cpu_throttling")
 
     def apply(self, ctx: FaultContext) -> str:
-        deploy = "productcatalogservice"
-        key = f"{ANN_PREFIX}/original-extra-latency"
-        current = run_kubectl(
+        deploy = ctx.target or "productcatalogservice"
+        limit_key = f"{ANN_PREFIX}/original-cpu-limit"
+        request_key = f"{ANN_PREFIX}/original-cpu-request"
+        current_limit = run_kubectl(
             [
                 "get",
                 "deployment",
@@ -74,55 +75,105 @@ class LatencySpike(FaultScenario):
                 "-n",
                 ctx.namespace,
                 "-o",
-                "jsonpath={.spec.template.spec.containers[?(@.name=='server')].env[?(@.name=='EXTRA_LATENCY')].value}",
+                "jsonpath={.spec.template.spec.containers[0].resources.limits.cpu}",
             ],
             capture=True,
         )
-        if not current:
-            current = "__unset__"
-        set_annotation(ctx.namespace, deploy, key, current)
-        run_kubectl(["set", "env", f"deployment/{deploy}", "-n", ctx.namespace, f"EXTRA_LATENCY={ctx.latency}"])
-        return f"Set EXTRA_LATENCY={ctx.latency} on deployment/{deploy}."
+        current_request = run_kubectl(
+            [
+                "get",
+                "deployment",
+                deploy,
+                "-n",
+                ctx.namespace,
+                "-o",
+                "jsonpath={.spec.template.spec.containers[0].resources.requests.cpu}",
+            ],
+            capture=True,
+        )
+        set_annotation(ctx.namespace, deploy, limit_key, current_limit or "__unset__")
+        set_annotation(ctx.namespace, deploy, request_key, current_request or "__unset__")
+        run_kubectl(
+            [
+                "patch",
+                "deployment",
+                deploy,
+                "-n",
+                ctx.namespace,
+                "--type=strategic",
+                "-p",
+                (
+                    '{"spec":{"template":{"spec":{"containers":[{"name":"server","resources":'
+                    f'{{"requests":{{"cpu":"{ctx.cpu_request}"}},"limits":{{"cpu":"{ctx.cpu_limit}"}}}}'
+                    '}]}}}}'
+                ),
+            ]
+        )
+        return (
+            f"Patched deployment/{deploy} CPU request={ctx.cpu_request} "
+            f"limit={ctx.cpu_limit}."
+        )
 
     def revert(self, ctx: FaultContext) -> str:
-        deploy = "productcatalogservice"
-        key = f"{ANN_PREFIX}/original-extra-latency"
-        original = get_annotation(ctx.namespace, deploy, key)
-        if not original or original == "__unset__":
-            run_kubectl(["set", "env", f"deployment/{deploy}", "-n", ctx.namespace, "EXTRA_LATENCY-"])
-            message = f"Unset EXTRA_LATENCY on deployment/{deploy}."
-        else:
-            run_kubectl(["set", "env", f"deployment/{deploy}", "-n", ctx.namespace, f"EXTRA_LATENCY={original}"])
-            message = f"Restored EXTRA_LATENCY={original} on deployment/{deploy}."
-        remove_annotation(ctx.namespace, deploy, key)
+        deploy = ctx.target or "productcatalogservice"
+        limit_key = f"{ANN_PREFIX}/original-cpu-limit"
+        request_key = f"{ANN_PREFIX}/original-cpu-request"
+        original_limit = get_annotation(ctx.namespace, deploy, limit_key) or "__unset__"
+        original_request = get_annotation(ctx.namespace, deploy, request_key) or "__unset__"
+
+        limit_fragment = "null" if original_limit == "__unset__" else f'"{original_limit}"'
+        request_fragment = "null" if original_request == "__unset__" else f'"{original_request}"'
+        run_kubectl(
+            [
+                "patch",
+                "deployment",
+                deploy,
+                "-n",
+                ctx.namespace,
+                "--type=strategic",
+                "-p",
+                (
+                    '{"spec":{"template":{"spec":{"containers":[{"name":"server","resources":'
+                    f'{{"requests":{{"cpu":{request_fragment}}},"limits":{{"cpu":{limit_fragment}}}}}'
+                    '}]}}}}'
+                ),
+            ]
+        )
+        remove_annotation(ctx.namespace, deploy, limit_key)
+        remove_annotation(ctx.namespace, deploy, request_key)
+        message = (
+            f"Restored deployment/{deploy} CPU request={original_request} "
+            f"limit={original_limit}."
+        )
         return message
 
 
-class CpuPressure(FaultScenario):
+class ReplicaReductionUnderLoad(FaultScenario):
     def __init__(self) -> None:
-        super().__init__("cpu_pressure")
-
-    def _signal(self, ctx: FaultContext, sig: str) -> None:
-        pod = run_kubectl(
-            ["get", "pods", "-n", ctx.namespace, "-l", "app=productcatalogservice", "-o", "jsonpath={.items[0].metadata.name}"],
-            capture=True,
-        )
-        if not pod:
-            raise RuntimeError(f"No productcatalogservice pod found in namespace {ctx.namespace}")
-        run_kubectl(["exec", "-n", ctx.namespace, pod, "-c", "server", "--", "kill", f"-{sig}", "1"])
+        super().__init__("replica_reduction_under_load")
 
     def apply(self, ctx: FaultContext) -> str:
-        self._signal(ctx, "USR1")
-        return "Triggered CPU pressure mode on productcatalogservice (USR1)."
+        deploy = ctx.target or "frontend"
+        key = f"{ANN_PREFIX}/original-replicas"
+        current = get_replicas(ctx.namespace, deploy)
+        set_annotation(ctx.namespace, deploy, key, current)
+        run_kubectl(
+            ["scale", "deployment", deploy, "-n", ctx.namespace, f"--replicas={ctx.replicas}"]
+        )
+        return f"Scaled deployment/{deploy} from {current} to {ctx.replicas} replicas."
 
     def revert(self, ctx: FaultContext) -> str:
-        self._signal(ctx, "USR2")
-        return "Reverted CPU pressure mode on productcatalogservice (USR2)."
+        deploy = ctx.target or "frontend"
+        key = f"{ANN_PREFIX}/original-replicas"
+        original = get_annotation(ctx.namespace, deploy, key) or "1"
+        run_kubectl(["scale", "deployment", deploy, "-n", ctx.namespace, f"--replicas={original}"])
+        remove_annotation(ctx.namespace, deploy, key)
+        return f"Restored deployment/{deploy} replicas to {original}."
 
 
 SCENARIOS: Dict[str, FaultScenario] = {
     "service_outage": ServiceOutage(),
     "dependency_outage": DependencyOutage(),
-    "latency_spike": LatencySpike(),
-    "cpu_pressure": CpuPressure(),
+    "cpu_throttling": CpuThrottling(),
+    "replica_reduction_under_load": ReplicaReductionUnderLoad(),
 }

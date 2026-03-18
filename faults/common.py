@@ -14,6 +14,9 @@ class FaultContext:
     namespace: str = "default"
     target: str = ""
     latency: str = "3s"
+    replicas: int = 1
+    cpu_limit: str = "100m"
+    cpu_request: str = "50m"
 
 
 def require_kubectl() -> None:

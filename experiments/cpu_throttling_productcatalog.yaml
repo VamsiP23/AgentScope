@@ -1,4 +1,4 @@
-name: Latency Spike Productcatalog
+name: CPU Throttling Productcatalog
 namespace: default
 startup:
   enabled: true
@@ -16,8 +16,10 @@ baseline:
   duration_seconds: 360
   interval_seconds: 15
 fault:
-  scenario: latency_spike
-  latency: 5s
+  scenario: cpu_throttling
+  target: productcatalogservice
+  cpu_request: 25m
+  cpu_limit: 50m
   auto_revert: true
   duration_seconds: 180
 detector:

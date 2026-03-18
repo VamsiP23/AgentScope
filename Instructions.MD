@@ -110,8 +110,8 @@ Revert manually:
 ```bash
 ./scripts/failure_inject.sh apply service_outage -n default -t checkoutservice -d 120
 ./scripts/failure_inject.sh apply dependency_outage -n default -d 120
-./scripts/failure_inject.sh apply latency_spike -n default -l 5s -d 180
-./scripts/failure_inject.sh apply cpu_pressure -n default -d 180
+./scripts/failure_inject.sh apply cpu_throttling -n default -t productcatalogservice --cpu-request 25m --cpu-limit 50m -d 180
+./scripts/failure_inject.sh apply replica_reduction_under_load -n default -t checkoutservice -r 1 -d 120
 ```
 
 ## 8) Detection Layer
@@ -128,7 +128,7 @@ What it checks:
 - global error ratio
 - top service-level error rate
 - target deployment availability
-- pod restart spikes
+- historical pod restart counts as supporting context
 
 It prints a structured JSON report with:
 - `incident_detected`
@@ -153,10 +153,17 @@ Run one experiment from a YAML file:
 ./scripts/run_experiment.sh experiments/service_outage_cartservice.yaml
 ```
 
+If the stack is already running and you do not want to call `start_all.sh` again:
+
+```bash
+./scripts/run_experiment.sh experiments/service_outage_cartservice.yaml --skip-startup
+```
+
 Example experiment files:
 - `experiments/service_outage_cartservice.yaml`
 - `experiments/dependency_outage_redis_cart.yaml`
-- `experiments/latency_spike_productcatalog.yaml`
+- `experiments/cpu_throttling_productcatalog.yaml`
+- `experiments/replica_reduction_checkoutservice.yaml`
 
 Each run writes artifacts under:
 - `experiment_runs/<timestamp>_<experiment-name>/`

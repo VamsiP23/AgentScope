@@ -41,6 +41,38 @@ detector:
   interval_seconds: 10
 ```
 
+## Supported fault scenarios
+
+- `service_outage`
+  - scale a deployment to `0` replicas and restore the original replica count on revert
+- `dependency_outage`
+  - take down `redis-cart` using the same scale-to-zero mechanism
+- `cpu_throttling`
+  - patch a deployment's CPU request/limit to constrained values and restore the original values on revert
+- `replica_reduction_under_load`
+  - scale a target deployment down to a specified replica count and restore the original count on revert
+
+Example fault blocks:
+
+```yaml
+fault:
+  scenario: cpu_throttling
+  target: productcatalogservice
+  cpu_request: 25m
+  cpu_limit: 50m
+  auto_revert: true
+  duration_seconds: 180
+```
+
+```yaml
+fault:
+  scenario: replica_reduction_under_load
+  target: checkoutservice
+  replicas: 1
+  auto_revert: true
+  duration_seconds: 120
+```
+
 ## Notes
 
 - `startup.args` are passed directly to `./scripts/start_all.sh`.

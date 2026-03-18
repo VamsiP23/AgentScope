@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict
+from typing import Optional
 
 from detectors.rules import DetectorRunner
 from detectors.schemas import DetectionConfig, DetectionReport
@@ -43,6 +42,8 @@ class MonitorLoop:
         self.out_dir.mkdir(parents=True, exist_ok=True)
         self.jsonl_path = self.out_dir / "detections.jsonl"
         self.latest_path = self.out_dir / "latest_detection.json"
+        self._last_incident_state: Optional[bool] = None
+        self._last_summary: str = ""
 
     def write_report(self, report: DetectionReport) -> None:
         payload = json.dumps(report.to_dict(), indent=2)
@@ -54,4 +55,18 @@ class MonitorLoop:
         while True:
             report = build_report(self.config)
             self.write_report(report)
+            if self._last_incident_state is None:
+                print(
+                    f"[{report.timestamp_utc}] detector initialized: incident_detected={report.incident_detected}; "
+                    f"{report.summary}",
+                    flush=True,
+                )
+            elif report.incident_detected != self._last_incident_state:
+                state = "incident_detected" if report.incident_detected else "incident_cleared"
+                print(f"[{report.timestamp_utc}] detector state change: {state}; {report.summary}", flush=True)
+            elif report.incident_detected and report.summary != self._last_summary:
+                print(f"[{report.timestamp_utc}] detector update: {report.summary}", flush=True)
+
+            self._last_incident_state = report.incident_detected
+            self._last_summary = report.summary
             time.sleep(self.interval_seconds)

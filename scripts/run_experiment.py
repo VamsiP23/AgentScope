@@ -17,6 +17,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -39,6 +40,10 @@ def ts_compact() -> str:
 def require_binary(name: str) -> None:
     if shutil.which(name) is None:
         raise RuntimeError(f"Required binary not found in PATH: {name}")
+
+
+def print_status(message: str) -> None:
+    print(f"[{utc_now()}] {message}", flush=True)
 
 
 def rel_path(path: Path) -> str:
@@ -67,15 +72,58 @@ def run_cmd(cmd: List[str], cwd: Path, log_path: Path) -> Dict[str, Any]:
     }
 
 
-def start_process(cmd: List[str], cwd: Path, log_path: Path) -> subprocess.Popen[str]:
+def _stream_output(
+    proc: subprocess.Popen[str],
+    handle: Any,
+    prefix: str,
+    mirror_stdout: bool,
+) -> None:
+    if proc.stdout is None:
+        return
+    try:
+        for line in proc.stdout:
+            handle.write(line)
+            handle.flush()
+            if mirror_stdout:
+                sys.stdout.write(f"{prefix}{line}")
+                sys.stdout.flush()
+    finally:
+        proc.stdout.close()
+
+
+def start_process(
+    cmd: List[str],
+    cwd: Path,
+    log_path: Path,
+    *,
+    mirror_stdout: bool = False,
+    stdout_prefix: str = "",
+) -> subprocess.Popen[str]:
     handle = open(log_path, "w", encoding="utf-8")
-    proc = subprocess.Popen(cmd, cwd=cwd, stdout=handle, stderr=subprocess.STDOUT, text=True)
+    proc = subprocess.Popen(
+        cmd,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
     proc._agentscope_log_handle = handle  # type: ignore[attr-defined]
+    stream_thread = threading.Thread(
+        target=_stream_output,
+        args=(proc, handle, stdout_prefix, mirror_stdout),
+        daemon=True,
+    )
+    stream_thread.start()
+    proc._agentscope_stream_thread = stream_thread  # type: ignore[attr-defined]
     return proc
 
 
 def finish_process(proc: subprocess.Popen[str]) -> int:
     rc = proc.wait()
+    stream_thread = getattr(proc, "_agentscope_stream_thread", None)
+    if stream_thread is not None:
+        stream_thread.join(timeout=2)
     handle = getattr(proc, "_agentscope_log_handle", None)
     if handle is not None:
         handle.close()
@@ -90,6 +138,9 @@ def terminate_process(proc: subprocess.Popen[str]) -> int:
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait(timeout=5)
+    stream_thread = getattr(proc, "_agentscope_stream_thread", None)
+    if stream_thread is not None:
+        stream_thread.join(timeout=2)
     handle = getattr(proc, "_agentscope_log_handle", None)
     if handle is not None:
         handle.close()
@@ -140,6 +191,22 @@ def sanitize_name(name: str) -> str:
     return "".join(cleaned).strip("_") or "experiment"
 
 
+def sleep_with_progress(total_seconds: int, label: str) -> None:
+    if total_seconds <= 0:
+        return
+
+    print_status(f"{label}: waiting {total_seconds}s")
+    remaining = total_seconds
+    step = 10 if total_seconds > 30 else 5 if total_seconds > 10 else 1
+    while remaining > 0:
+        chunk = min(step, remaining)
+        time.sleep(chunk)
+        remaining -= chunk
+        if remaining > 0:
+            print_status(f"{label}: {remaining}s remaining")
+    print_status(f"{label}: done")
+
+
 def build_fault_apply_cmd(namespace: str, fault: Dict[str, Any]) -> List[str]:
     scenario = str_value(fault.get("scenario"))
     if not scenario:
@@ -148,13 +215,21 @@ def build_fault_apply_cmd(namespace: str, fault: Dict[str, Any]) -> List[str]:
     cmd = ["./scripts/failure_inject.sh", "apply", scenario, "-n", namespace]
     target = str_value(fault.get("target"))
     latency = str_value(fault.get("latency"))
+    replicas = int_value(fault.get("replicas"), 1)
+    cpu_limit = str_value(fault.get("cpu_limit"))
+    cpu_request = str_value(fault.get("cpu_request"))
     auto_revert = bool_value(fault.get("auto_revert"), False)
     duration = int_value(fault.get("duration_seconds"), 0)
 
-    if scenario == "service_outage" and target:
+    if scenario in {"service_outage", "replica_reduction_under_load", "cpu_throttling"} and target:
         cmd.extend(["-t", target])
-    if scenario == "latency_spike" and latency:
-        cmd.extend(["-l", latency])
+    if scenario == "replica_reduction_under_load":
+        cmd.extend(["-r", str(replicas)])
+    if scenario == "cpu_throttling":
+        if cpu_limit:
+            cmd.extend(["--cpu-limit", cpu_limit])
+        if cpu_request:
+            cmd.extend(["--cpu-request", cpu_request])
     if auto_revert and duration > 0:
         cmd.extend(["-d", str(duration)])
     return cmd
@@ -166,7 +241,7 @@ def build_fault_revert_cmd(namespace: str, fault: Dict[str, Any]) -> List[str]:
         raise RuntimeError("fault.scenario is required")
     cmd = ["./scripts/failure_inject.sh", "revert", scenario, "-n", namespace]
     target = str_value(fault.get("target"))
-    if scenario == "service_outage" and target:
+    if scenario in {"service_outage", "replica_reduction_under_load", "cpu_throttling"} and target:
         cmd.extend(["-t", target])
     return cmd
 
@@ -221,6 +296,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run an experiment from a YAML file.")
     parser.add_argument("experiment_file", help="Path to experiment YAML file")
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR), help="Run artifact root")
+    parser.add_argument(
+        "--skip-startup",
+        action="store_true",
+        help="Skip calling start_all.sh even if startup.enabled is true in the YAML",
+    )
     args = parser.parse_args()
 
     require_binary("kubectl")
@@ -242,6 +322,8 @@ def main() -> int:
     run_dir = Path(args.out_dir).resolve() / f"{ts_compact()}_{name}"
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "experiment.yaml").write_text(experiment_path.read_text())
+    print_status(f"starting experiment '{name}'")
+    print_status(f"artifacts directory: {run_dir}")
 
     summary: Dict[str, Any] = {
         "name": str_value(config.get("name"), experiment_path.stem),
@@ -262,14 +344,22 @@ def main() -> int:
 
     try:
         startup = config.get("startup", {}) or {}
-        if bool_value(startup.get("enabled"), True):
+        startup_enabled = bool_value(startup.get("enabled"), True) and not args.skip_startup
+        summary["startup_effective_enabled"] = startup_enabled
+        if startup_enabled:
+            print_status("phase=startup: running start_all.sh")
             cmd = ["./scripts/start_all.sh", "-n", namespace]
             cmd.extend(list_value(startup.get("args")))
             summary["steps"]["startup"] = run_cmd(cmd, ROOT, run_dir / "startup.log")
             if summary["steps"]["startup"]["returncode"] != 0:
                 raise RuntimeError("start_all.sh failed; see startup.log")
+            print_status("phase=startup: completed")
+        else:
+            print_status("phase=startup: skipped")
 
+        print_status("phase=snapshot: capturing before snapshot")
         summary["snapshots"]["before"] = capture_snapshot(namespace, "before", run_dir)
+        print_status("phase=snapshot: before snapshot captured")
 
         traffic = config.get("traffic", {}) or {}
         if bool_value(traffic.get("enabled"), False):
@@ -290,6 +380,12 @@ def main() -> int:
                 "log": rel_path(traffic_log),
                 "started_at_utc": utc_now(),
             }
+            print_status(
+                "phase=traffic: started "
+                f"(pid={traffic_proc.pid}, duration={traffic.get('duration_seconds', 300)}s, log={rel_path(traffic_log)})"
+            )
+        else:
+            print_status("phase=traffic: skipped")
 
         baseline = config.get("baseline", {}) or {}
         if bool_value(baseline.get("enabled"), False):
@@ -310,54 +406,101 @@ def main() -> int:
                 "log": rel_path(baseline_log),
                 "started_at_utc": utc_now(),
             }
+            print_status(
+                "phase=baseline: started "
+                f"(pid={baseline_proc.pid}, duration={baseline.get('duration_seconds', 300)}s, log={rel_path(baseline_log)})"
+            )
+        else:
+            print_status("phase=baseline: skipped")
 
         detector = config.get("detector", {}) or {}
         if bool_value(detector.get("enabled"), False):
             monitor_cmd = build_monitor_cmd(namespace, detector, run_dir)
             monitor_log = run_dir / "monitor.log"
-            monitor_proc = start_process(monitor_cmd, ROOT, monitor_log)
+            monitor_proc = start_process(
+                monitor_cmd,
+                ROOT,
+                monitor_log,
+                mirror_stdout=True,
+                stdout_prefix="[monitor] ",
+            )
             summary["steps"]["monitor"] = {
                 "cmd": monitor_cmd,
                 "pid": monitor_proc.pid,
                 "log": rel_path(monitor_log),
                 "started_at_utc": utc_now(),
             }
+            print_status(
+                "phase=monitor: started "
+                f"(pid={monitor_proc.pid}, interval={detector.get('interval_seconds', 10)}s, log={rel_path(monitor_log)})"
+            )
+        else:
+            print_status("phase=monitor: skipped")
 
-        if pre_fault_delay > 0:
-            time.sleep(pre_fault_delay)
+        sleep_with_progress(pre_fault_delay, "phase=pre_fault_delay")
 
         if fault_cfg:
+            print_status(
+                "phase=fault_apply: applying "
+                f"{str_value(fault_cfg.get('scenario'))}"
+            )
             apply_cmd = build_fault_apply_cmd(namespace, fault_cfg)
             summary["steps"]["fault_apply"] = run_cmd(apply_cmd, ROOT, run_dir / "fault_apply.log")
             if summary["steps"]["fault_apply"]["returncode"] != 0:
                 raise RuntimeError("fault apply failed; see fault_apply.log")
             fault_active = not bool_value(fault_cfg.get("auto_revert"), False)
+            print_status("phase=fault_apply: completed")
+        else:
+            print_status("phase=fault_apply: skipped")
 
+        print_status("phase=snapshot: capturing during snapshot")
         summary["snapshots"]["during"] = capture_snapshot(namespace, "during", run_dir)
+        print_status("phase=snapshot: during snapshot captured")
 
-        if post_fault_delay > 0:
-            time.sleep(post_fault_delay)
+        sleep_with_progress(post_fault_delay, "phase=post_fault_delay")
 
         if fault_active:
+            print_status(
+                "phase=fault_revert: reverting "
+                f"{str_value(fault_cfg.get('scenario'))}"
+            )
             revert_cmd = build_fault_revert_cmd(namespace, fault_cfg)
             summary["steps"]["fault_revert"] = run_cmd(revert_cmd, ROOT, run_dir / "fault_revert.log")
             fault_active = False
+            print_status("phase=fault_revert: completed")
+        else:
+            print_status("phase=fault_revert: skipped")
 
+        print_status("phase=snapshot: capturing after snapshot")
         summary["snapshots"]["after"] = capture_snapshot(namespace, "after", run_dir)
+        print_status("phase=snapshot: after snapshot captured")
 
         if traffic_proc is not None:
+            print_status("phase=traffic: waiting for traffic process to finish")
             summary["steps"]["traffic"]["returncode"] = finish_process(traffic_proc)
             summary["steps"]["traffic"]["finished_at_utc"] = utc_now()
+            print_status(
+                f"phase=traffic: finished with returncode={summary['steps']['traffic']['returncode']}"
+            )
         if baseline_proc is not None:
+            print_status("phase=baseline: waiting for baseline process to finish")
             summary["steps"]["baseline"]["returncode"] = finish_process(baseline_proc)
             summary["steps"]["baseline"]["finished_at_utc"] = utc_now()
+            print_status(
+                f"phase=baseline: finished with returncode={summary['steps']['baseline']['returncode']}"
+            )
         if monitor_proc is not None:
+            print_status("phase=monitor: stopping monitor process")
             summary["steps"]["monitor"]["returncode"] = terminate_process(monitor_proc)
             summary["steps"]["monitor"]["finished_at_utc"] = utc_now()
+            print_status(
+                f"phase=monitor: finished with returncode={summary['steps']['monitor']['returncode']}"
+            )
 
         summary["result"] = "completed"
         summary["finished_at_utc"] = utc_now()
         summary_path.write_text(json.dumps(summary, indent=2))
+        print_status("phase=complete: experiment finished successfully")
         print(f"Experiment complete. Artifacts: {run_dir}")
         return 0
 
@@ -365,7 +508,9 @@ def main() -> int:
         summary["result"] = "error"
         summary["error"] = str(exc)
         summary["finished_at_utc"] = utc_now()
+        print_status(f"phase=error: {exc}")
         if fault_active:
+            print_status("phase=fault_revert_on_error: reverting active fault")
             revert_cmd = build_fault_revert_cmd(namespace, fault_cfg)
             summary["steps"]["fault_revert_on_error"] = run_cmd(
                 revert_cmd, ROOT, run_dir / "fault_revert_on_error.log"
