@@ -22,8 +22,10 @@ class Researcher:
         window = self.config.window
         target = self.config.target_deployment
         primary_service = (hypotheses[0].suspected_service if hypotheses else "") or target
+        symptom_services: List[str] = []
 
         if primary_service:
+            symptom_services = list(dict.fromkeys(["frontend", *upstream_surfaces(primary_service)]))
             evidence.append(
                 EvidenceItem(
                     source="knowledge",
@@ -34,6 +36,7 @@ class Researcher:
                         "service": primary_service,
                         "downstream_dependencies": downstream_dependencies(primary_service),
                         "upstream_surfaces": upstream_surfaces(primary_service),
+                        "symptom_services": symptom_services,
                     },
                 )
             )
@@ -77,25 +80,48 @@ class Researcher:
             )
         )
 
-        trace_service = primary_service or "frontend"
-        trace_summary = self.jaeger.latest_application_trace(trace_service)
+        trace_service = symptom_services[0] if symptom_services else (primary_service or "frontend")
+        failing_trace_summary = self.jaeger.recent_failing_traces(trace_service, limit=10, lookback="1h")
         trace_supports = []
-        if trace_summary.get("error_spans"):
+        if failing_trace_summary.get("trace_found", False):
             trace_supports.append("frontend_symptom_from_downstream_failure")
-            trace_supports.append("dependency_outage")
         evidence.append(
             EvidenceItem(
                 source="jaeger",
-                name="latest_trace",
-                summary=trace_summary.get("summary", "no trace summary"),
+                name="failing_traces",
+                summary=failing_trace_summary.get("summary", "no failing trace summary"),
                 supports=trace_supports,
-                details=trace_summary,
+                details=failing_trace_summary,
+            )
+        )
+
+        downstream_summary = self.jaeger.failing_downstream_summary(trace_service, limit=10, lookback="1h")
+        downstream_supports = []
+        downstream_contradicts = []
+        top_downstream = (downstream_summary.get("downstream_counts") or [{}])[0]
+        top_callee = str(top_downstream.get("callee", ""))
+        if top_callee:
+            if top_callee == primary_service:
+                downstream_supports.extend(["deployment_unavailable", "dependency_outage"])
+            else:
+                downstream_contradicts.append("deployment_unavailable")
+                downstream_supports.append("frontend_symptom_from_downstream_failure")
+        evidence.append(
+            EvidenceItem(
+                source="jaeger",
+                name="downstream_failure_summary",
+                summary=downstream_summary.get("summary", "no downstream failure summary"),
+                supports=downstream_supports,
+                contradicts=downstream_contradicts,
+                details=downstream_summary,
             )
         )
 
         for dependency in downstream_dependencies(primary_service):
-            dep_trace = self.jaeger.latest_application_trace(dependency)
+            dep_trace = self.jaeger.failing_downstream_summary(dependency, limit=10, lookback="1h")
             dep_supports = ["dependency_outage"] if dep_trace.get("error_spans") else []
+            if dep_trace.get("trace_found", False):
+                dep_supports = ["dependency_outage"]
             evidence.append(
                 EvidenceItem(
                     source="jaeger",
