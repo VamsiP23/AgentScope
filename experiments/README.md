@@ -39,6 +39,17 @@ detector:
   prom_url: http://localhost:9090
   target_deployment: cartservice
   interval_seconds: 10
+agent:
+  enabled: true
+  mode: heuristic
+  dry_run: true
+  max_iterations: 2
+  verify_wait_seconds: 30
+  jaeger_url: http://localhost:16686
+  target_deployment: cartservice
+  require_incident_detected: true
+  wait_for_incident_timeout_seconds: 90
+  wait_for_incident_poll_seconds: 5
 ```
 
 ## Supported fault scenarios
@@ -80,3 +91,7 @@ fault:
 - If `fault.auto_revert` is `false`, the runner will revert the fault near the end of the experiment.
 
 - If `detector.enabled` is `true`, the experiment runner starts the monitor loop in the background and writes JSON outputs under `detector_runs/`.
+- If `agent.enabled` is `true`, the runner waits for detector confirmation, runs `./scripts/run_agent.py`, and writes `agent_report.json` plus `agent.log` into the run directory.
+- The agent now follows an explicit state machine:
+  - `hypothesize -> research -> act -> verify`
+  - if verification fails and iterations remain, it loops back to `hypothesize`

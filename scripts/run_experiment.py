@@ -72,6 +72,43 @@ def run_cmd(cmd: List[str], cwd: Path, log_path: Path) -> Dict[str, Any]:
     }
 
 
+def run_cmd_streaming(
+    cmd: List[str],
+    cwd: Path,
+    log_path: Path,
+    *,
+    stdout_prefix: str = "",
+) -> Dict[str, Any]:
+    started = utc_now()
+    with open(log_path, "w", encoding="utf-8") as handle:
+        handle.write("COMMAND: " + " ".join(shlex.quote(part) for part in cmd) + "\n\n")
+        handle.write("STREAMED OUTPUT:\n")
+        handle.flush()
+        proc = subprocess.Popen(
+            cmd,
+            cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            handle.write(line)
+            handle.flush()
+            sys.stdout.write(f"{stdout_prefix}{line}")
+            sys.stdout.flush()
+        proc.stdout.close()
+        returncode = proc.wait()
+    return {
+        "cmd": cmd,
+        "returncode": returncode,
+        "started_at_utc": started,
+        "finished_at_utc": utc_now(),
+        "log": rel_path(log_path),
+    }
+
+
 def _stream_output(
     proc: subprocess.Popen[str],
     handle: Any,
@@ -273,6 +310,76 @@ def build_monitor_cmd(namespace: str, detector: Dict[str, Any], run_dir: Path) -
     return cmd
 
 
+def build_agent_cmd(namespace: str, detector: Dict[str, Any], agent: Dict[str, Any], run_dir: Path) -> List[str]:
+    cmd = [
+        "./scripts/run_agent.py",
+        "--namespace",
+        namespace,
+        "--prom-url",
+        str_value(detector.get("prom_url"), "http://localhost:9090"),
+        "--jaeger-url",
+        str_value(agent.get("jaeger_url"), "http://localhost:16686"),
+        "--window",
+        str_value(detector.get("window"), "1m"),
+        "--target-deployment",
+        str_value(agent.get("target_deployment"), str_value(detector.get("target_deployment"), "")),
+        "--error-ratio-threshold",
+        str(detector.get("error_ratio_threshold", 0.10)),
+        "--service-error-rps-threshold",
+        str(detector.get("service_error_rps_threshold", 0.50)),
+        "--min-total-rps",
+        str(detector.get("min_total_rps", 0.10)),
+        "--restart-count-threshold",
+        str(int_value(detector.get("restart_count_threshold"), 1)),
+        "--mode",
+        str_value(agent.get("mode"), "heuristic"),
+        "--max-iterations",
+        str(int_value(agent.get("max_iterations"), 2)),
+        "--verify-wait-seconds",
+        str(int_value(agent.get("verify_wait_seconds"), 30)),
+        "--out-file",
+        str(run_dir / "agent_report.json"),
+    ]
+    if bool_value(agent.get("dry_run"), True):
+        cmd.append("--dry-run")
+    return cmd
+
+
+def read_detection_report(path: Path) -> Dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text())
+    except Exception:
+        return {}
+
+
+def read_json_report(path: Path) -> Dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text())
+    except Exception:
+        return {}
+
+
+def wait_for_incident(detector_runs_dir: Path, max_wait_seconds: int, poll_interval: int) -> Dict[str, Any]:
+    latest_path = detector_runs_dir / "latest_detection.json"
+    deadline = time.time() + max_wait_seconds
+    last_summary = ""
+    while time.time() <= deadline:
+        report = read_detection_report(latest_path)
+        if report:
+            summary = str(report.get("summary", ""))
+            if summary and summary != last_summary:
+                print_status(f"phase=agent_wait: detector summary='{summary}'")
+                last_summary = summary
+            if report.get("incident_detected", False):
+                return report
+        time.sleep(max(1, poll_interval))
+    return read_detection_report(latest_path)
+
+
 def capture_snapshot(namespace: str, label: str, out_dir: Path) -> Dict[str, Any]:
     snapshots = {}
     commands = {
@@ -414,6 +521,7 @@ def main() -> int:
             print_status("phase=baseline: skipped")
 
         detector = config.get("detector", {}) or {}
+        agent_cfg = config.get("agent", {}) or {}
         if bool_value(detector.get("enabled"), False):
             monitor_cmd = build_monitor_cmd(namespace, detector, run_dir)
             monitor_log = run_dir / "monitor.log"
@@ -457,6 +565,79 @@ def main() -> int:
         summary["snapshots"]["during"] = capture_snapshot(namespace, "during", run_dir)
         print_status("phase=snapshot: during snapshot captured")
 
+        if bool_value(agent_cfg.get("enabled"), False):
+            if not bool_value(detector.get("enabled"), False):
+                print_status("phase=agent: detector disabled, running agent immediately")
+                detected = {}
+            else:
+                max_wait = int_value(agent_cfg.get("wait_for_incident_timeout_seconds"), 90)
+                poll_interval = int_value(agent_cfg.get("wait_for_incident_poll_seconds"), 5)
+                print_status(
+                    f"phase=agent_wait: waiting up to {max_wait}s for detector incident confirmation"
+                )
+                detected = wait_for_incident(run_dir / "detector_runs", max_wait, poll_interval)
+
+            if detected.get("incident_detected", False) or not bool_value(
+                agent_cfg.get("require_incident_detected"), True
+            ):
+                print_status(
+                    "phase=agent: running "
+                    f"{str_value(agent_cfg.get('mode'), 'heuristic')} agent"
+                )
+                agent_cmd = build_agent_cmd(namespace, detector, agent_cfg, run_dir)
+                summary["steps"]["agent"] = run_cmd_streaming(
+                    agent_cmd,
+                    ROOT,
+                    run_dir / "agent.log",
+                    stdout_prefix="[agent] ",
+                )
+                if summary["steps"]["agent"]["returncode"] != 0:
+                    raise RuntimeError("agent run failed; see agent.log")
+                agent_report = read_json_report(run_dir / "agent_report.json")
+                verification = agent_report.get("verification") or {}
+                if verification.get("recovered", False):
+                    fault_active = False
+                    summary["steps"]["agent"]["recovered"] = True
+                    summary["steps"]["agent"]["root_cause_mitigated"] = True
+                    summary["steps"]["agent"]["recovery_summary"] = str(
+                        verification.get("after_summary", "")
+                    )
+                    print_status(
+                        "phase=agent: system recovered "
+                        f"(summary='{verification.get('after_summary', '')}')"
+                    )
+                elif verification.get("root_cause_mitigated", False):
+                    fault_active = False
+                    summary["steps"]["agent"]["recovered"] = False
+                    summary["steps"]["agent"]["root_cause_mitigated"] = True
+                    summary["steps"]["agent"]["recovery_summary"] = str(
+                        verification.get("after_summary", "")
+                    )
+                    print_status(
+                        "phase=agent: root cause mitigated; user-facing symptoms still decaying "
+                        f"(summary='{verification.get('after_summary', '')}')"
+                    )
+                else:
+                    summary["steps"]["agent"]["recovered"] = False
+                    summary["steps"]["agent"]["root_cause_mitigated"] = False
+                    summary["steps"]["agent"]["recovery_summary"] = str(
+                        verification.get("after_summary", "")
+                    )
+                    print_status(
+                        "phase=agent: system not yet recovered "
+                        f"(summary='{verification.get('after_summary', '')}')"
+                    )
+                print_status("phase=agent: completed")
+            else:
+                summary["steps"]["agent"] = {
+                    "skipped": True,
+                    "reason": "incident not detected before timeout",
+                    "finished_at_utc": utc_now(),
+                }
+                print_status("phase=agent: skipped because no incident was detected before timeout")
+        else:
+            print_status("phase=agent: skipped")
+
         sleep_with_progress(post_fault_delay, "phase=post_fault_delay")
 
         if fault_active:
@@ -469,7 +650,7 @@ def main() -> int:
             fault_active = False
             print_status("phase=fault_revert: completed")
         else:
-            print_status("phase=fault_revert: skipped")
+            print_status("phase=fault_revert: skipped (fault already recovered or inactive)")
 
         print_status("phase=snapshot: capturing after snapshot")
         summary["snapshots"]["after"] = capture_snapshot(namespace, "after", run_dir)

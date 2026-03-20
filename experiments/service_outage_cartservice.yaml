@@ -4,7 +4,7 @@ startup:
   enabled: true
   args: []
 timings:
-  pre_fault_delay_seconds: 60
+  pre_fault_delay_seconds: 30
   post_fault_delay_seconds: 30
 traffic:
   enabled: true
@@ -24,3 +24,14 @@ detector:
   prom_url: http://localhost:9090
   target_deployment: cartservice
   interval_seconds: 10
+agent:
+  enabled: true
+  mode: llm
+  dry_run: false
+  max_iterations: 2
+  verify_wait_seconds: 90
+  jaeger_url: http://localhost:16686
+  target_deployment: cartservice
+  require_incident_detected: true
+  wait_for_incident_timeout_seconds: 90
+  wait_for_incident_poll_seconds: 5

@@ -6,11 +6,13 @@ This file is the end-to-end runbook for the current AgentScope system.
 
 - Docker Desktop with Kubernetes enabled
 - `kubectl`, `curl`, `python3`
+- Python dependencies from `requirements.txt`
 - Kubernetes context set to `docker-desktop`
 
 Check:
 
 ```bash
+python3 -m pip install -r requirements.txt
 kubectl cluster-info
 kubectl config current-context
 ```
@@ -135,6 +137,55 @@ It prints a structured JSON report with:
 - `suspicious_services`
 - per-detector findings and thresholds
 
+## 8.5) LangGraph Agent
+
+The agent is now organized around the `agent_graph/` package:
+
+- [`agent_graph/README.md`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/README.md)
+- [`agent_graph/state.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/state.py)
+- [`agent_graph/workflow.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/workflow.py)
+- [`agent_graph/nodes/detect.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/nodes/detect.py)
+- [`agent_graph/nodes/hypothesize.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/nodes/hypothesize.py)
+- [`agent_graph/nodes/research.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/nodes/research.py)
+- [`agent_graph/nodes/act.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/nodes/act.py)
+- [`agent_graph/nodes/verify.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/nodes/verify.py)
+- [`agent_graph/knowledge/topology.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/knowledge/topology.py)
+
+Run the LangGraph agent through the stable wrapper:
+
+```bash
+./scripts/run_agent.py \
+  --namespace default \
+  --prom-url http://localhost:9090 \
+  --jaeger-url http://localhost:16686 \
+  --target-deployment cartservice \
+  --mode heuristic \
+  --dry-run
+```
+
+This workflow does:
+- detector -> incident context
+- Online Boutique topology -> service role/dependency context
+- LangGraph state machine:
+  - detect
+  - hypothesize
+  - research
+  - act
+  - verify
+- if verification fails, loop back to hypothesize until max iterations are exhausted
+
+Optional LLM-backed hypothesis generation:
+
+```bash
+OPENAI_API_KEY=... ./scripts/run_agent.py \
+  --namespace default \
+  --prom-url http://localhost:9090 \
+  --jaeger-url http://localhost:16686 \
+  --target-deployment cartservice \
+  --mode llm \
+  --dry-run
+```
+
 ## 9) YAML-Driven Experiments
 
 The experiment runner can now do the full loop in one command:
@@ -171,6 +222,8 @@ Each run writes artifacts under:
 Artifacts include:
 - copied experiment YAML
 - startup/fault logs
+- `agent.log`
+- `agent_report.json`
 - before/during/after Kubernetes snapshots
 - `summary.json` with the full run timeline
 
