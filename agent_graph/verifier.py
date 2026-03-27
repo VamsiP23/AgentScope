@@ -3,18 +3,25 @@ from __future__ import annotations
 import time
 from typing import Any, Dict, List
 
+from agent_graph.reasoning.llm import ResponsesJSONClient
 from agent_graph.schemas import ActionPlan, VerificationResult
+from agent_graph.tools.jaeger import JaegerTools
 from agent_graph.tools.kubernetes import KubernetesTools
+from agent_graph.tools.prometheus import PrometheusTools
 from detectors.monitor import build_report
 from detectors.schemas import DetectionConfig
 
 
 class Verifier:
-    def __init__(self, config: DetectionConfig, wait_seconds: int = 60, poll_interval_seconds: int = 10) -> None:
+    def __init__(self, config: DetectionConfig, jaeger_url: str, mode: str = "heuristic", wait_seconds: int = 60, poll_interval_seconds: int = 10) -> None:
         self.config = config
         self.wait_seconds = wait_seconds
         self.poll_interval_seconds = poll_interval_seconds
+        self.mode = mode
         self.k8s = KubernetesTools()
+        self.prom = PrometheusTools(config.prom_url)
+        self.jaeger = JaegerTools(jaeger_url)
+        self.llm = ResponsesJSONClient()
 
     def _extract_metric(self, report: Dict[str, Any], finding_name: str) -> float:
         for finding in report.get("findings", []) or []:
@@ -29,16 +36,22 @@ class Verifier:
         report = build_report(self.config).to_dict()
         deployment = self.k8s.deployment_health(self.config.namespace, action.target)
         pod_status = self.k8s.deployment_pod_status(self.config.namespace, action.target)
+        top_errors = self.prom.top_error_services(self.config.window, limit=5)
+        service_rps = self.prom.service_rps(self.config.window, limit=10)
+        trace_summary = self.jaeger.failing_downstream_summary(action.target, limit=5, lookback="1h")
         return {
             "report": report,
             "deployment": deployment,
             "pod_status": pod_status,
+            "top_error_services": top_errors,
+            "service_rps": service_rps,
+            "trace_summary": trace_summary,
             "error_ratio": self._extract_metric(report, "error_ratio"),
             "service_error_rps": self._extract_metric(report, "service_error_rate"),
             "summary": report.get("summary", ""),
         }
 
-    def run(self, action: ActionPlan, detection_before: dict) -> VerificationResult:
+    def _collect_evidence(self, action: ActionPlan, detection_before: dict) -> Dict[str, Any]:
         initial_incident = bool(detection_before.get("incident_detected", False))
         total_wait = max(0, self.wait_seconds)
         poll = max(1, self.poll_interval_seconds)
@@ -51,111 +64,122 @@ class Verifier:
             samples.append(self._sample(action))
 
         latest = samples[-1]
-        latest_report = latest["report"]
-        deployment = latest["deployment"]
-        pod_status = latest["pod_status"]
+        return {
+            "before": {
+                "incident_detected": initial_incident,
+                "summary": detection_before.get("summary", ""),
+                "error_ratio": self._extract_metric(detection_before, "error_ratio"),
+                "service_error_rps": self._extract_metric(detection_before, "service_error_rate"),
+            },
+            "after": {
+                "incident_detected": latest["report"].get("incident_detected", False),
+                "summary": latest["summary"],
+                "error_ratio": latest["error_ratio"],
+                "service_error_rps": latest["service_error_rps"],
+                "deployment": latest["deployment"],
+                "pod_status": latest["pod_status"],
+                "top_error_services": latest["top_error_services"],
+                "service_rps": latest["service_rps"],
+                "trace_summary": latest["trace_summary"],
+            },
+            "samples": [
+                {
+                    "summary": sample["summary"],
+                    "desired": sample["deployment"].get("desired", 0),
+                    "available": sample["deployment"].get("available", 0),
+                    "pod_count": sample["pod_status"].get("pod_count", 0),
+                    "ready_pod_count": sample["pod_status"].get("ready_pod_count", 0),
+                    "error_ratio": sample["error_ratio"],
+                    "service_error_rps": sample["service_error_rps"],
+                }
+                for sample in samples
+            ],
+            "note": (
+                f"verification polled every {poll}s for {total_wait}s"
+                if total_wait > 0
+                else "verification used immediate recheck"
+            ),
+        }
 
-        before_error_ratio = self._extract_metric(detection_before, "error_ratio")
-        before_service_error_rps = self._extract_metric(detection_before, "service_error_rate")
-        max_observed_error_ratio = max(sample["error_ratio"] for sample in samples)
-        max_observed_service_error_rps = max(sample["service_error_rps"] for sample in samples)
+    def run(self, action: ActionPlan, detection_before: dict) -> VerificationResult:
+        evidence = self._collect_evidence(action, detection_before)
+        if self.mode == "llm":
+            if not self.llm.available():
+                raise RuntimeError("LLM mode requested but OPENAI_API_KEY is not set")
+            try:
+                return self._run_llm(action, evidence)
+            except Exception as exc:
+                raise RuntimeError(f"LLM verifier failed: {exc}") from exc
+        return self._run_heuristic(evidence)
 
-        stages: Dict[str, Any] = {}
-        root_cause_mitigated = False
-
-        if action.action == "restore_replicas":
-            desired_restored = int(deployment.get("desired", 0)) >= 1
-            pod_exists = int(pod_status.get("pod_count", 0)) >= 1
-            rollout_progressing = bool(pod_status.get("pod_count", 0)) and (
-                bool(deployment.get("available", 0))
-                or bool(pod_status.get("progressing", False))
-                or bool(pod_status.get("ready_pod_count", 0))
-            )
-            available_recovered = int(deployment.get("available", 0)) >= 1
-            errors_declining = (
-                available_recovered
-                and latest["error_ratio"] <= max(before_error_ratio, max_observed_error_ratio)
-                and latest["service_error_rps"] <= max(before_service_error_rps, max_observed_service_error_rps)
-            )
-            if max_observed_error_ratio > 0:
-                errors_declining = errors_declining and latest["error_ratio"] < max_observed_error_ratio
-            if max_observed_service_error_rps > 0:
-                errors_declining = errors_declining and latest["service_error_rps"] < max_observed_service_error_rps
-
-            stages = {
-                "desired_restored": desired_restored,
-                "pod_exists": pod_exists,
-                "rollout_progressing": rollout_progressing,
-                "available_recovered": available_recovered,
+    def _run_heuristic(self, evidence: Dict[str, Any]) -> VerificationResult:
+        before = evidence["before"]
+        after = evidence["after"]
+        deployment = after["deployment"]
+        pod_status = after["pod_status"]
+        errors_declining = (
+            after["error_ratio"] <= before["error_ratio"]
+            and after["service_error_rps"] <= before["service_error_rps"]
+        )
+        recovered = bool(before["incident_detected"]) and not bool(after["incident_detected"])
+        root_cause_mitigated = bool(deployment.get("healthy", False)) and errors_declining
+        return VerificationResult(
+            recovered=recovered,
+            root_cause_mitigated=root_cause_mitigated,
+            before_incident_detected=bool(before["incident_detected"]),
+            after_incident_detected=bool(after["incident_detected"]),
+            before_summary=str(before["summary"]),
+            after_summary=str(after["summary"]),
+            note=str(evidence["note"]),
+            stages={
+                "final_desired": deployment.get("desired", 0),
+                "final_available": deployment.get("available", 0),
+                "final_pod_count": pod_status.get("pod_count", 0),
+                "final_ready_pod_count": pod_status.get("ready_pod_count", 0),
                 "errors_declining": errors_declining,
-                "final_desired": deployment.get("desired", 0),
-                "final_available": deployment.get("available", 0),
-                "final_pod_count": pod_status.get("pod_count", 0),
-                "final_ready_pod_count": pod_status.get("ready_pod_count", 0),
-            }
-            root_cause_mitigated = all(
-                [
-                    desired_restored,
-                    pod_exists,
-                    rollout_progressing,
-                    available_recovered,
-                    errors_declining,
-                ]
-            )
-            recovered = root_cause_mitigated and not latest_report.get("incident_detected", False)
-        elif action.action == "wait_and_recheck":
-            incident_cleared = initial_incident and not latest_report.get("incident_detected", False)
-            deployment_healthy = bool(deployment.get("healthy", False))
-            errors_declining = latest["error_ratio"] <= before_error_ratio and latest["service_error_rps"] <= before_service_error_rps
-            root_cause_mitigated = deployment_healthy or errors_declining
-            recovered = incident_cleared
-            stages = {
-                "incident_cleared": incident_cleared,
-                "deployment_healthy": deployment_healthy,
-                "errors_declining": errors_declining,
-                "final_desired": deployment.get("desired", 0),
-                "final_available": deployment.get("available", 0),
-                "final_pod_count": pod_status.get("pod_count", 0),
-                "final_ready_pod_count": pod_status.get("ready_pod_count", 0),
-            }
-        else:
-            recovered = initial_incident and not latest_report.get("incident_detected", False)
-            root_cause_mitigated = recovered
-            stages = {
-                "incident_cleared": recovered,
-                "final_desired": deployment.get("desired", 0),
-                "final_available": deployment.get("available", 0),
-                "final_pod_count": pod_status.get("pod_count", 0),
-                "final_ready_pod_count": pod_status.get("ready_pod_count", 0),
-            }
-
-        note = (
-            f"verification polled every {poll}s for {total_wait}s"
-            if total_wait > 0
-            else "verification used immediate recheck"
+            },
+            samples=list(evidence["samples"]),
+            evidence=evidence,
         )
 
-        sample_summaries = [
-            {
-                "summary": sample["summary"],
-                "desired": sample["deployment"].get("desired", 0),
-                "available": sample["deployment"].get("available", 0),
-                "pod_count": sample["pod_status"].get("pod_count", 0),
-                "ready_pod_count": sample["pod_status"].get("ready_pod_count", 0),
-                "error_ratio": sample["error_ratio"],
-                "service_error_rps": sample["service_error_rps"],
-            }
-            for sample in samples
-        ]
-
+    def _run_llm(self, action: ActionPlan, evidence: Dict[str, Any]) -> VerificationResult:
+        prompt = {
+            "task": "Interpret recovery evidence and determine whether the system is back on track.",
+            "action_taken": action.to_dict(),
+            "verification_evidence": evidence,
+            "requirements": {
+                "classify_recovered": True,
+                "classify_root_cause_mitigated": True,
+                "prefer not recovered when evidence is contradictory": True,
+            },
+        }
+        parsed = self.llm.complete_json(
+            name="verification_decision",
+            schema={
+                "type": "object",
+                "properties": {
+                    "recovered": {"type": "boolean"},
+                    "root_cause_mitigated": {"type": "boolean"},
+                    "after_summary": {"type": "string"},
+                    "note": {"type": "string"},
+                    "stages": {"type": "object", "additionalProperties": True},
+                },
+                "required": ["recovered", "root_cause_mitigated", "after_summary", "note", "stages"],
+                "additionalProperties": False,
+            },
+            prompt=prompt,
+        )
+        before = evidence["before"]
+        after = evidence["after"]
         return VerificationResult(
-            root_cause_mitigated=root_cause_mitigated,
-            before_incident_detected=initial_incident,
-            after_incident_detected=latest_report.get("incident_detected", False),
-            before_summary=detection_before.get("summary", ""),
-            after_summary=latest_report.get("summary", ""),
-            recovered=recovered,
-            note=note,
-            stages=stages,
-            samples=sample_summaries,
+            recovered=bool(parsed.get("recovered", False)),
+            root_cause_mitigated=bool(parsed.get("root_cause_mitigated", False)),
+            before_incident_detected=bool(before["incident_detected"]),
+            after_incident_detected=bool(after["incident_detected"]),
+            before_summary=str(before["summary"]),
+            after_summary=str(parsed.get("after_summary", after["summary"])),
+            note=str(parsed.get("note", evidence["note"])),
+            stages=dict(parsed.get("stages", {})),
+            samples=list(evidence["samples"]),
+            evidence=evidence,
         )

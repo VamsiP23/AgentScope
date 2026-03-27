@@ -1,11 +1,11 @@
-name: Service Outage Cartservice
+name: Chaos Pod Kill Cartservice Baseline
 namespace: default
 startup:
-  enabled: true
+  enabled: false
   args: []
 timings:
   pre_fault_delay_seconds: 30
-  post_fault_delay_seconds: 30
+  post_fault_delay_seconds: 60
 traffic:
   enabled: true
   base_url: http://localhost:8080
@@ -16,8 +16,8 @@ baseline:
   duration_seconds: 300
   interval_seconds: 15
 fault:
-  scenario: service_outage
-  target: cartservice
+  filepath: chaosmesh/experiments/podchaos.yaml
+  duration_seconds: 120
   auto_revert: false
 detector:
   enabled: true
@@ -25,11 +25,11 @@ detector:
   target_deployment: cartservice
   interval_seconds: 10
 agent:
-  enabled: true
+  enabled: false
   mode: llm
-  dry_run: false
+  dry_run: true
   max_iterations: 2
-  verify_wait_seconds: 90
+  verify_wait_seconds: 30
   jaeger_url: http://localhost:16686
   target_deployment: cartservice
   require_incident_detected: true

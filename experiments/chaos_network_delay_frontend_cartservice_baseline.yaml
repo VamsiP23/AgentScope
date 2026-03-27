@@ -1,0 +1,37 @@
+name: Chaos Network Delay Frontend Cartservice Baseline
+namespace: default
+startup:
+  enabled: false
+  args: []
+timings:
+  pre_fault_delay_seconds: 30
+  post_fault_delay_seconds: 60
+traffic:
+  enabled: true
+  base_url: http://localhost:8080
+  duration_seconds: 300
+  rps: 1
+baseline:
+  enabled: true
+  duration_seconds: 300
+  interval_seconds: 15
+fault:
+  filepath: chaosmesh/experiments/networkchaos-delay-frontend-cartservice.yaml
+  duration_seconds: 120
+  auto_revert: false
+detector:
+  enabled: true
+  prom_url: http://localhost:9090
+  target_deployment: cartservice
+  interval_seconds: 10
+agent:
+  enabled: false
+  mode: llm
+  dry_run: true
+  max_iterations: 2
+  verify_wait_seconds: 30
+  jaeger_url: http://localhost:16686
+  target_deployment: cartservice
+  require_incident_detected: true
+  wait_for_incident_timeout_seconds: 90
+  wait_for_incident_poll_seconds: 5

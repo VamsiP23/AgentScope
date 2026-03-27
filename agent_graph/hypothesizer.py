@@ -15,11 +15,13 @@ class Hypothesizer:
         self.heuristic = HeuristicHypothesizer()
 
     def run(self, detection: Dict[str, Any], target_deployment: str) -> List[Hypothesis]:
-        if self.mode == "llm" and self.llm.available():
+        if self.mode == "llm":
+            if not self.llm.available():
+                raise RuntimeError("LLM mode requested but OPENAI_API_KEY is not set")
             try:
                 return self.llm.rank(detection, target_deployment, self._knowledge_context(detection, target_deployment))
-            except Exception:
-                pass
+            except Exception as exc:
+                raise RuntimeError(f"LLM hypothesizer failed: {exc}") from exc
         return self._enrich(self.heuristic.rank(detection, target_deployment), detection, target_deployment)
 
     def _knowledge_context(self, detection: Dict[str, Any], target_deployment: str) -> Dict[str, Any]:

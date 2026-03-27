@@ -22,6 +22,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
+from urllib.parse import urlencode
+from urllib.request import urlopen
 
 import yaml
 
@@ -228,6 +230,10 @@ def sanitize_name(name: str) -> str:
     return "".join(cleaned).strip("_") or "experiment"
 
 
+def epoch_to_utc(epoch: float) -> str:
+    return datetime.fromtimestamp(epoch, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def sleep_with_progress(total_seconds: int, label: str) -> None:
     if total_seconds <= 0:
         return
@@ -245,42 +251,240 @@ def sleep_with_progress(total_seconds: int, label: str) -> None:
 
 
 def build_fault_apply_cmd(namespace: str, fault: Dict[str, Any]) -> List[str]:
-    scenario = str_value(fault.get("scenario"))
-    if not scenario:
-        raise RuntimeError("fault.scenario is required")
+    filepath = str_value(fault.get("filepath"))
+    if not filepath:
+        raise RuntimeError("fault.filepath is required")
 
-    cmd = ["./scripts/failure_inject.sh", "apply", scenario, "-n", namespace]
-    target = str_value(fault.get("target"))
-    latency = str_value(fault.get("latency"))
-    replicas = int_value(fault.get("replicas"), 1)
-    cpu_limit = str_value(fault.get("cpu_limit"))
-    cpu_request = str_value(fault.get("cpu_request"))
-    auto_revert = bool_value(fault.get("auto_revert"), False)
-    duration = int_value(fault.get("duration_seconds"), 0)
+    fault_path = Path(filepath)
+    if not fault_path.is_absolute():
+        fault_path = (ROOT / fault_path).resolve()
 
-    if scenario in {"service_outage", "replica_reduction_under_load", "cpu_throttling"} and target:
-        cmd.extend(["-t", target])
-    if scenario == "replica_reduction_under_load":
-        cmd.extend(["-r", str(replicas)])
-    if scenario == "cpu_throttling":
-        if cpu_limit:
-            cmd.extend(["--cpu-limit", cpu_limit])
-        if cpu_request:
-            cmd.extend(["--cpu-request", cpu_request])
-    if auto_revert and duration > 0:
-        cmd.extend(["-d", str(duration)])
-    return cmd
+    return ["python3", "-m", "faults.cli", "apply", str(fault_path)]
 
 
 def build_fault_revert_cmd(namespace: str, fault: Dict[str, Any]) -> List[str]:
-    scenario = str_value(fault.get("scenario"))
-    if not scenario:
-        raise RuntimeError("fault.scenario is required")
-    cmd = ["./scripts/failure_inject.sh", "revert", scenario, "-n", namespace]
-    target = str_value(fault.get("target"))
-    if scenario in {"service_outage", "replica_reduction_under_load", "cpu_throttling"} and target:
-        cmd.extend(["-t", target])
-    return cmd
+    filepath = str_value(fault.get("filepath"))
+    if not filepath:
+        raise RuntimeError("fault.filepath is required")
+
+    fault_path = Path(filepath)
+    if not fault_path.is_absolute():
+        fault_path = (ROOT / fault_path).resolve()
+
+    return ["python3", "-m", "faults.cli", "revert", str(fault_path)]
+
+
+def prom_query(prom_url: str, query: str, eval_time: float | None = None) -> Dict[str, Any]:
+    params: Dict[str, str] = {"query": query}
+    if eval_time is not None:
+        params["time"] = str(eval_time)
+    url = f"{prom_url.rstrip('/')}/api/v1/query?{urlencode(params)}"
+    with urlopen(url, timeout=15) as resp:
+        payload = json.loads(resp.read().decode("utf-8"))
+    if payload.get("status") != "success":
+        raise RuntimeError(f"Prometheus query failed: {payload}")
+    return payload.get("data", {})
+
+
+def prom_vector_map(
+    prom_url: str,
+    query: str,
+    *,
+    key: str,
+    eval_time: float,
+) -> Dict[str, float]:
+    data = prom_query(prom_url, query, eval_time=eval_time)
+    rows = data.get("result", [])
+    parsed: Dict[str, float] = {}
+    for row in rows:
+        item_key = row.get("metric", {}).get(key)
+        if not item_key:
+            continue
+        try:
+            parsed[item_key] = float(row.get("value", [0, "0"])[1])
+        except (TypeError, ValueError):
+            parsed[item_key] = 0.0
+    return parsed
+
+
+def prometheus_service_metrics(
+    prom_url: str,
+    window_seconds: int,
+    eval_time: float,
+) -> Dict[str, Dict[str, Any]]:
+    window = f"{max(1, window_seconds)}s"
+    request_totals = prom_vector_map(
+        prom_url,
+        f"sum(increase(calls_total[{window}])) by (service_name)",
+        key="service_name",
+        eval_time=eval_time,
+    )
+    error_totals = prom_vector_map(
+        prom_url,
+        f'sum(increase(calls_total{{status_code="STATUS_CODE_ERROR"}}[{window}])) by (service_name)',
+        key="service_name",
+        eval_time=eval_time,
+    )
+
+    p99_latency: Dict[str, float] = {}
+    latency_queries = [
+        f"histogram_quantile(0.99, sum(increase(duration_milliseconds_bucket[{window}])) by (service_name, le))",
+        f"histogram_quantile(0.99, sum(increase(duration_bucket[{window}])) by (service_name, le))",
+        f"histogram_quantile(0.99, sum(increase(latency_bucket[{window}])) by (service_name, le))",
+    ]
+    for latency_query in latency_queries:
+        rows = prom_vector_map(prom_url, latency_query, key="service_name", eval_time=eval_time)
+        if rows:
+            p99_latency = rows
+            break
+
+    cpu_by_pod = prom_vector_map(
+        prom_url,
+        (
+            f"1000 * sum(increase(container_cpu_usage_seconds_total{{namespace=\"default\",pod!=\"\"}}[{window}])) "
+            f"by (pod) / {max(1, window_seconds)}"
+        ),
+        key="pod",
+        eval_time=eval_time,
+    )
+    memory_by_pod = prom_vector_map(
+        prom_url,
+        (
+            f"avg by (pod) (avg_over_time(container_memory_working_set_bytes{{namespace=\"default\",pod!=\"\"}}[{window}])) "
+            "/ 1048576"
+        ),
+        key="pod",
+        eval_time=eval_time,
+    )
+
+    services = sorted(set(request_totals) | set(error_totals) | set(p99_latency))
+    result: Dict[str, Dict[str, Any]] = {}
+    for service in services:
+        total = request_totals.get(service, 0.0)
+        errors = error_totals.get(service, 0.0)
+        result[service] = {
+            "request_rate_rps": total / max(1, window_seconds),
+            "error_percentage": (errors / total * 100.0) if total > 0 else 0.0,
+            "p99_latency_ms": p99_latency.get(service),
+        }
+
+    return {
+        "services": result,
+        "pod_cpu_millicores": cpu_by_pod,
+        "pod_memory_mib": memory_by_pod,
+    }
+
+
+def kubectl_json(cmd: List[str]) -> Dict[str, Any]:
+    proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, check=False)
+    if proc.returncode != 0:
+        err = proc.stderr.strip() or proc.stdout.strip() or "kubectl command failed"
+        raise RuntimeError(err)
+    return json.loads(proc.stdout)
+
+
+def kubernetes_snapshot_metrics(namespace: str) -> Dict[str, Any]:
+    deployments_payload = kubectl_json(["kubectl", "get", "deploy", "-n", namespace, "-o", "json"])
+    pods_payload = kubectl_json(["kubectl", "get", "pods", "-n", namespace, "-o", "json"])
+
+    deployments: Dict[str, Any] = {}
+    for item in deployments_payload.get("items", []):
+        name = item.get("metadata", {}).get("name")
+        if not name:
+            continue
+        deployments[name] = {
+            "desired": int(item.get("spec", {}).get("replicas", 0) or 0),
+            "available": int(item.get("status", {}).get("availableReplicas", 0) or 0),
+            "ready": int(item.get("status", {}).get("readyReplicas", 0) or 0),
+            "updated": int(item.get("status", {}).get("updatedReplicas", 0) or 0),
+        }
+
+    services: Dict[str, Dict[str, Any]] = {}
+    for item in pods_payload.get("items", []):
+        metadata = item.get("metadata", {})
+        labels = metadata.get("labels", {}) or {}
+        service = labels.get("app")
+        pod_name = metadata.get("name")
+        if not service or not pod_name:
+            continue
+        pod_phase = item.get("status", {}).get("phase", "Unknown")
+        pod_record = {
+            "name": pod_name,
+            "phase": pod_phase,
+            "node": item.get("spec", {}).get("nodeName"),
+            "pod_ip": item.get("status", {}).get("podIP"),
+        }
+        services.setdefault(service, {"active_pods": 0, "pods": []})
+        if pod_phase == "Running":
+            services[service]["active_pods"] += 1
+        services[service]["pods"].append(pod_record)
+
+    return {
+        "services": services,
+        "deployments": deployments,
+    }
+
+
+def collect_window_metrics(
+    namespace: str,
+    prom_url: str,
+    start_epoch: float,
+    end_epoch: float,
+) -> Dict[str, Any]:
+    window_seconds = max(1, int(end_epoch - start_epoch))
+    prom = prometheus_service_metrics(prom_url, window_seconds, end_epoch)
+    k8s = kubernetes_snapshot_metrics(namespace)
+
+    services = sorted(
+        set(prom["services"].keys())
+        | set(k8s["services"].keys())
+        | set(k8s["deployments"].keys())
+    )
+
+    output_services: Dict[str, Any] = {}
+    for service in services:
+        pod_entries = k8s["services"].get(service, {}).get("pods", [])
+        output_services[service] = {
+            "p99_latency_ms": prom["services"].get(service, {}).get("p99_latency_ms"),
+            "error_percentage": prom["services"].get(service, {}).get("error_percentage", 0.0),
+            "request_rate_rps": prom["services"].get(service, {}).get("request_rate_rps", 0.0),
+            "active_pods": k8s["services"].get(service, {}).get("active_pods", 0),
+            "deployment_health": k8s["deployments"].get(service),
+            "pods": [
+                {
+                    **pod,
+                    "cpu_millicores": prom["pod_cpu_millicores"].get(pod["name"]),
+                    "memory_mib": prom["pod_memory_mib"].get(pod["name"]),
+                }
+                for pod in pod_entries
+            ],
+        }
+
+    return {
+        "window": {
+            "start_utc": epoch_to_utc(start_epoch),
+            "end_utc": epoch_to_utc(end_epoch),
+            "duration_seconds": window_seconds,
+        },
+        "services": output_services,
+    }
+
+
+def verify_environment(namespace: str) -> None:
+    required = [
+        "frontend",
+        "prometheus",
+        "jaeger",
+        "opentelemetrycollector",
+    ]
+    deployments_payload = kubectl_json(["kubectl", "get", "deploy", "-n", namespace, "-o", "json"])
+    available = {
+        item.get("metadata", {}).get("name"): int(item.get("status", {}).get("availableReplicas", 0) or 0)
+        for item in deployments_payload.get("items", [])
+    }
+    missing = [name for name in required if available.get(name, 0) < 1]
+    if missing:
+        raise RuntimeError(f"required deployments unavailable in namespace {namespace}: {', '.join(missing)}")
 
 
 def build_monitor_cmd(namespace: str, detector: Dict[str, Any], run_dir: Path) -> List[str]:
@@ -298,6 +502,8 @@ def build_monitor_cmd(namespace: str, detector: Dict[str, Any], run_dir: Path) -
         str(detector.get("error_ratio_threshold", 0.10)),
         "--service-error-rps-threshold",
         str(detector.get("service_error_rps_threshold", 0.50)),
+        "--service-latency-threshold-ms",
+        str(detector.get("service_latency_threshold_ms", 1000.0)),
         "--min-total-rps",
         str(detector.get("min_total_rps", 0.10)),
         "--restart-count-threshold",
@@ -310,7 +516,13 @@ def build_monitor_cmd(namespace: str, detector: Dict[str, Any], run_dir: Path) -
     return cmd
 
 
-def build_agent_cmd(namespace: str, detector: Dict[str, Any], agent: Dict[str, Any], run_dir: Path) -> List[str]:
+def build_agent_cmd(
+    namespace: str,
+    detector: Dict[str, Any],
+    agent: Dict[str, Any],
+    run_dir: Path,
+    seeded_detection_path: Path | None = None,
+) -> List[str]:
     cmd = [
         "./scripts/run_agent.py",
         "--namespace",
@@ -327,6 +539,8 @@ def build_agent_cmd(namespace: str, detector: Dict[str, Any], agent: Dict[str, A
         str(detector.get("error_ratio_threshold", 0.10)),
         "--service-error-rps-threshold",
         str(detector.get("service_error_rps_threshold", 0.50)),
+        "--service-latency-threshold-ms",
+        str(detector.get("service_latency_threshold_ms", 1000.0)),
         "--min-total-rps",
         str(detector.get("min_total_rps", 0.10)),
         "--restart-count-threshold",
@@ -335,14 +549,55 @@ def build_agent_cmd(namespace: str, detector: Dict[str, Any], agent: Dict[str, A
         str_value(agent.get("mode"), "heuristic"),
         "--max-iterations",
         str(int_value(agent.get("max_iterations"), 2)),
+        "--research-max-tool-calls",
+        str(int_value(agent.get("research_max_tool_calls"), 5)),
         "--verify-wait-seconds",
         str(int_value(agent.get("verify_wait_seconds"), 30)),
+        "--seed-detection-file",
+        str(seeded_detection_path) if seeded_detection_path is not None else "",
         "--out-file",
         str(run_dir / "agent_report.json"),
     ]
     if bool_value(agent.get("dry_run"), True):
         cmd.append("--dry-run")
     return cmd
+
+
+def ensure_ollama_model_available() -> None:
+    provider = os.environ.get("LLM_PROVIDER", "").strip().lower()
+    if provider != "ollama":
+        return
+
+    require_binary("ollama")
+    model = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b").strip()
+    if not model:
+        raise RuntimeError("OLLAMA_MODEL must be set when LLM_PROVIDER=ollama")
+
+    show_proc = subprocess.run(
+        ["ollama", "show", model],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if show_proc.returncode == 0:
+        print_status(f"phase=agent: ollama model ready ({model})")
+        return
+
+    print_status(f"phase=agent: pulling missing ollama model ({model})")
+    pull_proc = subprocess.run(
+        ["ollama", "pull", model],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if pull_proc.returncode != 0:
+        raise RuntimeError(
+            "failed to pull ollama model "
+            f"{model}: {pull_proc.stderr.strip() or pull_proc.stdout.strip() or 'unknown error'}"
+        )
+    print_status(f"phase=agent: ollama model pulled ({model})")
 
 
 def read_detection_report(path: Path) -> Dict[str, Any]:
@@ -442,12 +697,21 @@ def main() -> int:
         "snapshots": {},
     }
     summary_path = run_dir / "summary.json"
+    baseline_metrics_path = run_dir / "baseline_metrics.json"
+    fault_metrics_path = run_dir / "fault_metrics.json"
 
     traffic_proc = None
     baseline_proc = None
     monitor_proc = None
     fault_active = False
     fault_cfg = config.get("fault", {}) or {}
+    detector = config.get("detector", {}) or {}
+    agent_cfg = config.get("agent", {}) or {}
+    prom_url = str_value(detector.get("prom_url"), "http://localhost:9090")
+    baseline_start_epoch = 0.0
+    baseline_end_epoch = 0.0
+    fault_start_epoch = 0.0
+    fault_end_epoch = 0.0
 
     try:
         startup = config.get("startup", {}) or {}
@@ -463,6 +727,9 @@ def main() -> int:
             print_status("phase=startup: completed")
         else:
             print_status("phase=startup: skipped")
+
+        verify_environment(namespace)
+        print_status("phase=environment: verified")
 
         print_status("phase=snapshot: capturing before snapshot")
         summary["snapshots"]["before"] = capture_snapshot(namespace, "before", run_dir)
@@ -520,8 +787,6 @@ def main() -> int:
         else:
             print_status("phase=baseline: skipped")
 
-        detector = config.get("detector", {}) or {}
-        agent_cfg = config.get("agent", {}) or {}
         if bool_value(detector.get("enabled"), False):
             monitor_cmd = build_monitor_cmd(namespace, detector, run_dir)
             monitor_log = run_dir / "monitor.log"
@@ -545,18 +810,25 @@ def main() -> int:
         else:
             print_status("phase=monitor: skipped")
 
+        baseline_start_epoch = time.time()
+        summary["baseline_window_start_utc"] = epoch_to_utc(baseline_start_epoch)
         sleep_with_progress(pre_fault_delay, "phase=pre_fault_delay")
+        baseline_end_epoch = time.time()
+        summary["baseline_window_end_utc"] = epoch_to_utc(baseline_end_epoch)
 
         if fault_cfg:
+            fault_label = str_value(fault_cfg.get("filepath")) or str_value(fault_cfg.get("scenario"), "fault")
             print_status(
                 "phase=fault_apply: applying "
-                f"{str_value(fault_cfg.get('scenario'))}"
+                f"{fault_label}"
             )
+            fault_start_epoch = time.time()
+            summary["fault_window_start_utc"] = epoch_to_utc(fault_start_epoch)
             apply_cmd = build_fault_apply_cmd(namespace, fault_cfg)
             summary["steps"]["fault_apply"] = run_cmd(apply_cmd, ROOT, run_dir / "fault_apply.log")
             if summary["steps"]["fault_apply"]["returncode"] != 0:
                 raise RuntimeError("fault apply failed; see fault_apply.log")
-            fault_active = not bool_value(fault_cfg.get("auto_revert"), False)
+            fault_active = True
             print_status("phase=fault_apply: completed")
         else:
             print_status("phase=fault_apply: skipped")
@@ -584,7 +856,16 @@ def main() -> int:
                     "phase=agent: running "
                     f"{str_value(agent_cfg.get('mode'), 'heuristic')} agent"
                 )
-                agent_cmd = build_agent_cmd(namespace, detector, agent_cfg, run_dir)
+                ensure_ollama_model_available()
+                seeded_detection_path = run_dir / "seeded_detection.json"
+                seeded_detection_path.write_text(json.dumps(detected, indent=2))
+                agent_cmd = build_agent_cmd(
+                    namespace,
+                    detector,
+                    agent_cfg,
+                    run_dir,
+                    seeded_detection_path=seeded_detection_path,
+                )
                 summary["steps"]["agent"] = run_cmd_streaming(
                     agent_cmd,
                     ROOT,
@@ -638,12 +919,41 @@ def main() -> int:
         else:
             print_status("phase=agent: skipped")
 
-        sleep_with_progress(post_fault_delay, "phase=post_fault_delay")
+        if fault_cfg:
+            fault_duration = int_value(fault_cfg.get("duration_seconds"), 0)
+            if fault_duration <= 0:
+                raise RuntimeError("fault.duration_seconds must be a positive integer")
+            sleep_with_progress(fault_duration, "phase=fault_duration")
+            fault_end_epoch = time.time()
+            summary["fault_window_end_utc"] = epoch_to_utc(fault_end_epoch)
+
+        if baseline_start_epoch > 0 and baseline_end_epoch > baseline_start_epoch:
+            baseline_metrics = collect_window_metrics(
+                namespace,
+                prom_url,
+                baseline_start_epoch,
+                baseline_end_epoch,
+            )
+            baseline_metrics_path.write_text(json.dumps(baseline_metrics, indent=2))
+            summary["baseline_metrics_file"] = rel_path(baseline_metrics_path)
+            print_status("phase=metrics: baseline metrics written")
+
+        if fault_cfg and fault_start_epoch > 0 and fault_end_epoch > fault_start_epoch:
+            fault_metrics = collect_window_metrics(
+                namespace,
+                prom_url,
+                fault_start_epoch,
+                fault_end_epoch,
+            )
+            fault_metrics_path.write_text(json.dumps(fault_metrics, indent=2))
+            summary["fault_metrics_file"] = rel_path(fault_metrics_path)
+            print_status("phase=metrics: fault metrics written")
 
         if fault_active:
+            fault_label = str_value(fault_cfg.get("filepath")) or str_value(fault_cfg.get("scenario"), "fault")
             print_status(
                 "phase=fault_revert: reverting "
-                f"{str_value(fault_cfg.get('scenario'))}"
+                f"{fault_label}"
             )
             revert_cmd = build_fault_revert_cmd(namespace, fault_cfg)
             summary["steps"]["fault_revert"] = run_cmd(revert_cmd, ROOT, run_dir / "fault_revert.log")
@@ -651,6 +961,8 @@ def main() -> int:
             print_status("phase=fault_revert: completed")
         else:
             print_status("phase=fault_revert: skipped (fault already recovered or inactive)")
+
+        sleep_with_progress(post_fault_delay, "phase=post_fault_delay")
 
         print_status("phase=snapshot: capturing after snapshot")
         summary["snapshots"]["after"] = capture_snapshot(namespace, "after", run_dir)

@@ -1,1 +1,1 @@
-"""Fault injection package for AgentScope."""
+"""Fault utilities for AgentScope."""

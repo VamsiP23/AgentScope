@@ -19,6 +19,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--target-deployment", default="")
     p.add_argument("--error-ratio-threshold", type=float, default=0.10)
     p.add_argument("--service-error-rps-threshold", type=float, default=0.50)
+    p.add_argument("--service-latency-threshold-ms", type=float, default=1000.0)
     p.add_argument("--min-total-rps", type=float, default=0.10)
     p.add_argument("--restart-count-threshold", type=int, default=1)
     p.add_argument("--out-file", default="")
@@ -32,7 +33,7 @@ def main() -> int:
     config = DetectionConfig(**vars(args))
     findings = DetectorRunner(config).run()
     fired = [f for f in findings if f.triggered]
-    primary_detector_names = {"error_ratio", "service_error_rate", "deployment_availability"}
+    primary_detector_names = {"error_ratio", "service_error_rate", "service_latency", "deployment_availability"}
     primary_fired = [f for f in fired if f.name in primary_detector_names]
 
     suspicious_services = sorted({f.service for f in fired if f.service})

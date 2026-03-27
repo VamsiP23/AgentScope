@@ -1,0 +1,39 @@
+name: Chaos CPU Stress Checkoutservice Agent
+namespace: default
+startup:
+  enabled: false
+  args: []
+timings:
+  pre_fault_delay_seconds: 30
+  post_fault_delay_seconds: 60
+traffic:
+  enabled: true
+  base_url: http://localhost:8080
+  duration_seconds: 300
+  rps: 40
+baseline:
+  enabled: true
+  duration_seconds: 300
+  interval_seconds: 15
+fault:
+  filepath: chaosmesh/experiments/stresschaos-cpu-checkoutservice.yaml
+  duration_seconds: 120
+  auto_revert: false
+detector:
+  enabled: true
+  prom_url: http://localhost:9090
+  target_deployment: checkoutservice
+  service_latency_threshold_ms: 250
+  interval_seconds: 10
+agent:
+  enabled: true
+  mode: llm
+  dry_run: true
+  max_iterations: 1
+  research_max_tool_calls: 5
+  verify_wait_seconds: 30
+  jaeger_url: http://localhost:16686
+  target_deployment: checkoutservice
+  require_incident_detected: true
+  wait_for_incident_timeout_seconds: 90
+  wait_for_incident_poll_seconds: 5

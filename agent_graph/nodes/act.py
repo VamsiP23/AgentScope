@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 
 from agent_graph.actor import Actor
-from agent_graph.schemas import Hypothesis
+from agent_graph.schemas import EvidenceItem, Hypothesis, PolicyDecision
 from agent_graph.tools.actions import ActionTools
 from agent_graph.tools.kubernetes import KubernetesTools
 from detectors.schemas import DetectionConfig
@@ -19,14 +19,23 @@ def act_node(state: IncidentState) -> IncidentState:
         target_deployment=state.get("target_deployment", ""),
         error_ratio_threshold=state.get("error_ratio_threshold", 0.10),
         service_error_rps_threshold=state.get("service_error_rps_threshold", 0.50),
+        service_latency_threshold_ms=state.get("service_latency_threshold_ms", 1000.0),
         min_total_rps=state.get("min_total_rps", 0.10),
         restart_count_threshold=state.get("restart_count_threshold", 1),
     )
-    actor = Actor(config, ActionTools(), KubernetesTools(), dry_run=state.get("dry_run", True))
+    actor = Actor(
+        config,
+        ActionTools(),
+        KubernetesTools(),
+        dry_run=state.get("dry_run", True),
+        mode=state.get("mode", "heuristic"),
+    )
     supported = state.get("supported_hypothesis")
+    policy = PolicyDecision(**(state.get("policy_decision") or {}))
     attempted_actions = {item.get("action", "") for item in state.get("attempted_actions", [])}
     attempted_history = state.get("attempted_actions", [])
-    action = actor.run(Hypothesis(**supported), attempted_actions, attempted_history) if supported else actor.run(Hypothesis(
+    evidence = [EvidenceItem(**item) for item in state.get("evidence", [])]
+    fallback = Hypothesis(
         id="no_strong_hypothesis",
         title="No strong hypothesis from detector output",
         suspected_service=state.get("target_deployment", ""),
@@ -34,7 +43,14 @@ def act_node(state: IncidentState) -> IncidentState:
         confidence=0.0,
         rationale="missing supported hypothesis",
         validation_plan=[],
-    ), attempted_actions, attempted_history)
+    )
+    action = actor.run(
+        Hypothesis(**supported) if supported else fallback,
+        policy,
+        evidence,
+        attempted_actions,
+        attempted_history,
+    )
     print(
         f"[agent] state=act action={action.action} target={action.target} dry_run={action.dry_run} "
         f"rationale={action.rationale}",

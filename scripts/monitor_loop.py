@@ -24,6 +24,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--target-deployment", default="")
     p.add_argument("--error-ratio-threshold", type=float, default=0.10)
     p.add_argument("--service-error-rps-threshold", type=float, default=0.50)
+    p.add_argument("--service-latency-threshold-ms", type=float, default=1000.0)
     p.add_argument("--min-total-rps", type=float, default=0.10)
     p.add_argument("--restart-count-threshold", type=int, default=1)
     p.add_argument("--out-dir", required=True)
@@ -41,6 +42,7 @@ def main() -> int:
         target_deployment=args.target_deployment,
         error_ratio_threshold=args.error_ratio_threshold,
         service_error_rps_threshold=args.service_error_rps_threshold,
+        service_latency_threshold_ms=args.service_latency_threshold_ms,
         min_total_rps=args.min_total_rps,
         restart_count_threshold=args.restart_count_threshold,
     )

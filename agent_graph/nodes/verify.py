@@ -17,10 +17,16 @@ def verify_node(state: IncidentState) -> IncidentState:
         target_deployment=state.get("target_deployment", ""),
         error_ratio_threshold=state.get("error_ratio_threshold", 0.10),
         service_error_rps_threshold=state.get("service_error_rps_threshold", 0.50),
+        service_latency_threshold_ms=state.get("service_latency_threshold_ms", 1000.0),
         min_total_rps=state.get("min_total_rps", 0.10),
         restart_count_threshold=state.get("restart_count_threshold", 1),
     )
-    verifier = Verifier(config, wait_seconds=state.get("verify_wait_seconds", 30))
+    verifier = Verifier(
+        config,
+        jaeger_url=state["jaeger_url"],
+        mode=state.get("mode", "heuristic"),
+        wait_seconds=state.get("verify_wait_seconds", 30),
+    )
     action = ActionPlan(**state["current_action"])
     verification = verifier.run(action, state["detection"])
     stages = verification.stages or {}
@@ -35,6 +41,7 @@ def verify_node(state: IncidentState) -> IncidentState:
     return {
         **state,
         "verification": verification.to_dict(),
+        "verifier_evidence": verification.evidence,
         "iteration": state.get("iteration", 0) + 1,
         "state_history": [*state.get("state_history", []), "verify"],
     }

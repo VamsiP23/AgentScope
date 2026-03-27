@@ -59,6 +59,37 @@ class DetectorRunner:
             details={"top_error_services": top[:5]},
         )
 
+    def service_latency_detector(self) -> DetectorFinding:
+        if not self.config.target_deployment:
+            return DetectorFinding(
+                name="service_latency",
+                triggered=False,
+                severity="info",
+                reason="no target deployment configured",
+            )
+        p99_latency_ms = self.prom.service_p99_latency_ms(
+            self.config.window,
+            self.config.target_deployment,
+        )
+        triggered = p99_latency_ms >= self.config.service_latency_threshold_ms
+        severity = "high" if triggered else "info"
+        reason = (
+            f"service {self.config.target_deployment} p99 latency {p99_latency_ms:.3f} ms"
+        )
+        return DetectorFinding(
+            name="service_latency",
+            triggered=triggered,
+            severity=severity,
+            reason=reason,
+            service=self.config.target_deployment,
+            value=round(p99_latency_ms, 6),
+            threshold=self.config.service_latency_threshold_ms,
+            details={
+                "service_name": self.config.target_deployment,
+                "p99_latency_ms": p99_latency_ms,
+            },
+        )
+
     def availability_detector(self) -> DetectorFinding:
         if not self.config.target_deployment:
             return DetectorFinding(
@@ -115,6 +146,7 @@ class DetectorRunner:
         return [
             self.error_ratio_detector(),
             self.service_error_rate_detector(),
+            self.service_latency_detector(),
             self.availability_detector(),
             self.restart_history_detector(),
         ]

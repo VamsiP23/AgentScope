@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Optional
 
@@ -10,7 +11,7 @@ from detectors.schemas import DetectionConfig, DetectionReport
 from detectors.utils import utc_now
 
 
-PRIMARY_DETECTORS = {"error_ratio", "service_error_rate", "deployment_availability"}
+PRIMARY_DETECTORS = {"error_ratio", "service_error_rate", "service_latency", "deployment_availability"}
 
 
 def build_report(config: DetectionConfig) -> DetectionReport:
@@ -44,6 +45,30 @@ class MonitorLoop:
         self.latest_path = self.out_dir / "latest_detection.json"
         self._last_incident_state: Optional[bool] = None
         self._last_summary: str = ""
+        self._latency_consecutive_count = 0
+
+    def _stabilize_report(self, report: DetectionReport) -> DetectionReport:
+        latency_fired = [item for item in report.findings if item.get("name") == "service_latency" and item.get("triggered")]
+        other_primary_fired = [
+            item
+            for item in report.findings
+            if item.get("triggered") and item.get("name") in PRIMARY_DETECTORS and item.get("name") != "service_latency"
+        ]
+
+        if latency_fired:
+            self._latency_consecutive_count += 1
+        else:
+            self._latency_consecutive_count = 0
+
+        if latency_fired and not other_primary_fired and self._latency_consecutive_count < 2:
+            latency_reason = latency_fired[0].get("reason", "latency threshold exceeded")
+            return replace(
+                report,
+                incident_detected=False,
+                suspicious_services=[],
+                summary=f"supporting signals only: {latency_reason} (awaiting consecutive confirmation)",
+            )
+        return report
 
     def write_report(self, report: DetectionReport) -> None:
         payload = json.dumps(report.to_dict(), indent=2)
@@ -53,7 +78,7 @@ class MonitorLoop:
 
     def run_forever(self) -> int:
         while True:
-            report = build_report(self.config)
+            report = self._stabilize_report(build_report(self.config))
             self.write_report(report)
             if self._last_incident_state is None:
                 print(

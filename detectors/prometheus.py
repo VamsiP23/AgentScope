@@ -49,3 +49,24 @@ class PrometheusClient:
             )
         parsed.sort(key=lambda item: item["error_rps"], reverse=True)
         return parsed[:limit]
+
+    def service_p99_latency_ms(self, window: str, service_name: str) -> float:
+        queries = [
+            (
+                "histogram_quantile(0.99, "
+                f"sum(rate(duration_milliseconds_bucket{{service_name=\"{service_name}\"}}[{window}])) by (le))"
+            ),
+            (
+                "histogram_quantile(0.99, "
+                f"sum(rate(duration_bucket{{service_name=\"{service_name}\"}}[{window}])) by (le))"
+            ),
+            (
+                "histogram_quantile(0.99, "
+                f"sum(rate(latency_bucket{{service_name=\"{service_name}\"}}[{window}])) by (le))"
+            ),
+        ]
+        for query in queries:
+            value = self.instant_scalar(query)
+            if value > 0:
+                return value
+        return 0.0

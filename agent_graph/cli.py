@@ -21,12 +21,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--target-deployment", default="")
     p.add_argument("--error-ratio-threshold", type=float, default=0.10)
     p.add_argument("--service-error-rps-threshold", type=float, default=0.50)
+    p.add_argument("--service-latency-threshold-ms", type=float, default=1000.0)
     p.add_argument("--min-total-rps", type=float, default=0.10)
     p.add_argument("--restart-count-threshold", type=int, default=1)
     p.add_argument("--mode", choices=["heuristic", "llm"], default="heuristic")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--max-iterations", type=int, default=2)
+    p.add_argument("--research-max-tool-calls", type=int, default=5)
     p.add_argument("--verify-wait-seconds", type=int, default=30)
+    p.add_argument("--seed-detection-file", default="")
     p.add_argument("--out-file", default="")
     return p
 
@@ -34,6 +37,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = build_parser().parse_args()
     app = build_workflow()
+    seeded_detection = {}
+    if args.seed_detection_file:
+        path = Path(args.seed_detection_file)
+        if path.exists():
+            seeded_detection = json.loads(path.read_text())
     initial_state = {
         "namespace": args.namespace,
         "prom_url": args.prom_url,
@@ -42,12 +50,15 @@ def main() -> int:
         "target_deployment": args.target_deployment,
         "error_ratio_threshold": args.error_ratio_threshold,
         "service_error_rps_threshold": args.service_error_rps_threshold,
+        "service_latency_threshold_ms": args.service_latency_threshold_ms,
         "min_total_rps": args.min_total_rps,
         "restart_count_threshold": args.restart_count_threshold,
         "mode": args.mode,
         "dry_run": args.dry_run,
         "max_iterations": args.max_iterations,
+        "research_max_tool_calls": args.research_max_tool_calls,
         "verify_wait_seconds": args.verify_wait_seconds,
+        "detection": seeded_detection,
         "iteration": 0,
         "attempted_actions": [],
         "state_history": [],

@@ -32,6 +32,31 @@ class EvidenceItem:
 
 
 @dataclass
+class ResearchStep:
+    tool: str
+    params: Dict[str, Any] = field(default_factory=dict)
+    rationale: str = ""
+    evidence_names: List[str] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class PolicyDecision:
+    supported_hypothesis_id: str = ""
+    supported_hypothesis: Dict[str, Any] = field(default_factory=dict)
+    actionability: str = "monitor"
+    confidence: float = 0.0
+    rationale: str = ""
+    rejected_hypothesis_ids: List[str] = field(default_factory=list)
+    missing_evidence: List[str] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
 class ActionPlan:
     action: str
     target: str
@@ -58,6 +83,7 @@ class VerificationResult:
     note: str = ""
     stages: Dict[str, Any] = field(default_factory=dict)
     samples: List[Dict[str, Any]] = field(default_factory=list)
+    evidence: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

@@ -13,6 +13,7 @@ class HeuristicHypothesizer:
         availability = findings.get("deployment_availability", {})
         service_error = findings.get("service_error_rate", {})
         error_ratio = findings.get("error_ratio", {})
+        service_latency = findings.get("service_latency", {})
 
         if availability.get("triggered"):
             hypotheses.append(
@@ -48,17 +49,18 @@ class HeuristicHypothesizer:
                 )
             )
 
-        if error_ratio.get("triggered") and not availability.get("triggered"):
+        if (error_ratio.get("triggered") or service_latency.get("triggered")) and not availability.get("triggered"):
             hypotheses.append(
                 Hypothesis(
                     id="performance_degradation",
                     title="Performance degradation under load",
-                    suspected_service=service_error.get("service") or target_deployment,
+                    suspected_service=service_latency.get("service") or service_error.get("service") or target_deployment,
                     category="performance",
-                    confidence=0.55,
-                    rationale=error_ratio.get("reason", "global error ratio elevated"),
+                    confidence=0.62 if service_latency.get("triggered") else 0.55,
+                    rationale=service_latency.get("reason") or error_ratio.get("reason", "global error ratio elevated"),
                     validation_plan=[
                         "Compare target service traffic and error rates",
+                        "Inspect p99 latency on the suspected service",
                         "Inspect recent traces for slow or failing spans",
                         "Check pod restarts and events for instability",
                     ],

@@ -1,26 +1,24 @@
 # Experiments
 
-Each YAML file in this directory defines one reproducible AgentScope experiment.
+The experiment runner supports Chaos Mesh fault manifests through:
+- `fault.filepath`
 
-Run one experiment with:
+Current state:
+- the runner supports baseline traffic, detection, optional agent execution, and artifact capture
+- faults are defined as checked-in Chaos Mesh YAML files under `chaosmesh/experiments/`
+- the runner applies and reverts them through `python3 -m faults.cli`
 
-```bash
-./scripts/run_experiment.sh experiments/service_outage_cartservice.yaml
-```
-
-Each run writes artifacts under `experiment_runs/<timestamp>_<name>/`.
-
-## YAML shape
+Supported experiment shape:
 
 ```yaml
-name: Service Outage Cartservice
+name: Chaos Pod Kill Cartservice Agent
 namespace: default
 startup:
-  enabled: true
+  enabled: false
   args: []
 timings:
-  pre_fault_delay_seconds: 60
-  post_fault_delay_seconds: 30
+  pre_fault_delay_seconds: 30
+  post_fault_delay_seconds: 60
 traffic:
   enabled: true
   base_url: http://localhost:8080
@@ -31,8 +29,8 @@ baseline:
   duration_seconds: 300
   interval_seconds: 15
 fault:
-  scenario: service_outage
-  target: cartservice
+  filepath: chaosmesh/experiments/podchaos.yaml
+  duration_seconds: 60
   auto_revert: false
 detector:
   enabled: true
@@ -41,9 +39,10 @@ detector:
   interval_seconds: 10
 agent:
   enabled: true
-  mode: heuristic
+  mode: llm
   dry_run: true
-  max_iterations: 2
+  max_iterations: 1
+  research_max_tool_calls: 5
   verify_wait_seconds: 30
   jaeger_url: http://localhost:16686
   target_deployment: cartservice
@@ -52,46 +51,18 @@ agent:
   wait_for_incident_poll_seconds: 5
 ```
 
-## Supported fault scenarios
+Checked-in examples:
+- `chaos_pod_kill_cartservice_baseline.yaml`
+- `chaos_pod_kill_cartservice_agent.yaml`
+- `chaos_network_delay_frontend_cartservice_baseline.yaml`
+- `chaos_cpu_stress_checkoutservice_baseline.yaml`
+- `chaos_dns_cartservice_baseline.yaml`
 
-- `service_outage`
-  - scale a deployment to `0` replicas and restore the original replica count on revert
-- `dependency_outage`
-  - take down `redis-cart` using the same scale-to-zero mechanism
-- `cpu_throttling`
-  - patch a deployment's CPU request/limit to constrained values and restore the original values on revert
-- `replica_reduction_under_load`
-  - scale a target deployment down to a specified replica count and restore the original count on revert
+For a first agent validation run, prefer:
+- `chaos_pod_kill_cartservice_agent.yaml`
 
-Example fault blocks:
-
-```yaml
-fault:
-  scenario: cpu_throttling
-  target: productcatalogservice
-  cpu_request: 25m
-  cpu_limit: 50m
-  auto_revert: true
-  duration_seconds: 180
-```
-
-```yaml
-fault:
-  scenario: replica_reduction_under_load
-  target: checkoutservice
-  replicas: 1
-  auto_revert: true
-  duration_seconds: 120
-```
-
-## Notes
-
-- `startup.args` are passed directly to `./scripts/start_all.sh`.
-- `fault.scenario` maps to the Python `faults/` package through `./scripts/failure_inject.sh`.
-- If `fault.auto_revert` is `false`, the runner will revert the fault near the end of the experiment.
-
-- If `detector.enabled` is `true`, the experiment runner starts the monitor loop in the background and writes JSON outputs under `detector_runs/`.
-- If `agent.enabled` is `true`, the runner waits for detector confirmation, runs `./scripts/run_agent.py`, and writes `agent_report.json` plus `agent.log` into the run directory.
-- The agent now follows an explicit state machine:
-  - `hypothesize -> research -> act -> verify`
-  - if verification fails and iterations remain, it loops back to `hypothesize`
+Why:
+- it produces a clean transient incident on a replicated service
+- the detector signal is straightforward
+- the agent can run in `dry_run` mode without changing cluster state
+- it exercises the LLM-backed hypothesize, research, policy, act, and verify stages

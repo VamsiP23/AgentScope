@@ -13,6 +13,18 @@ RUNTIME_DIR=".runtime"
 PF_FAILED=0
 DISABLE_BUILTIN_LOADGEN=1
 STABLE_LOCAL_MODE=1
+KUBE_CONTEXT=""
+CHAOS_MESH_NAMESPACE="chaos-mesh"
+CHAOS_MESH_RELEASE="chaos-mesh"
+CHAOS_MESH_CHART="chaos-mesh/chaos-mesh"
+CHAOS_DAEMON_RUNTIME="${CHAOS_DAEMON_RUNTIME:-docker}"
+CHAOS_DAEMON_SOCKET_PATH="${CHAOS_DAEMON_SOCKET_PATH:-/var/run/docker.sock}"
+KEY_MULTI_REPLICA_DEPLOYMENTS=(
+  frontend:2
+  cartservice:2
+  checkoutservice:2
+  productcatalogservice:2
+)
 
 usage() {
   cat <<USAGE
@@ -24,6 +36,7 @@ Usage:
 Options:
   -n <namespace>   Kubernetes namespace (default: default)
   -m <manifest>    App manifest path (default: vendor/microservices-demo/release/kubernetes-manifests.yaml)
+  -c <context>     Use this existing kubectl context (example: docker-desktop)
   -g               Keep built-in Online Boutique loadgenerator enabled
   -s               Skip stable local hardening (cartservice probe tuning)
   -t               Also start synthetic traffic in background
@@ -32,14 +45,16 @@ Options:
 
 Examples:
   ./scripts/start_all.sh
+  ./scripts/start_all.sh -c docker-desktop
   ./scripts/start_all.sh -t -b
 USAGE
 }
 
-while getopts ":n:m:gstbh" opt; do
+while getopts ":n:m:c:gstbh" opt; do
   case "$opt" in
     n) NAMESPACE="$OPTARG" ;;
     m) MANIFEST="$OPTARG" ;;
+    c) KUBE_CONTEXT="$OPTARG" ;;
     g) DISABLE_BUILTIN_LOADGEN=0 ;;
     s) STABLE_LOCAL_MODE=0 ;;
     t) ENABLE_TRAFFIC=1 ;;
@@ -65,10 +80,111 @@ if ! command -v kubectl >/dev/null 2>&1; then
   exit 1
 fi
 
+ensure_brew_package() {
+  local tool="$1"
+
+  if command -v "$tool" >/dev/null 2>&1; then
+    return
+  fi
+
+  if ! command -v brew >/dev/null 2>&1; then
+    echo "$tool is required but not installed, and Homebrew is not available for automatic installation." >&2
+    exit 1
+  fi
+
+  echo "Installing $tool with Homebrew..."
+  brew install "$tool"
+}
+
+ensure_helm_binary() {
+  ensure_brew_package helm
+}
+
+ensure_current_cluster() {
+  local context_name
+
+  if [ -n "$KUBE_CONTEXT" ]; then
+    context_name="$KUBE_CONTEXT"
+  else
+    context_name=$(kubectl config current-context 2>/dev/null || true)
+  fi
+
+  if [ -z "$context_name" ]; then
+    echo "No kubectl context is configured. Use -c <context> or configure kubectl first." >&2
+    exit 1
+  fi
+
+  echo "Using existing kubectl context: $context_name"
+  kubectl config use-context "$context_name" >/dev/null
+
+  echo "Waiting for nodes in current cluster to become Ready..."
+  kubectl wait --for=condition=Ready nodes --all --timeout=180s >/dev/null
+  kubectl get nodes
+}
+
+ensure_chaos_mesh() {
+  ensure_helm_binary
+
+  if ! kubectl get namespace "$CHAOS_MESH_NAMESPACE" >/dev/null 2>&1; then
+    echo "Creating namespace: $CHAOS_MESH_NAMESPACE"
+    kubectl create namespace "$CHAOS_MESH_NAMESPACE" >/dev/null
+  fi
+
+  echo "Installing or upgrading Chaos Mesh..."
+  helm repo add chaos-mesh https://charts.chaos-mesh.org >/dev/null 2>&1 || true
+  helm repo update >/dev/null
+  helm upgrade --install "$CHAOS_MESH_RELEASE" "$CHAOS_MESH_CHART" \
+    -n "$CHAOS_MESH_NAMESPACE" \
+    --set chaosDaemon.runtime="$CHAOS_DAEMON_RUNTIME" \
+    --set chaosDaemon.socketPath="$CHAOS_DAEMON_SOCKET_PATH" >/dev/null
+
+  echo "Waiting for Chaos Mesh components..."
+  kubectl rollout status deployment/chaos-controller-manager -n "$CHAOS_MESH_NAMESPACE" --timeout=300s >/dev/null
+  if kubectl get daemonset/chaos-daemon -n "$CHAOS_MESH_NAMESPACE" >/dev/null 2>&1; then
+    kubectl rollout status daemonset/chaos-daemon -n "$CHAOS_MESH_NAMESPACE" --timeout=300s >/dev/null
+  fi
+  if kubectl get deployment/chaos-dashboard -n "$CHAOS_MESH_NAMESPACE" >/dev/null 2>&1; then
+    kubectl rollout status deployment/chaos-dashboard -n "$CHAOS_MESH_NAMESPACE" --timeout=300s >/dev/null
+  fi
+}
+
+ensure_namespace() {
+  if kubectl get namespace "$NAMESPACE" >/dev/null 2>&1; then
+    return
+  fi
+
+  echo "Creating namespace: $NAMESPACE"
+  kubectl create namespace "$NAMESPACE" >/dev/null
+}
+
+scale_key_deployments() {
+  local entry deploy replicas
+
+  echo "Scaling key services for resilience..."
+  for entry in "${KEY_MULTI_REPLICA_DEPLOYMENTS[@]}"; do
+    deploy="${entry%%:*}"
+    replicas="${entry##*:}"
+
+    if kubectl get deployment "$deploy" -n "$NAMESPACE" >/dev/null 2>&1; then
+      kubectl scale deployment/"$deploy" -n "$NAMESPACE" --replicas="$replicas" >/dev/null
+      kubectl rollout status deployment/"$deploy" -n "$NAMESPACE" --timeout=300s >/dev/null
+      echo "  deployment/$deploy scaled to $replicas"
+    else
+      echo "  deployment/$deploy not found, skipping"
+    fi
+  done
+}
+
 if [ ! -f "$MANIFEST" ]; then
   echo "Manifest not found: $MANIFEST" >&2
   exit 1
 fi
+
+ensure_current_cluster
+
+ensure_chaos_mesh
+
+ensure_namespace
 
 mkdir -p "$RUNTIME_DIR"
 TS_UTC=$(date -u +"%Y%m%dT%H%M%SZ")
@@ -80,6 +196,8 @@ echo "Namespace: $NAMESPACE"
 
 echo "Applying app manifest: $MANIFEST"
 kubectl apply -n "$NAMESPACE" -f "$MANIFEST"
+
+scale_key_deployments
 
 if [ "$DISABLE_BUILTIN_LOADGEN" -eq 1 ]; then
   if kubectl get deployment/loadgenerator -n "$NAMESPACE" >/dev/null 2>&1; then
@@ -100,6 +218,22 @@ if [ "$STABLE_LOCAL_MODE" -eq 1 ]; then
       {"op":"replace","path":"/spec/template/spec/containers/0/resources/requests/memory","value":"128Mi"},
       {"op":"replace","path":"/spec/template/spec/containers/0/resources/limits/cpu","value":"1000m"},
       {"op":"replace","path":"/spec/template/spec/containers/0/resources/limits/memory","value":"512Mi"}
+    ]' >/dev/null
+  fi
+
+  if kubectl get deployment/currencyservice -n "$NAMESPACE" >/dev/null 2>&1; then
+    echo "Applying stable local probe settings for currencyservice..."
+    kubectl patch deployment currencyservice -n "$NAMESPACE" --type='json' -p='[
+      {"op":"add","path":"/spec/template/spec/containers/0/readinessProbe/initialDelaySeconds","value":20},
+      {"op":"add","path":"/spec/template/spec/containers/0/readinessProbe/timeoutSeconds","value":5},
+      {"op":"add","path":"/spec/template/spec/containers/0/readinessProbe/failureThreshold","value":10},
+      {"op":"add","path":"/spec/template/spec/containers/0/livenessProbe/initialDelaySeconds","value":30},
+      {"op":"add","path":"/spec/template/spec/containers/0/livenessProbe/timeoutSeconds","value":5},
+      {"op":"add","path":"/spec/template/spec/containers/0/livenessProbe/failureThreshold","value":10},
+      {"op":"replace","path":"/spec/template/spec/containers/0/resources/requests/cpu","value":"200m"},
+      {"op":"replace","path":"/spec/template/spec/containers/0/resources/requests/memory","value":"128Mi"},
+      {"op":"replace","path":"/spec/template/spec/containers/0/resources/limits/cpu","value":"500m"},
+      {"op":"replace","path":"/spec/template/spec/containers/0/resources/limits/memory","value":"256Mi"}
     ]' >/dev/null
   fi
 fi
