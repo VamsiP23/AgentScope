@@ -19,6 +19,10 @@ data:
     processors:
       batch:
 
+    extensions:
+      health_check:
+        endpoint: "0.0.0.0:13133"
+
     exporters:
       debug:
         verbosity: basic
@@ -30,6 +34,7 @@ data:
         endpoint: "0.0.0.0:9464"
 
     service:
+      extensions: [health_check]
       pipelines:
         traces:
           receivers: [otlp]
@@ -70,16 +75,34 @@ spec:
           name: prom-metrics
         - containerPort: 8888
           name: self-metrics
+        - containerPort: 13133
+          name: health
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 13133
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 6
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 13133
+          initialDelaySeconds: 20
+          timeoutSeconds: 5
+          periodSeconds: 15
+          failureThreshold: 6
         volumeMounts:
         - name: config
           mountPath: /conf
         resources:
           requests:
-            cpu: 100m
-            memory: 128Mi
+            cpu: 250m
+            memory: 256Mi
           limits:
-            cpu: 300m
-            memory: 512Mi
+            cpu: 1000m
+            memory: 1Gi
       volumes:
       - name: config
         configMap:
@@ -107,3 +130,6 @@ spec:
   - name: self-metrics
     port: 8888
     targetPort: 8888
+  - name: health
+    port: 13133
+    targetPort: 13133

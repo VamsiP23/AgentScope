@@ -20,6 +20,8 @@ spec:
         env:
         - name: COLLECTOR_OTLP_ENABLED
           value: "true"
+        - name: MEMORY_MAX_TRACES
+          value: "50000"
         ports:
         - containerPort: 16686
           name: ui
@@ -27,13 +29,29 @@ spec:
           name: otlp-grpc
         - containerPort: 4318
           name: otlp-http
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 16686
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 6
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 16686
+          initialDelaySeconds: 20
+          timeoutSeconds: 5
+          periodSeconds: 15
+          failureThreshold: 6
         resources:
           requests:
-            cpu: 100m
-            memory: 256Mi
-          limits:
             cpu: 500m
             memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 3Gi
 ---
 apiVersion: v1
 kind: Service

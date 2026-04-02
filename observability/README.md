@@ -5,6 +5,7 @@ This repo includes a local observability stack for Online Boutique:
 - Jaeger (`jaeger`)
 - Prometheus (`prometheus`)
 - Grafana (`grafana`)
+- kube-state-metrics (`kube-state-metrics`)
 
 ## 1) Deploy app (full Online Boutique)
 
@@ -49,7 +50,8 @@ This will produce traces and metrics while traffic runs.
 
 ```bash
 kubectl logs deploy/opentelemetrycollector -n default --tail=100
-kubectl get pods -n default | grep -E "opentelemetrycollector|jaeger|prometheus|grafana"
+kubectl get pods -n default | grep -E "opentelemetrycollector|jaeger|prometheus|grafana|kube-state-metrics"
+python3 ./scripts/validate_telemetry.py --prom-url http://localhost:9090 --jaeger-url http://localhost:16686 --namespace default
 ```
 
 ## 6) Teardown
