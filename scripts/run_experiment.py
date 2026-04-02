@@ -22,13 +22,45 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from urllib.request import urlopen
 
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from benchmarking.evaluator import evaluate_agent_run
+from benchmarking.problem import ProblemSpec, resolve_problem_for_experiment
+
 DEFAULT_OUT_DIR = ROOT / "experiment_runs"
+DEFAULT_BENCHMARK_SUITE = ROOT / "benchmark_suite.yaml"
+SESSION_PORT_FORWARD_DIR = ROOT / ".runtime" / "port_forwards"
+CORE_DEPLOYMENTS = [
+    "frontend",
+    "cartservice",
+    "checkoutservice",
+    "currencyservice",
+    "productcatalogservice",
+    "recommendationservice",
+    "shippingservice",
+    "paymentservice",
+    "emailservice",
+    "adservice",
+    "redis-cart",
+    "opentelemetrycollector",
+    "kube-state-metrics",
+    "jaeger",
+    "prometheus",
+    "grafana",
+]
+CHAOS_RESOURCE_TYPES = [
+    "podchaos",
+    "stresschaos",
+    "networkchaos",
+    "dnschaos",
+    "httpchaos",
+]
 
 
 def utc_now() -> str:
@@ -230,6 +262,17 @@ def sanitize_name(name: str) -> str:
     return "".join(cleaned).strip("_") or "experiment"
 
 
+def endpoint_reachable(url: str, *, probe_path: str = "", timeout_seconds: int = 5) -> bool:
+    target = url.rstrip("/")
+    if probe_path:
+        target = f"{target}{probe_path}"
+    try:
+        with urlopen(target, timeout=timeout_seconds):
+            return True
+    except Exception:
+        return False
+
+
 def epoch_to_utc(epoch: float) -> str:
     return datetime.fromtimestamp(epoch, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -251,9 +294,13 @@ def sleep_with_progress(total_seconds: int, label: str) -> None:
 
 
 def build_fault_apply_cmd(namespace: str, fault: Dict[str, Any]) -> List[str]:
+    apply_cmd = list_value(fault.get("apply_cmd"))
+    if apply_cmd:
+        return apply_cmd
+
     filepath = str_value(fault.get("filepath"))
     if not filepath:
-        raise RuntimeError("fault.filepath is required")
+        raise RuntimeError("fault.filepath or fault.apply_cmd is required")
 
     fault_path = Path(filepath)
     if not fault_path.is_absolute():
@@ -263,15 +310,35 @@ def build_fault_apply_cmd(namespace: str, fault: Dict[str, Any]) -> List[str]:
 
 
 def build_fault_revert_cmd(namespace: str, fault: Dict[str, Any]) -> List[str]:
+    revert_cmd = list_value(fault.get("revert_cmd"))
+    if revert_cmd:
+        return revert_cmd
+
     filepath = str_value(fault.get("filepath"))
     if not filepath:
-        raise RuntimeError("fault.filepath is required")
+        raise RuntimeError("fault.filepath or fault.revert_cmd is required")
 
     fault_path = Path(filepath)
     if not fault_path.is_absolute():
         fault_path = (ROOT / fault_path).resolve()
 
     return ["python3", "-m", "faults.cli", "revert", str(fault_path)]
+
+
+def build_reset_cmd(namespace: str, reset_cfg: Dict[str, Any]) -> List[str]:
+    cmd = ["./scripts/reset_cluster.sh", "-n", namespace]
+    context = str_value(reset_cfg.get("context"))
+    manifest = str_value(reset_cfg.get("manifest"))
+    if context:
+        cmd.extend(["-c", context])
+    if manifest:
+        cmd.extend(["-m", manifest])
+    if bool_value(reset_cfg.get("kill_port_forwards"), False):
+        cmd.append("-p")
+    if bool_value(reset_cfg.get("refresh_observability"), False):
+        cmd.append("-o")
+    cmd.extend(list_value(reset_cfg.get("args")))
+    return cmd
 
 
 def prom_query(prom_url: str, query: str, eval_time: float | None = None) -> Dict[str, Any]:
@@ -383,6 +450,24 @@ def kubectl_json(cmd: List[str]) -> Dict[str, Any]:
     return json.loads(proc.stdout)
 
 
+def kubectl_run(cmd: List[str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, check=False)
+
+
+def kubectl_lines_or_empty(cmd: List[str]) -> List[str]:
+    proc = kubectl_run(cmd)
+    if proc.returncode != 0:
+        stderr = (proc.stderr or "").lower()
+        stdout = (proc.stdout or "").lower()
+        # Some clusters may not have every Chaos Mesh CRD installed.
+        if "the server doesn't have a resource type" in stderr or "notfound" in stderr:
+            return []
+        if "the server doesn't have a resource type" in stdout or "notfound" in stdout:
+            return []
+        raise RuntimeError(proc.stderr.strip() or proc.stdout.strip() or "kubectl command failed")
+    return [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+
+
 def kubernetes_snapshot_metrics(namespace: str) -> Dict[str, Any]:
     deployments_payload = kubectl_json(["kubectl", "get", "deploy", "-n", namespace, "-o", "json"])
     pods_payload = kubectl_json(["kubectl", "get", "pods", "-n", namespace, "-o", "json"])
@@ -476,6 +561,7 @@ def verify_environment(namespace: str) -> None:
         "prometheus",
         "jaeger",
         "opentelemetrycollector",
+        "kube-state-metrics",
     ]
     deployments_payload = kubectl_json(["kubectl", "get", "deploy", "-n", namespace, "-o", "json"])
     available = {
@@ -485,6 +571,174 @@ def verify_environment(namespace: str) -> None:
     missing = [name for name in required if available.get(name, 0) < 1]
     if missing:
         raise RuntimeError(f"required deployments unavailable in namespace {namespace}: {', '.join(missing)}")
+
+
+def verify_chaos_mesh_health() -> None:
+    controller = kubectl_json(
+        ["kubectl", "get", "deploy", "chaos-controller-manager", "-n", "chaos-mesh", "-o", "json"]
+    )
+    desired = int(controller.get("spec", {}).get("replicas", 0) or 0)
+    available = int(controller.get("status", {}).get("availableReplicas", 0) or 0)
+    ready = int(controller.get("status", {}).get("readyReplicas", 0) or 0)
+    if desired < 1 or available < 1 or ready < 1:
+        raise RuntimeError(
+            "Chaos Mesh controller is not healthy: "
+            f"desired={desired} available={available} ready={ready}"
+        )
+
+    endpoints = kubectl_json(
+        ["kubectl", "get", "endpoints", "chaos-mesh-controller-manager", "-n", "chaos-mesh", "-o", "json"]
+    )
+    subsets = endpoints.get("subsets") or []
+    addresses = sum(len(subset.get("addresses") or []) for subset in subsets)
+    ports = sum(len(subset.get("ports") or []) for subset in subsets)
+    if addresses < 1 or ports < 1:
+        raise RuntimeError(
+            "Chaos Mesh webhook service has no ready endpoints; "
+            f"addresses={addresses} ports={ports}"
+        )
+
+
+def list_existing_chaos_objects(namespace: str) -> List[str]:
+    existing: List[str] = []
+    for resource in CHAOS_RESOURCE_TYPES:
+        existing.extend(
+            kubectl_lines_or_empty(
+                ["kubectl", "get", resource, "-n", namespace, "-o", "name"]
+            )
+        )
+    return existing
+
+
+def cleanup_existing_chaos(namespace: str, log_path: Path) -> Dict[str, Any]:
+    existing = list_existing_chaos_objects(namespace)
+    log_lines = [
+        f"timestamp_utc: {utc_now()}",
+        f"namespace: {namespace}",
+        f"found: {len(existing)}",
+    ]
+    if existing:
+        log_lines.append("existing_objects:")
+        log_lines.extend(f"  - {name}" for name in existing)
+    else:
+        log_lines.append("existing_objects: []")
+
+    deleted: List[str] = []
+    for resource in CHAOS_RESOURCE_TYPES:
+        names = kubectl_lines_or_empty(["kubectl", "get", resource, "-n", namespace, "-o", "name"])
+        if not names:
+            continue
+        proc = kubectl_run(
+            ["kubectl", "delete", resource, "--all", "-n", namespace, "--ignore-not-found", "--timeout=120s"]
+        )
+        log_lines.append("")
+        log_lines.append("COMMAND: " + " ".join(shlex.quote(part) for part in proc.args))
+        log_lines.append("STDOUT:")
+        log_lines.append(proc.stdout.rstrip())
+        log_lines.append("STDERR:")
+        log_lines.append(proc.stderr.rstrip())
+        if proc.returncode != 0:
+            log_path.write_text("\n".join(log_lines) + "\n")
+            raise RuntimeError(
+                proc.stderr.strip() or proc.stdout.strip() or f"failed to delete existing {resource}"
+            )
+        deleted.extend(names)
+
+    deadline = time.time() + 60
+    while deleted and time.time() < deadline:
+        remaining = list_existing_chaos_objects(namespace)
+        if not remaining:
+            break
+        time.sleep(2)
+
+    remaining = list_existing_chaos_objects(namespace)
+    log_lines.append("")
+    log_lines.append(f"deleted: {len(deleted)}")
+    if deleted:
+        log_lines.extend(f"  - {name}" for name in deleted)
+    else:
+        log_lines.append("deleted_objects: []")
+    log_lines.append(f"remaining: {len(remaining)}")
+    if remaining:
+        log_lines.extend(f"  - {name}" for name in remaining)
+    log_path.write_text("\n".join(log_lines) + "\n")
+
+    if remaining:
+        raise RuntimeError(
+            "stale Chaos Mesh resources still present in namespace "
+            f"{namespace}: {', '.join(remaining)}"
+        )
+
+    return {
+        "found": len(existing),
+        "deleted": deleted,
+        "remaining": remaining,
+        "log": rel_path(log_path),
+        "finished_at_utc": utc_now(),
+    }
+
+
+def unhealthy_core_deployments(namespace: str) -> List[Dict[str, Any]]:
+    deployments_payload = kubectl_json(["kubectl", "get", "deploy", "-n", namespace, "-o", "json"])
+    items = {str(item.get("metadata", {}).get("name", "")): item for item in deployments_payload.get("items", [])}
+    unhealthy: List[Dict[str, Any]] = []
+    for name in CORE_DEPLOYMENTS:
+        item = items.get(name)
+        if item is None:
+            continue
+        desired = int(item.get("spec", {}).get("replicas", 0) or 0)
+        available = int(item.get("status", {}).get("availableReplicas", 0) or 0)
+        ready = int(item.get("status", {}).get("readyReplicas", 0) or 0)
+        if available < desired or ready < desired:
+            unhealthy.append(
+                {
+                    "deployment": name,
+                    "desired": desired,
+                    "available": available,
+                    "ready": ready,
+                }
+            )
+    return unhealthy
+
+
+def assess_reset_need(namespace: str) -> Dict[str, Any]:
+    reasons: List[str] = []
+    details: Dict[str, Any] = {}
+
+    try:
+        stale_chaos = list_existing_chaos_objects(namespace)
+    except Exception as exc:
+        stale_chaos = []
+        reasons.append(f"failed to inspect chaos resources: {exc}")
+    if stale_chaos:
+        reasons.append(f"found {len(stale_chaos)} lingering chaos resources")
+        details["stale_chaos_resources"] = stale_chaos
+
+    try:
+        unhealthy = unhealthy_core_deployments(namespace)
+    except Exception as exc:
+        unhealthy = []
+        reasons.append(f"failed to inspect core deployments: {exc}")
+    if unhealthy:
+        reasons.append("one or more core deployments are unavailable")
+        details["unhealthy_deployments"] = unhealthy
+
+    try:
+        verify_environment(namespace)
+    except Exception as exc:
+        reasons.append(f"environment verification failed: {exc}")
+
+    try:
+        verify_chaos_mesh_health()
+    except Exception as exc:
+        reasons.append(f"chaos mesh health check failed: {exc}")
+
+    return {
+        "needs_reset": bool(reasons),
+        "reasons": reasons,
+        "details": details,
+        "checked_at_utc": utc_now(),
+    }
 
 
 def build_monitor_cmd(namespace: str, detector: Dict[str, Any], run_dir: Path) -> List[str]:
@@ -504,6 +758,8 @@ def build_monitor_cmd(namespace: str, detector: Dict[str, Any], run_dir: Path) -
         str(detector.get("service_error_rps_threshold", 0.50)),
         "--service-latency-threshold-ms",
         str(detector.get("service_latency_threshold_ms", 1000.0)),
+        "--latency-consecutive-required",
+        str(int_value(detector.get("latency_consecutive_required"), 2)),
         "--min-total-rps",
         str(detector.get("min_total_rps", 0.10)),
         "--restart-count-threshold",
@@ -522,7 +778,52 @@ def build_agent_cmd(
     agent: Dict[str, Any],
     run_dir: Path,
     seeded_detection_path: Path | None = None,
+    benchmark_suite_path: Path | None = None,
+    problem: ProblemSpec | None = None,
 ) -> List[str]:
+    agent_type = str_value(agent.get("type"), "pipeline").strip().lower()
+    if agent_type == "react":
+        cmd = [
+            "python3",
+            "./scripts/run_react_agent.py",
+            "--namespace",
+            namespace,
+            "--prom-url",
+            str_value(detector.get("prom_url"), "http://localhost:9090"),
+            "--jaeger-url",
+            str_value(agent.get("jaeger_url"), "http://localhost:16686"),
+            "--target-deployment",
+            str_value(agent.get("target_deployment"), str_value(detector.get("target_deployment"), "")),
+            "--problem-description",
+            str_value(
+                agent.get("problem_description"),
+                (
+                    "An incident has been detected in the Online Boutique cluster. "
+                    "Investigate using available tools and identify the root cause and appropriate remediation action."
+                ),
+            ),
+            "--jaeger-enabled",
+            "true" if bool_value(agent.get("jaeger_enabled"), True) else "false",
+            "--max-steps",
+            str(int_value(agent.get("max_steps"), 35)),
+            "--seed-detection-file",
+            str(seeded_detection_path) if seeded_detection_path is not None else "",
+            "--out-file",
+            str(run_dir / "agent_report.json"),
+        ]
+        provider = str_value(agent.get("provider"), "")
+        model = str_value(agent.get("model"), "")
+        if provider:
+            cmd.extend(["--provider", provider])
+        if model:
+            cmd.extend(["--model", model])
+        if bool_value(agent.get("dry_run"), True):
+            cmd.append("--dry-run")
+        if benchmark_suite_path is not None and problem is not None:
+            cmd.extend(["--benchmark-suite", str(benchmark_suite_path)])
+            cmd.extend(["--problem-id", problem.problem_id])
+        return cmd
+
     cmd = [
         "./scripts/run_agent.py",
         "--namespace",
@@ -563,6 +864,105 @@ def build_agent_cmd(
     return cmd
 
 
+def _managed_port_forward_paths(service_name: str) -> tuple[Path, Path]:
+    return (
+        SESSION_PORT_FORWARD_DIR / f"{service_name}.log",
+        SESSION_PORT_FORWARD_DIR / f"{service_name}.pid",
+    )
+
+
+def _read_pid(pid_path: Path) -> int | None:
+    try:
+        return int(pid_path.read_text().strip())
+    except Exception:
+        return None
+
+
+def _pid_is_alive(pid: int | None) -> bool:
+    if pid is None:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def _terminate_pid(pid: int | None) -> None:
+    if pid is None:
+        return
+    try:
+        os.kill(pid, 15)
+    except OSError:
+        return
+    deadline = time.time() + 5
+    while time.time() < deadline:
+        if not _pid_is_alive(pid):
+            return
+        time.sleep(0.2)
+    try:
+        os.kill(pid, 9)
+    except OSError:
+        return
+
+
+def ensure_reusable_local_endpoint(
+    namespace: str,
+    service_name: str,
+    local_url: str,
+    probe_path: str,
+) -> Dict[str, Any]:
+    parsed = urlparse(local_url)
+    host = (parsed.hostname or "").lower()
+    port = parsed.port
+    if host not in {"localhost", "127.0.0.1"} or port is None:
+        return {"mode": "remote", "url": local_url}
+    if endpoint_reachable(local_url, probe_path=probe_path):
+        print_status(f"phase=port_forward: reusing session access for {service_name} at {local_url}")
+        return {
+            "mode": "reused",
+            "url": local_url,
+            "probe_path": probe_path,
+            "state_dir": rel_path(SESSION_PORT_FORWARD_DIR),
+        }
+
+    SESSION_PORT_FORWARD_DIR.mkdir(parents=True, exist_ok=True)
+    log_path, pid_path = _managed_port_forward_paths(service_name)
+    pid = _read_pid(pid_path)
+    if _pid_is_alive(pid):
+        print_status(f"phase=port_forward: repairing stale session forward for {service_name} at {local_url}")
+        _terminate_pid(pid)
+        time.sleep(1)
+    pid_path.unlink(missing_ok=True)
+
+    cmd = ["kubectl", "port-forward", "-n", namespace, f"svc/{service_name}", f"{port}:{port}"]
+    proc = start_process(cmd, ROOT, log_path)
+    pid_path.write_text(f"{proc.pid}\n")
+
+    deadline = time.time() + 20
+    while time.time() < deadline:
+        if proc.poll() is not None:
+            break
+        if endpoint_reachable(local_url, probe_path=probe_path, timeout_seconds=2):
+            print_status(f"phase=port_forward: refreshed session access for {service_name} at {local_url}")
+            return {
+                "mode": "refreshed",
+                "url": local_url,
+                "probe_path": probe_path,
+                "state_dir": rel_path(SESSION_PORT_FORWARD_DIR),
+                "pid": proc.pid,
+                "log": rel_path(log_path),
+            }
+        time.sleep(1)
+
+    terminate_process(proc)
+    pid_path.unlink(missing_ok=True)
+    raise RuntimeError(
+        f"local access for {service_name} at {local_url} is not reachable even after refreshing "
+        f"the managed forward; see {rel_path(log_path)}"
+    )
+
+
 def ensure_ollama_model_available() -> None:
     provider = os.environ.get("LLM_PROVIDER", "").strip().lower()
     if provider != "ollama":
@@ -600,6 +1000,43 @@ def ensure_ollama_model_available() -> None:
     print_status(f"phase=agent: ollama model pulled ({model})")
 
 
+def prewarm_agent_runtime(agent_cfg: Dict[str, Any]) -> None:
+    if not bool_value(agent_cfg.get("enabled"), False):
+        return
+
+    provider = str_value(agent_cfg.get("provider"), os.environ.get("LLM_PROVIDER", "")).strip().lower()
+    if provider == "claude":
+        provider = "anthropic"
+    if provider != "ollama":
+        return
+
+    ensure_ollama_model_available()
+    model = str_value(agent_cfg.get("model"), os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")).strip()
+    if not model:
+        raise RuntimeError("OLLAMA_MODEL must be set when warming Ollama")
+
+    from agent_graph.reasoning.llm import ResponsesJSONClient
+
+    print_status(f"phase=agent_prewarm: warming ollama model ({model})")
+    client = ResponsesJSONClient(model=model, provider="ollama")
+    client.complete_json(
+        name="warmup",
+        schema={
+            "type": "object",
+            "properties": {
+                "ready": {"type": "boolean"},
+            },
+            "required": ["ready"],
+            "additionalProperties": False,
+        },
+        prompt={
+            "task": "Warm the local model runtime.",
+            "instruction": "Return {'ready': true}.",
+        },
+    )
+    print_status(f"phase=agent_prewarm: completed ({model})")
+
+
 def read_detection_report(path: Path) -> Dict[str, Any]:
     if not path.exists():
         return {}
@@ -618,6 +1055,25 @@ def read_json_report(path: Path) -> Dict[str, Any]:
         return {}
 
 
+def write_evaluation_artifact(
+    problem: ProblemSpec | None,
+    agent_report: Dict[str, Any],
+    out_path: Path,
+) -> Dict[str, Any]:
+    if problem is None:
+        payload = {
+            "problem_id": "",
+            "status": "unmapped",
+            "error": "no benchmark problem mapped for this experiment",
+        }
+        out_path.write_text(json.dumps(payload, indent=2))
+        return payload
+
+    evaluation = evaluate_agent_run(problem, agent_report).to_dict()
+    out_path.write_text(json.dumps(evaluation, indent=2))
+    return evaluation
+
+
 def wait_for_incident(detector_runs_dir: Path, max_wait_seconds: int, poll_interval: int) -> Dict[str, Any]:
     latest_path = detector_runs_dir / "latest_detection.json"
     deadline = time.time() + max_wait_seconds
@@ -633,6 +1089,56 @@ def wait_for_incident(detector_runs_dir: Path, max_wait_seconds: int, poll_inter
                 return report
         time.sleep(max(1, poll_interval))
     return read_detection_report(latest_path)
+
+
+def validate_telemetry_sources(
+    namespace: str,
+    prom_url: str,
+    jaeger_url: str,
+    run_dir: Path,
+    required_services: List[str],
+) -> Dict[str, Any]:
+    started = utc_now()
+    cmd = [
+        "python3",
+        "./scripts/validate_telemetry.py",
+        "--prom-url",
+        prom_url,
+        "--jaeger-url",
+        jaeger_url,
+        "--namespace",
+        namespace,
+        "--require-services",
+        ",".join(required_services),
+        "--wait-seconds",
+        "45",
+        "--poll-seconds",
+        "5",
+    ]
+    proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+    log_path = run_dir / "telemetry_validation.log"
+    log_path.write_text(
+        "COMMAND: " + " ".join(shlex.quote(part) for part in cmd) + "\n\n"
+        + "STDOUT:\n"
+        + proc.stdout
+        + "\nSTDERR:\n"
+        + proc.stderr
+    )
+    payload: Dict[str, Any] = {}
+    stdout = (proc.stdout or "").strip()
+    if stdout:
+        try:
+            payload = json.loads(stdout)
+        except Exception:
+            payload = {}
+    return {
+        "cmd": cmd,
+        "returncode": proc.returncode,
+        "started_at_utc": started,
+        "finished_at_utc": utc_now(),
+        "log": rel_path(log_path),
+        "report": payload if isinstance(payload, dict) else {},
+    }
 
 
 def capture_snapshot(namespace: str, label: str, out_dir: Path) -> Dict[str, Any]:
@@ -705,9 +1211,19 @@ def main() -> int:
     monitor_proc = None
     fault_active = False
     fault_cfg = config.get("fault", {}) or {}
+    reset_cfg = config.get("reset", {}) or {}
     detector = config.get("detector", {}) or {}
     agent_cfg = config.get("agent", {}) or {}
+    agent_type = str_value(agent_cfg.get("type"), "pipeline").strip().lower()
     prom_url = str_value(detector.get("prom_url"), "http://localhost:9090")
+    jaeger_url = str_value(agent_cfg.get("jaeger_url"), "http://localhost:16686")
+    benchmark_cfg = config.get("benchmark", {}) or {}
+    benchmark_suite_path = Path(
+        str_value(benchmark_cfg.get("suite_file"), str(DEFAULT_BENCHMARK_SUITE))
+    ).resolve()
+    benchmark_problem = resolve_problem_for_experiment(experiment_path, benchmark_suite_path)
+    summary["benchmark_suite"] = str(benchmark_suite_path)
+    summary["problem"] = benchmark_problem.to_dict() if benchmark_problem is not None else {}
     baseline_start_epoch = 0.0
     baseline_end_epoch = 0.0
     fault_start_epoch = 0.0
@@ -728,8 +1244,48 @@ def main() -> int:
         else:
             print_status("phase=startup: skipped")
 
+        if bool_value(reset_cfg.get("enabled"), False) and bool_value(reset_cfg.get("before_run"), True):
+            summary["steps"]["reset_before_check"] = assess_reset_need(namespace)
+            if summary["steps"]["reset_before_check"]["needs_reset"]:
+                print_status("phase=reset: restoring cluster baseline")
+                reset_cmd = build_reset_cmd(namespace, reset_cfg)
+                summary["steps"]["reset_before"] = run_cmd_streaming(
+                    reset_cmd,
+                    ROOT,
+                    run_dir / "reset_before.log",
+                    stdout_prefix="[reset] ",
+                )
+                if summary["steps"]["reset_before"]["returncode"] != 0:
+                    raise RuntimeError("cluster reset failed before run; see reset_before.log")
+                print_status("phase=reset: completed")
+            else:
+                summary["steps"]["reset_before"] = {
+                    "skipped": True,
+                    "reason": "cluster baseline already healthy",
+                    "finished_at_utc": utc_now(),
+                }
+                print_status("phase=reset: skipped (cluster baseline already healthy)")
+
         verify_environment(namespace)
+        verify_chaos_mesh_health()
         print_status("phase=environment: verified")
+
+        summary["steps"]["port_forward_prometheus"] = ensure_reusable_local_endpoint(
+            namespace,
+            "prometheus",
+            prom_url,
+            "/-/ready",
+        )
+        summary["steps"]["port_forward_jaeger"] = ensure_reusable_local_endpoint(
+            namespace,
+            "jaeger",
+            jaeger_url,
+            "/api/services",
+        )
+
+        print_status("phase=cleanup: removing lingering chaos resources")
+        summary["steps"]["cleanup"] = cleanup_existing_chaos(namespace, run_dir / "cleanup.log")
+        print_status("phase=cleanup: completed")
 
         print_status("phase=snapshot: capturing before snapshot")
         summary["snapshots"]["before"] = capture_snapshot(namespace, "before", run_dir)
@@ -745,6 +1301,8 @@ def main() -> int:
                 str(int_value(traffic.get("duration_seconds"), 300)),
                 "-r",
                 str(int_value(traffic.get("rps"), 1)),
+                "-m",
+                str_value(traffic.get("mode"), "realistic"),
             ]
             traffic_log = run_dir / "traffic.log"
             traffic_proc = start_process(traffic_cmd, ROOT, traffic_log)
@@ -810,6 +1368,38 @@ def main() -> int:
         else:
             print_status("phase=monitor: skipped")
 
+        if bool_value(agent_cfg.get("enabled"), False):
+            prewarm_started = utc_now()
+            prewarm_agent_runtime(agent_cfg)
+            summary["steps"]["agent_prewarm"] = {
+                "provider": str_value(agent_cfg.get("provider"), os.environ.get("LLM_PROVIDER", "")),
+                "model": str_value(
+                    agent_cfg.get("model"),
+                    os.environ.get("OLLAMA_MODEL", os.environ.get("OPENAI_MODEL", "")),
+                ),
+                "started_at_utc": prewarm_started,
+                "finished_at_utc": utc_now(),
+            }
+
+        required_telemetry_services: List[str] = ["frontend"]
+        if benchmark_problem is not None and benchmark_problem.target_service:
+            required_telemetry_services.append(benchmark_problem.target_service)
+        detector_target = str_value(detector.get("target_deployment"), "")
+        if detector_target:
+            required_telemetry_services.append(detector_target)
+        required_telemetry_services = sorted({item for item in required_telemetry_services if item})
+        print_status("phase=telemetry: validating observability sources")
+        summary["steps"]["telemetry_validation"] = validate_telemetry_sources(
+            namespace,
+            prom_url,
+            jaeger_url,
+            run_dir,
+            required_telemetry_services,
+        )
+        if summary["steps"]["telemetry_validation"]["returncode"] != 0:
+            raise RuntimeError("telemetry validation failed; see telemetry_validation.log")
+        print_status("phase=telemetry: validated")
+
         baseline_start_epoch = time.time()
         summary["baseline_window_start_utc"] = epoch_to_utc(baseline_start_epoch)
         sleep_with_progress(pre_fault_delay, "phase=pre_fault_delay")
@@ -852,10 +1442,13 @@ def main() -> int:
             if detected.get("incident_detected", False) or not bool_value(
                 agent_cfg.get("require_incident_detected"), True
             ):
-                print_status(
-                    "phase=agent: running "
-                    f"{str_value(agent_cfg.get('mode'), 'heuristic')} agent"
-                )
+                if agent_type == "react":
+                    print_status("phase=agent: running react agent")
+                else:
+                    print_status(
+                        "phase=agent: running "
+                        f"{str_value(agent_cfg.get('mode'), 'heuristic')} agent"
+                    )
                 ensure_ollama_model_available()
                 seeded_detection_path = run_dir / "seeded_detection.json"
                 seeded_detection_path.write_text(json.dumps(detected, indent=2))
@@ -865,6 +1458,8 @@ def main() -> int:
                     agent_cfg,
                     run_dir,
                     seeded_detection_path=seeded_detection_path,
+                    benchmark_suite_path=benchmark_suite_path if benchmark_problem is not None else None,
+                    problem=benchmark_problem,
                 )
                 summary["steps"]["agent"] = run_cmd_streaming(
                     agent_cmd,
@@ -875,8 +1470,34 @@ def main() -> int:
                 if summary["steps"]["agent"]["returncode"] != 0:
                     raise RuntimeError("agent run failed; see agent.log")
                 agent_report = read_json_report(run_dir / "agent_report.json")
+                evaluation = write_evaluation_artifact(
+                    benchmark_problem,
+                    agent_report,
+                    run_dir / "evaluation.json",
+                )
+                summary["steps"]["evaluation"] = {
+                    "file": rel_path(run_dir / "evaluation.json"),
+                    "diagnosis_correct": evaluation.get("diagnosis_correct"),
+                    "action_correct": evaluation.get("action_correct"),
+                    "incident_detected": evaluation.get("incident_detected"),
+                    "tool_calls_to_solution": evaluation.get("tool_calls_to_solution"),
+                }
+                summary["steps"]["agent"]["agent_type"] = agent_type
+                summary["steps"]["agent"]["agent_variant"] = str_value(agent_report.get("agent_variant"), "pure_react")
                 verification = agent_report.get("verification") or {}
-                if verification.get("recovered", False):
+                if agent_type == "react":
+                    solution = agent_report.get("solution") or {}
+                    summary["steps"]["agent"]["recovered"] = False
+                    summary["steps"]["agent"]["root_cause_mitigated"] = False
+                    summary["steps"]["agent"]["submitted_solution"] = bool(solution)
+                    summary["steps"]["agent"]["solution_root_cause"] = str(solution.get("root_cause", ""))
+                    summary["steps"]["agent"]["solution_action"] = str(solution.get("action_taken", ""))
+                    summary["steps"]["agent"]["recovery_summary"] = "react agent produced diagnosis only"
+                    print_status(
+                        "phase=agent: react agent produced diagnosis "
+                        f"(root_cause='{solution.get('root_cause', '')}', action='{solution.get('action_taken', '')}')"
+                    )
+                elif verification.get("recovered", False):
                     fault_active = False
                     summary["steps"]["agent"]["recovered"] = True
                     summary["steps"]["agent"]["root_cause_mitigated"] = True
@@ -914,6 +1535,23 @@ def main() -> int:
                     "skipped": True,
                     "reason": "incident not detected before timeout",
                     "finished_at_utc": utc_now(),
+                }
+                evaluation = write_evaluation_artifact(
+                    benchmark_problem,
+                    {
+                        "problem": benchmark_problem.to_dict() if benchmark_problem is not None else {},
+                        "seeded_detection": detected,
+                        "steps": [],
+                        "solution": {},
+                    },
+                    run_dir / "evaluation.json",
+                )
+                summary["steps"]["evaluation"] = {
+                    "file": rel_path(run_dir / "evaluation.json"),
+                    "diagnosis_correct": evaluation.get("diagnosis_correct"),
+                    "action_correct": evaluation.get("action_correct"),
+                    "incident_detected": evaluation.get("incident_detected"),
+                    "tool_calls_to_solution": evaluation.get("tool_calls_to_solution"),
                 }
                 print_status("phase=agent: skipped because no incident was detected before timeout")
         else:
@@ -989,9 +1627,29 @@ def main() -> int:
             print_status(
                 f"phase=monitor: finished with returncode={summary['steps']['monitor']['returncode']}"
             )
-
         summary["result"] = "completed"
         summary["finished_at_utc"] = utc_now()
+        if bool_value(reset_cfg.get("enabled"), False) and bool_value(reset_cfg.get("after_run"), True):
+            summary["steps"]["reset_after_check"] = assess_reset_need(namespace)
+            if summary["steps"]["reset_after_check"]["needs_reset"]:
+                print_status("phase=reset_after: restoring cluster baseline")
+                reset_cmd = build_reset_cmd(namespace, reset_cfg)
+                summary["steps"]["reset_after"] = run_cmd_streaming(
+                    reset_cmd,
+                    ROOT,
+                    run_dir / "reset_after.log",
+                    stdout_prefix="[reset] ",
+                )
+                if summary["steps"]["reset_after"]["returncode"] != 0:
+                    raise RuntimeError("cluster reset failed after run; see reset_after.log")
+                print_status("phase=reset_after: completed")
+            else:
+                summary["steps"]["reset_after"] = {
+                    "skipped": True,
+                    "reason": "cluster baseline already healthy",
+                    "finished_at_utc": utc_now(),
+                }
+                print_status("phase=reset_after: skipped (cluster baseline already healthy)")
         summary_path.write_text(json.dumps(summary, indent=2))
         print_status("phase=complete: experiment finished successfully")
         print(f"Experiment complete. Artifacts: {run_dir}")
@@ -1017,6 +1675,24 @@ def main() -> int:
         if monitor_proc is not None:
             summary.setdefault("steps", {}).setdefault("monitor", {})["returncode"] = terminate_process(monitor_proc)
             summary["steps"]["monitor"]["finished_at_utc"] = utc_now()
+        if bool_value(reset_cfg.get("enabled"), False) and bool_value(reset_cfg.get("on_error"), True):
+            summary["steps"]["reset_on_error_check"] = assess_reset_need(namespace)
+            if summary["steps"]["reset_on_error_check"]["needs_reset"]:
+                print_status("phase=reset_on_error: restoring cluster baseline")
+                reset_cmd = build_reset_cmd(namespace, reset_cfg)
+                summary["steps"]["reset_on_error"] = run_cmd_streaming(
+                    reset_cmd,
+                    ROOT,
+                    run_dir / "reset_on_error.log",
+                    stdout_prefix="[reset] ",
+                )
+            else:
+                summary["steps"]["reset_on_error"] = {
+                    "skipped": True,
+                    "reason": "cluster baseline already healthy",
+                    "finished_at_utc": utc_now(),
+                }
+                print_status("phase=reset_on_error: skipped (cluster baseline already healthy)")
         summary_path.write_text(json.dumps(summary, indent=2))
         print(f"Experiment failed. Artifacts: {run_dir}", file=sys.stderr)
         print(str(exc), file=sys.stderr)

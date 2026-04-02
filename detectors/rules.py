@@ -142,11 +142,23 @@ class DetectorRunner:
             details={"top_pod_restarts": top},
         )
 
+    def _safe_detector(self, name: str, fn) -> DetectorFinding:
+        try:
+            return fn()
+        except Exception as exc:
+            return DetectorFinding(
+                name=name,
+                triggered=False,
+                severity="warning",
+                reason=f"{name} failed: {exc}",
+                details={"error": str(exc)},
+            )
+
     def run(self) -> List[DetectorFinding]:
         return [
-            self.error_ratio_detector(),
-            self.service_error_rate_detector(),
-            self.service_latency_detector(),
-            self.availability_detector(),
-            self.restart_history_detector(),
+            self._safe_detector("error_ratio", self.error_ratio_detector),
+            self._safe_detector("service_error_rate", self.service_error_rate_detector),
+            self._safe_detector("service_latency", self.service_latency_detector),
+            self._safe_detector("deployment_availability", self.availability_detector),
+            self._safe_detector("restart_history", self.restart_history_detector),
         ]

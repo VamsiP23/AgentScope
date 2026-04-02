@@ -1,4 +1,4 @@
-name: Chaos CPU Stress Checkoutservice Agent
+name: Chaos CPU Stress Checkoutservice React
 namespace: default
 startup:
   enabled: false
@@ -16,6 +16,12 @@ baseline:
   enabled: true
   duration_seconds: 300
   interval_seconds: 15
+reset:
+  enabled: true
+  before_run: true
+  after_run: true
+  on_error: true
+  context: docker-desktop
 fault:
   filepath: chaosmesh/experiments/stresschaos-cpu-checkoutservice.yaml
   duration_seconds: 120
@@ -30,13 +36,13 @@ detector:
   interval_seconds: 5
 agent:
   enabled: true
-  mode: llm
+  type: react
   dry_run: true
-  max_iterations: 1
-  research_max_tool_calls: 5
-  verify_wait_seconds: 30
+  jaeger_enabled: true
+  max_steps: 14
   jaeger_url: http://localhost:16686
   target_deployment: checkoutservice
+  problem_description: An incident has been detected in the Online Boutique cluster. Investigate the latency issue, identify the true bottleneck, and recommend the appropriate remediation action.
   require_incident_detected: true
   wait_for_incident_timeout_seconds: 120
   wait_for_incident_poll_seconds: 2

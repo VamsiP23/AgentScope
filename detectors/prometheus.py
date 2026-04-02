@@ -20,6 +20,17 @@ class PrometheusClient:
         except (TypeError, ValueError):
             return 0.0
 
+    def instant_scalar_optional(self, query: str) -> float | None:
+        data = prom_query(self.prom_url, query)
+        results = data.get("result", [])
+        if not results:
+            return None
+        value = results[0].get("value", [0, "0"])[1]
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
     def vector(self, query: str) -> List[Dict[str, Any]]:
         data = prom_query(self.prom_url, query)
         return data.get("result", [])
@@ -50,18 +61,18 @@ class PrometheusClient:
         parsed.sort(key=lambda item: item["error_rps"], reverse=True)
         return parsed[:limit]
 
-    def service_p99_latency_ms(self, window: str, service_name: str) -> float:
+    def service_latency_ms(self, window: str, service_name: str, quantile: float = 0.99) -> float:
         queries = [
             (
-                "histogram_quantile(0.99, "
+                f"histogram_quantile({quantile:.2f}, "
                 f"sum(rate(duration_milliseconds_bucket{{service_name=\"{service_name}\"}}[{window}])) by (le))"
             ),
             (
-                "histogram_quantile(0.99, "
+                f"histogram_quantile({quantile:.2f}, "
                 f"sum(rate(duration_bucket{{service_name=\"{service_name}\"}}[{window}])) by (le))"
             ),
             (
-                "histogram_quantile(0.99, "
+                f"histogram_quantile({quantile:.2f}, "
                 f"sum(rate(latency_bucket{{service_name=\"{service_name}\"}}[{window}])) by (le))"
             ),
         ]
@@ -70,3 +81,6 @@ class PrometheusClient:
             if value > 0:
                 return value
         return 0.0
+
+    def service_p99_latency_ms(self, window: str, service_name: str) -> float:
+        return self.service_latency_ms(window, service_name, 0.99)

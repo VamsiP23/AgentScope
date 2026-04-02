@@ -1,0 +1,190 @@
+version: 1
+name: AgentScope Kubernetes Incident Triage Benchmark
+goal: >
+  Evaluate LLM incident-triage agents on reproducible Kubernetes faults using a
+  structured tool interface, detector-gated experiment runs, and fixed grading criteria.
+
+comparison_targets:
+  - id: pure_react
+    description: ReAct agent with typed-tool search guardrails and model-driven stopping
+    status: active
+
+benchmark_policy:
+  inclusion_rule: >
+    An experiment is benchmark-ready only after it triggers the detector 3/3 times
+    and produces stable observability artifacts without manual intervention.
+  statuses:
+    ready: Include in official benchmark runs and result tables.
+    candidate: Keep in calibration until detector reliability and agent traces are stable.
+    stretch: Optional experiment for deeper evaluation; do not block the core benchmark.
+
+scorecard:
+  metrics:
+    - incident_detected
+    - diagnosis_correct
+    - action_correct
+    - tool_calls_to_solution
+    - time_to_diagnosis_seconds
+    - invalid_submit_count
+    - repeated_call_count
+    - evidence_coverage
+  output_files:
+    - agent_report.json
+    - aci_run_log.jsonl
+    - detector_runs/latest_detection.json
+
+experiments:
+  - id: bad_rollout_productcatalogservice
+    status: ready
+    category: availability_control
+    experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/bad_rollout_productcatalogservice_react.yaml
+    target_service: productcatalogservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: productcatalogservice
+      primary_signal: deployment_availability
+    ground_truth:
+      acceptable_root_causes:
+        - productcatalogservice bad rollout
+      acceptable_actions:
+        - kubectl rollout undo deployment/productcatalogservice
+      required_evidence:
+        - get_k8s_state(productcatalogservice)
+        - get_logs(productcatalogservice)
+      traces_required: false
+    notes: Stable control case for unavailable deployment plus startup failure evidence.
+
+  - id: bad_rollout_recommendationservice
+    status: candidate
+    category: availability_control
+    experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/bad_rollout_recommendationservice_react.yaml
+    target_service: recommendationservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: recommendationservice
+      primary_signal: deployment_availability
+    ground_truth:
+      acceptable_root_causes:
+        - recommendationservice bad rollout
+      acceptable_actions:
+        - kubectl rollout undo deployment/recommendationservice
+      required_evidence:
+        - get_k8s_state(recommendationservice)
+        - get_logs(recommendationservice)
+      traces_required: false
+    notes: Same failure class as the productcatalog rollout on a different service.
+
+  - id: cpu_stress_checkoutservice
+    status: candidate
+    category: resource_latency
+    experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/chaos_cpu_stress_checkoutservice_react.yaml
+    target_service: checkoutservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: checkoutservice
+      primary_signal: service_latency
+    ground_truth:
+      acceptable_root_causes:
+        - checkoutservice resource exhaustion
+        - checkoutservice latency bottleneck
+      acceptable_actions:
+        - wait_and_monitor
+        - patch_resources(checkoutservice, cpu)
+        - patch_resources_then_scale(checkoutservice)
+      required_evidence:
+        - get_traces(frontend)
+        - get_metrics(checkoutservice)
+      traces_required: true
+    notes: Candidate reasoning-heavy fault; currently needs calibration to trigger consistently.
+
+  - id: cpu_stress_frontend
+    status: candidate
+    category: resource_latency
+    experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/chaos_cpu_stress_frontend_react.yaml
+    target_service: frontend
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: frontend
+      primary_signal: service_latency
+    ground_truth:
+      acceptable_root_causes:
+        - frontend resource exhaustion
+        - frontend latency bottleneck
+      acceptable_actions:
+        - wait_and_monitor
+        - patch_resources(frontend, cpu)
+        - patch_resources_then_scale(frontend)
+      required_evidence:
+        - get_metrics(frontend)
+        - get_traces(frontend)
+      traces_required: true
+    notes: User-facing latency case intended to stress frontend reasoning rather than availability rules.
+
+  - id: network_delay_frontend_productcatalogservice
+    status: candidate
+    category: dependency_trace
+    experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/chaos_network_delay_frontend_productcatalogservice_react.yaml
+    target_service: frontend
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: frontend
+      primary_signal: service_latency
+    ground_truth:
+      acceptable_root_causes:
+        - network-link:frontend->productcatalogservice
+        - productcatalogservice latency bottleneck
+      acceptable_actions:
+        - wait_and_monitor
+      required_evidence:
+        - get_traces(frontend)
+        - get_k8s_state(productcatalogservice)
+        - get_metrics(productcatalogservice)
+      traces_required: true
+    notes: Healthy-pods network fault candidate. Current detector threshold likely needs calibration.
+
+  - id: network_delay_frontend_currencyservice
+    status: candidate
+    category: dependency_trace
+    experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/chaos_network_delay_frontend_currencyservice_react.yaml
+    target_service: frontend
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: frontend
+      primary_signal: service_latency
+    ground_truth:
+      acceptable_root_causes:
+        - network-link:frontend->currencyservice
+        - currencyservice latency bottleneck
+      acceptable_actions:
+        - wait_and_monitor
+      required_evidence:
+        - get_traces(frontend)
+        - get_k8s_state(currencyservice)
+        - get_metrics(currencyservice)
+      traces_required: true
+    notes: Dependency-trace case on a different frontend branch to reduce single-path overfitting.
+
+stretch_experiments:
+  - id: cascading_bad_rollout_plus_cpu_stress
+    status: stretch
+    category: multi_fault
+    experiment_file: null
+    target_service: frontend
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: frontend
+      primary_signal: multiple
+    ground_truth:
+      acceptable_root_causes:
+        - productcatalogservice bad rollout
+        - checkoutservice resource exhaustion
+      acceptable_actions:
+        - kubectl rollout undo deployment/productcatalogservice
+        - patch_resources(checkoutservice, cpu)
+      required_evidence:
+        - get_k8s_state(productcatalogservice)
+        - get_logs(productcatalogservice)
+        - get_traces(frontend)
+        - get_metrics(checkoutservice)
+      traces_required: true
+    notes: Planned multi-fault stretch case once the core suite is stable.

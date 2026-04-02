@@ -28,6 +28,7 @@ class DetectionConfig:
     error_ratio_threshold: float = 0.10
     service_error_rps_threshold: float = 0.50
     service_latency_threshold_ms: float = 1000.0
+    latency_consecutive_required: int = 2
     min_total_rps: float = 0.10
     restart_count_threshold: int = 1
     out_file: str = ""

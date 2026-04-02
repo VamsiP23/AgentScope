@@ -60,13 +60,17 @@ class MonitorLoop:
         else:
             self._latency_consecutive_count = 0
 
-        if latency_fired and not other_primary_fired and self._latency_consecutive_count < 2:
+        required = max(1, int(self.config.latency_consecutive_required or 1))
+        if latency_fired and not other_primary_fired and self._latency_consecutive_count < required:
             latency_reason = latency_fired[0].get("reason", "latency threshold exceeded")
             return replace(
                 report,
                 incident_detected=False,
                 suspicious_services=[],
-                summary=f"supporting signals only: {latency_reason} (awaiting consecutive confirmation)",
+                summary=(
+                    f"supporting signals only: {latency_reason} "
+                    f"(awaiting consecutive confirmation {self._latency_consecutive_count}/{required})"
+                ),
             )
         return report
 
@@ -78,7 +82,12 @@ class MonitorLoop:
 
     def run_forever(self) -> int:
         while True:
-            report = self._stabilize_report(build_report(self.config))
+            try:
+                report = self._stabilize_report(build_report(self.config))
+            except Exception as exc:
+                print(f"[{utc_now()}] detector error: {exc}", flush=True)
+                time.sleep(self.interval_seconds)
+                continue
             self.write_report(report)
             if self._last_incident_state is None:
                 print(
