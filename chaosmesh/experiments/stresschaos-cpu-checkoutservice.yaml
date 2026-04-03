@@ -1,0 +1,17 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: checkoutservice-cpu-stress
+  namespace: default
+spec:
+  mode: all
+  selector:
+    namespaces:
+      - default
+    labelSelectors:
+      app: checkoutservice
+  stressors:
+    cpu:
+      workers: 6
+      load: 100
+  duration: "120s"

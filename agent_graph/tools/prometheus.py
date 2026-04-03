@@ -37,7 +37,7 @@ class PrometheusTools:
         cpu_cores = self._safe_optional_scalar(
             (
                 "sum(rate(container_cpu_usage_seconds_total"
-                f'{{namespace="{namespace}",pod=~"{pod_regex}",container!="",image!=""}}[{window}]))'
+                f'{{job="kubernetes-cadvisor",namespace="{namespace}",pod=~"{pod_regex}"}}[{window}]))'
             ),
             errors,
             "cpu_usage",
@@ -62,7 +62,7 @@ class PrometheusTools:
         cpu_throttled_seconds_rate = self._safe_optional_scalar(
             (
                 "sum(rate(container_cpu_cfs_throttled_seconds_total"
-                f'{{namespace="{namespace}",pod=~"{pod_regex}",container!="",image!=""}}[{window}]))'
+                f'{{job="kubernetes-cadvisor",namespace="{namespace}",pod=~"{pod_regex}"}}[{window}]))'
             ),
             errors,
             "cpu_throttled_seconds_rate",
@@ -70,7 +70,7 @@ class PrometheusTools:
         cpu_throttled_periods_rate = self._safe_optional_scalar(
             (
                 "sum(rate(container_cpu_cfs_throttled_periods_total"
-                f'{{namespace="{namespace}",pod=~"{pod_regex}",container!="",image!=""}}[{window}]))'
+                f'{{job="kubernetes-cadvisor",namespace="{namespace}",pod=~"{pod_regex}"}}[{window}]))'
             ),
             errors,
             "cpu_throttled_periods_rate",
@@ -78,7 +78,7 @@ class PrometheusTools:
         cpu_periods_rate = self._safe_optional_scalar(
             (
                 "sum(rate(container_cpu_cfs_periods_total"
-                f'{{namespace="{namespace}",pod=~"{pod_regex}",container!="",image!=""}}[{window}]))'
+                f'{{job="kubernetes-cadvisor",namespace="{namespace}",pod=~"{pod_regex}"}}[{window}]))'
             ),
             errors,
             "cpu_periods_rate",
@@ -86,7 +86,7 @@ class PrometheusTools:
         memory_bytes = self._safe_optional_scalar(
             (
                 "sum(container_memory_working_set_bytes"
-                f'{{namespace="{namespace}",pod=~"{pod_regex}",container!="",image!=""}})'
+                f'{{job="kubernetes-cadvisor",namespace="{namespace}",pod=~"{pod_regex}"}})'
             ),
             errors,
             "memory_usage",
@@ -94,7 +94,7 @@ class PrometheusTools:
         memory_rss_bytes = self._safe_optional_scalar(
             (
                 "sum(container_memory_rss"
-                f'{{namespace="{namespace}",pod=~"{pod_regex}",container!="",image!=""}})'
+                f'{{job="kubernetes-cadvisor",namespace="{namespace}",pod=~"{pod_regex}"}})'
             ),
             errors,
             "memory_rss",
@@ -124,6 +124,7 @@ class PrometheusTools:
             f'sum(rate(calls_total{{service_name="{service}",status_code="STATUS_CODE_ERROR"}}[{window}]))',
             errors,
             "error_rps",
+            default=0.0,
         )
         p95_latency_ms = self._safe_latency_quantile(service, window, 0.95, errors, "latency_p95")
         p99_latency_ms = self._safe_latency_quantile(service, window, 0.99, errors, "latency_p99")
@@ -200,9 +201,16 @@ class PrometheusTools:
             errors.append(f"{label}: {exc}")
             return 0.0
 
-    def _safe_optional_scalar(self, query: str, errors: List[str], label: str) -> float | None:
+    def _safe_optional_scalar(
+        self,
+        query: str,
+        errors: List[str],
+        label: str,
+        default: float | None = None,
+    ) -> float | None:
         try:
-            return self.client.instant_scalar_optional(query)
+            value = self.client.instant_scalar_optional(query)
+            return default if value is None else value
         except Exception as exc:
             errors.append(f"{label}: {exc}")
             return None
