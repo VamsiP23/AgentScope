@@ -11,6 +11,10 @@ from detectors.utils import run_cmd
 ERROR_LINE_PATTERN = re.compile(
     r"(?i)(error|exception|fatal|panic|traceback|timeout|deadline exceeded|connection refused|crashloop|unavailable)"
 )
+SIGNAL_LINE_PATTERN = re.compile(
+    r"(?i)(error|exception|fatal|panic|traceback|timeout|deadline exceeded|connection refused|unavailable|warn|throttl|oom|killed|refused|failed)"
+)
+MAX_LOG_LINES_RETURNED = 8
 FORBIDDEN_SHELL_TOKENS = {"|", "||", "&", "&&", ";", ">", ">>", "<", "<<", "$(", "`"}
 ALLOWED_KUBECTL_VERBS = {"get", "describe", "logs", "rollout", "delete", "patch"}
 RESOURCE_LIMIT_KEYS = {"limits", "requests"}
@@ -241,6 +245,8 @@ class KubernetesTools:
 
         pod_summaries: List[Dict[str, Any]] = []
         aggregate_error_lines: List[str] = []
+        aggregate_signal_lines: List[str] = []
+        aggregate_recent_lines: List[str] = []
         errors: List[str] = []
 
         for pod in pods:
@@ -256,29 +262,46 @@ class KubernetesTools:
                         "pod_name": pod,
                         "error_count": 1,
                         "error_lines": [log_error],
+                        "signal_lines": [log_error],
+                        "recent_lines": [log_error],
                         "log_error": log_error,
                     }
                 )
                 continue
 
-            error_lines = [line for line in result["stdout"].splitlines() if ERROR_LINE_PATTERN.search(line)]
+            all_lines = [line.strip() for line in result["stdout"].splitlines() if line.strip()]
+            error_lines = [line for line in all_lines if ERROR_LINE_PATTERN.search(line)]
+            signal_lines = [line for line in all_lines if SIGNAL_LINE_PATTERN.search(line)]
+            recent_lines = all_lines[-MAX_LOG_LINES_RETURNED:]
             aggregate_error_lines.extend(error_lines)
+            aggregate_signal_lines.extend(signal_lines[:MAX_LOG_LINES_RETURNED])
+            aggregate_recent_lines.extend(recent_lines)
             pod_summaries.append(
                 {
                     "pod_name": pod,
                     "error_count": len(error_lines),
-                    "error_lines": error_lines,
+                    "error_lines": error_lines[:MAX_LOG_LINES_RETURNED],
+                    "signal_lines": signal_lines[:MAX_LOG_LINES_RETURNED],
+                    "recent_lines": recent_lines,
                 }
             )
 
         pod_summaries.sort(key=lambda item: item.get("error_count", 0), reverse=True)
-        primary = pod_summaries[0] if pod_summaries else {"pod_name": "", "error_count": 0, "error_lines": []}
+        primary = pod_summaries[0] if pod_summaries else {
+            "pod_name": "",
+            "error_count": 0,
+            "error_lines": [],
+            "signal_lines": [],
+            "recent_lines": [],
+        }
 
         return {
             "service": service,
             "pod_name": primary.get("pod_name", ""),
             "error_count": sum(item.get("error_count", 0) for item in pod_summaries),
-            "error_lines": aggregate_error_lines,
+            "error_lines": aggregate_error_lines[:MAX_LOG_LINES_RETURNED],
+            "signal_lines": aggregate_signal_lines[:MAX_LOG_LINES_RETURNED],
+            "recent_lines": primary.get("recent_lines", [])[:MAX_LOG_LINES_RETURNED],
             "pods": pod_summaries,
             "error": "; ".join(errors) if errors else None,
         }

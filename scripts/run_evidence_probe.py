@@ -48,20 +48,30 @@ def _metrics_richness(output: Dict[str, Any]) -> str:
     metrics = output.get("metrics", {}) or {}
     if not metrics:
         return "missing"
-    if not bool(metrics.get("application_metrics_available", False)):
-        return "missing"
-    if not bool(metrics.get("resource_metrics_available", False)):
-        return "weak"
-    signal_fields = [
+    resource_available = bool(metrics.get("resource_metrics_available", False))
+    application_available = bool(metrics.get("application_metrics_available", False))
+    resource_signal_fields = [
         float(metrics.get("cpu_usage", 0.0) or 0.0),
         float(metrics.get("cpu_utilization_pct_of_limit", 0.0) or 0.0),
         float(metrics.get("cpu_throttling_ratio", 0.0) or 0.0),
         float(metrics.get("memory_usage", 0.0) or 0.0),
         float(metrics.get("memory_utilization_pct_of_limit", 0.0) or 0.0),
+    ]
+    application_signal_fields = [
         float(metrics.get("request_rps", 0.0) or 0.0),
         float(metrics.get("p99_latency_ms", 0.0) or 0.0),
     ]
-    return "rich" if any(value > 0 for value in signal_fields) else "weak"
+
+    has_resource_signal = any(value > 0 for value in resource_signal_fields)
+    has_application_signal = any(value > 0 for value in application_signal_fields)
+
+    if resource_available and application_available:
+        return "rich" if (has_resource_signal or has_application_signal) else "weak"
+    if resource_available:
+        return "weak" if has_resource_signal else "missing"
+    if application_available:
+        return "weak" if has_application_signal else "missing"
+    return "missing"
 
 
 def _logs_richness(output: Dict[str, Any]) -> str:

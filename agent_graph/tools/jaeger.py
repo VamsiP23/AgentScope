@@ -408,15 +408,34 @@ class JaegerTools:
         raise RuntimeError(self._observability_error_message(last_error))
 
     def _search_traces(self, service: str, lookback_minutes: int, limit: int) -> List[Dict[str, Any]]:
-        params = urlencode(
-            {
-                "service": service,
-                "limit": limit,
-                "lookback": f"{max(1, lookback_minutes)}m",
-            }
-        )
-        payload = self._fetch_json(f"/api/traces?{params}")
-        return list(payload.get("data", []) or [])
+        last_error: Exception | None = None
+        candidate_limits: List[int] = []
+        for candidate in (limit, min(limit, 10), min(limit, 5)):
+            if candidate > 0 and candidate not in candidate_limits:
+                candidate_limits.append(candidate)
+
+        for candidate_limit in candidate_limits:
+            params = urlencode(
+                {
+                    "service": service,
+                    "limit": candidate_limit,
+                    "lookback": f"{max(1, lookback_minutes)}m",
+                }
+            )
+            try:
+                payload = self._fetch_json(f"/api/traces?{params}")
+                return list(payload.get("data", []) or [])
+            except Exception as exc:
+                last_error = exc
+                message = str(exc).lower()
+                if candidate_limit == candidate_limits[-1]:
+                    break
+                if not any(marker in message for marker in ("timed out", "timeout", "temporarily unavailable", "remote end closed", "connection reset")):
+                    break
+
+        if last_error is not None:
+            raise last_error
+        return []
 
     def _fetch_trace(self, trace_id: str) -> Dict[str, Any]:
         payload = self._fetch_json(f"/api/traces/{trace_id}")

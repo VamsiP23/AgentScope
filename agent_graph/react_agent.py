@@ -185,6 +185,8 @@ class ReActAgent:
                 "must_cite_real_call_ids": True,
                 "must_not_assume_fault_without_retrieved_evidence": True,
                 "must_avoid_repeating_the_same_target_without_new_signal": True,
+                "must_not_repeat_the_same_evidence_question_without_time_based_change": True,
+                "prefer_metrics_before_repeated_logs_for_healthy_but_slow_services": True,
                 "must_use_typed_action_tools_instead_of_raw_shell": True,
             },
             "completed_steps": list(self._decision_history),
@@ -603,7 +605,7 @@ class ReActAgent:
             "get_metrics": "get_metrics(service, lookback_minutes=5) -> {call_id, timestamp, service, metrics:{cpu_usage,cpu_mcores,cpu_request_cores,cpu_limit_cores,cpu_utilization_pct_of_request,cpu_utilization_pct_of_limit,cpu_throttled_seconds_rate,cpu_throttling_ratio,memory_usage,memory_rss_bytes,memory_request_bytes,memory_limit_bytes,memory_utilization_pct_of_request,memory_utilization_pct_of_limit,error_rate,p95_latency_ms,p99_latency_ms,request_rps,error_rps,resource_metrics_available,application_metrics_available,resource_metric_gaps,application_metric_gaps}, error}",
             "get_traces": "get_traces(service, lookback_minutes=5) -> {call_id, timestamp, entry_point, call_chain, bottleneck_service, bottleneck_pct_of_total, error_spans, deviation_factor, error}",
             "get_dependency_traces": "get_dependency_traces(service, entry_service='frontend', lookback_minutes=5) -> {call_id, timestamp, service, entry_service, downstream_candidates, bottleneck_service, bottleneck_pct_of_total, trace_count, error}",
-            "get_logs": "get_logs(service, tail_lines=100) -> {call_id, timestamp, pod_name, error_count, error_lines, error}",
+            "get_logs": "get_logs(service, tail_lines=100) -> {call_id, timestamp, pod_name, error_count, error_lines, signal_lines, recent_lines, pods:[{pod_name,error_count,error_lines,signal_lines,recent_lines}], error}",
             "get_k8s_state": "get_k8s_state(service) -> {call_id, timestamp, desired_replicas, available_replicas, pod_phases, recent_events, rollout_progressing, restart_count, error}",
             "restart_pod": "restart_pod(service, pod_name='') -> {call_id, timestamp, service, pod_name, executed, command, result, error}",
             "rollout_restart": "rollout_restart(service) -> {call_id, timestamp, service, executed, command, result, error}",
@@ -702,6 +704,8 @@ get_logs(service, tail_lines=100)
   Returns:
   - error_count
   - error_lines
+  - signal_lines
+  - recent_lines
   - per-pod log_error details
   - possibly a top-level error if logs cannot be read because the container is not healthy yet
 
@@ -822,6 +826,9 @@ TOOL SELECTION DISCIPLINE
 - If a service is unavailable and you have not inspected its logs yet, logs are usually the highest-value next step on that same service.
 - If a service is healthy but slow and you suspect a downstream dependency, get_dependency_traces is usually more informative than get_k8s_state on a guessed dependency.
 - Avoid repeating the same tool on the same target unless you expect a time-based change that could alter the conclusion.
+- Do not call get_logs twice on the same service just because the first result was sparse. Only repeat get_logs on the same service if you explicitly expect new information because time passed, pods restarted, or Kubernetes state changed.
+- If a service is healthy at the deployment level but slow, degraded, or showing probe failures, prefer get_metrics on that same service before repeating get_logs.
+- Treat probe failures as symptoms of unresponsiveness, not automatic proof of an internal application bug.
 - State what result would change your mind before making another tool call.
 - If the next tool would only confirm what you already know, submit.
 

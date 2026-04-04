@@ -288,7 +288,7 @@ wait_for_deployment_ready() {
   local deploy="$2"
   local timeout_seconds="${3:-300}"
   local deadline=$((SECONDS + timeout_seconds))
-  local desired available updated generation observed_generation
+  local desired available
 
   if kubectl rollout status deployment/"$deploy" -n "$namespace" --timeout="${timeout_seconds}s" >/dev/null 2>&1; then
     return 0
@@ -299,17 +299,10 @@ wait_for_deployment_ready() {
   while [ "$SECONDS" -lt "$deadline" ]; do
     desired=$(kubectl get deployment "$deploy" -n "$namespace" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 0)
     available=$(kubectl get deployment "$deploy" -n "$namespace" -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 0)
-    updated=$(kubectl get deployment "$deploy" -n "$namespace" -o jsonpath='{.status.updatedReplicas}' 2>/dev/null || echo 0)
-    generation=$(kubectl get deployment "$deploy" -n "$namespace" -o jsonpath='{.metadata.generation}' 2>/dev/null || echo 0)
-    observed_generation=$(kubectl get deployment "$deploy" -n "$namespace" -o jsonpath='{.status.observedGeneration}' 2>/dev/null || echo 0)
-
     desired=${desired:-0}
     available=${available:-0}
-    updated=${updated:-0}
-    generation=${generation:-0}
-    observed_generation=${observed_generation:-0}
 
-    if [ "$desired" -eq 0 ] || { [ "$available" -ge "$desired" ] && [ "$updated" -ge "$desired" ] && [ "$observed_generation" -ge "$generation" ]; }; then
+    if [ "$desired" -eq 0 ] || [ "$available" -ge "$desired" ]; then
       return 0
     fi
 
