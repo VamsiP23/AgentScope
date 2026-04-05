@@ -16,6 +16,14 @@ class GroundTruth:
 
 
 @dataclass
+class TelemetryContract:
+    required_validation_checks: List[str] = field(default_factory=list)
+    required_services: List[str] = field(default_factory=list)
+    fail_open: bool = False
+    notes: str = ""
+
+
+@dataclass
 class ProblemSpec:
     problem_id: str
     status: str
@@ -24,6 +32,10 @@ class ProblemSpec:
     target_service: str
     detector_gate: Dict[str, Any]
     ground_truth: GroundTruth
+    task_family: str = ""
+    scenario: str = ""
+    entry_service: str = "frontend"
+    telemetry_contract: TelemetryContract = field(default_factory=TelemetryContract)
     notes: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
@@ -39,6 +51,15 @@ class ProblemSpec:
                 "acceptable_actions": list(self.ground_truth.acceptable_actions),
                 "required_evidence": list(self.ground_truth.required_evidence),
                 "traces_required": self.ground_truth.traces_required,
+            },
+            "task_family": self.task_family,
+            "scenario": self.scenario,
+            "entry_service": self.entry_service,
+            "telemetry_contract": {
+                "required_validation_checks": list(self.telemetry_contract.required_validation_checks),
+                "required_services": list(self.telemetry_contract.required_services),
+                "fail_open": self.telemetry_contract.fail_open,
+                "notes": self.telemetry_contract.notes,
             },
             "notes": self.notes,
         }
@@ -82,6 +103,13 @@ def load_benchmark_suite(path: Path) -> BenchmarkSuite:
             required_evidence=[str(v) for v in ground_truth_raw.get("required_evidence", []) or []],
             traces_required=bool(ground_truth_raw.get("traces_required", False)),
         )
+        telemetry_raw = item.get("telemetry_contract", {}) or {}
+        telemetry_contract = TelemetryContract(
+            required_validation_checks=[str(v) for v in telemetry_raw.get("required_validation_checks", []) or []],
+            required_services=[str(v) for v in telemetry_raw.get("required_services", []) or []],
+            fail_open=bool(telemetry_raw.get("fail_open", False)),
+            notes=str(telemetry_raw.get("notes", "")),
+        )
         return ProblemSpec(
             problem_id=str(item.get("id", "")),
             status=str(item.get("status", "candidate")),
@@ -90,6 +118,10 @@ def load_benchmark_suite(path: Path) -> BenchmarkSuite:
             target_service=str(item.get("target_service", "")),
             detector_gate=dict(item.get("detector_gate", {}) or {}),
             ground_truth=ground_truth,
+            task_family=str(item.get("task_family", "")),
+            scenario=str(item.get("scenario", "")),
+            entry_service=str(item.get("entry_service", "frontend") or "frontend"),
+            telemetry_contract=telemetry_contract,
             notes=str(item.get("notes", "")),
         )
 
@@ -110,4 +142,3 @@ def resolve_problem_for_experiment(experiment_path: Path, suite_path: Path) -> O
         return None
     suite = load_benchmark_suite(suite_path)
     return suite.find_problem_by_experiment(experiment_path)
-

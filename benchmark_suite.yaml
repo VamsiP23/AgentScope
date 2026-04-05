@@ -1,22 +1,29 @@
-version: 1
-name: AgentScope Kubernetes Incident Triage Benchmark
+version: 2
+name: AgentScope Distributed Systems Benchmark
 goal: >
-  Evaluate LLM incident-triage agents on reproducible Kubernetes faults using a
-  structured tool interface, detector-gated experiment runs, and fixed grading criteria.
+  Evaluate extensible agents on reproducible distributed-systems troubleshooting tasks
+  using structured observability evidence, explicit telemetry contracts, and replayable
+  task artifacts collected from live incidents.
 
 comparison_targets:
-  - id: pure_react
-    description: ReAct agent with typed-tool search guardrails and model-driven stopping
+  - id: react_reference
+    description: Reference ReAct troubleshooting agent over the benchmark tool interface
     status: active
+  - id: replay_reference
+    description: Same reference agent evaluated against replay datasets instead of live infrastructure
+    status: active
+  - id: custom_agent
+    description: User-implemented benchmark agent conforming to the shared runner interface
+    status: planned
 
 benchmark_policy:
   inclusion_rule: >
-    An experiment is benchmark-ready only after it triggers the detector 3/3 times
-    and produces stable observability artifacts without manual intervention.
+    A task is benchmark-ready only if detector behavior is stable and the task's telemetry contract
+    passes without manual debugging. Candidate tasks may be kept for collection and replay curation.
   statuses:
-    ready: Include in official benchmark runs and result tables.
-    candidate: Keep in calibration until detector reliability and agent traces are stable.
-    stretch: Optional experiment for deeper evaluation; do not block the core benchmark.
+    ready: Include in official benchmark tables and comparison runs.
+    candidate: Keep for calibration, replay collection, and simulator validation.
+    stretch: Optional harder task that does not block the core benchmark.
 
 scorecard:
   metrics:
@@ -32,103 +39,183 @@ scorecard:
     - agent_report.json
     - aci_run_log.jsonl
     - detector_runs/latest_detection.json
+    - evaluation.json
 
 experiments:
-  - id: bad_rollout_productcatalogservice
+  - id: rollout_failure_productcatalogservice
     status: ready
     category: availability_control
+    task_family: rollout_failure
+    scenario: invalid image tag prevents pods from becoming available
+    entry_service: frontend
     experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/bad_rollout_productcatalogservice_react.yaml
     target_service: productcatalogservice
     detector_gate:
       require_incident_detected: true
       target_deployment: productcatalogservice
       primary_signal: deployment_availability
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+      required_services:
+        - frontend
+        - productcatalogservice
+      fail_open: true
+      notes: Availability-control tasks do not require Jaeger or cAdvisor to be benchmark-valid.
     ground_truth:
       acceptable_root_causes:
         - productcatalogservice bad rollout
+        - rollout failure on productcatalogservice
       acceptable_actions:
         - kubectl rollout undo deployment/productcatalogservice
       required_evidence:
         - get_k8s_state(productcatalogservice)
         - get_logs(productcatalogservice)
       traces_required: false
-    notes: Stable control case for unavailable deployment plus startup failure evidence.
+    notes: Stable control task for deployment unavailability and targeted rollback reasoning.
 
-  - id: bad_rollout_recommendationservice
-    status: candidate
+  - id: rollout_failure_recommendationservice
+    status: ready
     category: availability_control
+    task_family: rollout_failure
+    scenario: invalid image tag prevents pods from becoming available
+    entry_service: frontend
     experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/bad_rollout_recommendationservice_react.yaml
     target_service: recommendationservice
     detector_gate:
       require_incident_detected: true
       target_deployment: recommendationservice
       primary_signal: deployment_availability
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+      required_services:
+        - frontend
+        - recommendationservice
+      fail_open: true
+      notes: Availability-control tasks tolerate partial observability as long as Kubernetes state and logs are reachable.
     ground_truth:
       acceptable_root_causes:
         - recommendationservice bad rollout
+        - rollout failure on recommendationservice
       acceptable_actions:
         - kubectl rollout undo deployment/recommendationservice
       required_evidence:
         - get_k8s_state(recommendationservice)
         - get_logs(recommendationservice)
       traces_required: false
-    notes: Same failure class as the productcatalog rollout on a different service.
+    notes: Second rollout task for service generalization.
 
-  - id: cpu_stress_checkoutservice
+  - id: cpu_pressure_checkoutservice
     status: candidate
     category: resource_latency
+    task_family: resource_pressure
+    scenario: checkoutservice becomes CPU-bound under checkout-heavy traffic
+    entry_service: frontend
     experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/chaos_cpu_stress_checkoutservice_react.yaml
     target_service: checkoutservice
     detector_gate:
       require_incident_detected: true
       target_deployment: checkoutservice
       primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - cpu_series_present
+        - memory_series_present
+        - cpu_limit_series_present
+        - memory_request_series_present
+        - jaeger_services
+      required_services:
+        - frontend
+        - checkoutservice
+      fail_open: false
+      notes: Requires both resource metrics and trace visibility to be benchmark-valid.
     ground_truth:
       acceptable_root_causes:
         - checkoutservice resource exhaustion
+        - checkoutservice cpu pressure
         - checkoutservice latency bottleneck
       acceptable_actions:
         - wait_and_monitor
         - patch_resources(checkoutservice, cpu)
         - patch_resources_then_scale(checkoutservice)
       required_evidence:
-        - get_traces(frontend)
+        - get_k8s_state(checkoutservice)
         - get_metrics(checkoutservice)
+        - get_traces(checkoutservice)
       traces_required: true
-    notes: Candidate reasoning-heavy fault; currently needs calibration to trigger consistently.
+    notes: Resource-pressure task for targeted service diagnosis under latency symptoms.
 
-  - id: cpu_stress_frontend
+  - id: cpu_pressure_frontend
     status: candidate
     category: resource_latency
+    task_family: resource_pressure
+    scenario: frontend becomes CPU-bound under user traffic
+    entry_service: frontend
     experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/chaos_cpu_stress_frontend_react.yaml
     target_service: frontend
     detector_gate:
       require_incident_detected: true
       target_deployment: frontend
       primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - cpu_series_present
+        - memory_series_present
+        - cpu_limit_series_present
+        - memory_request_series_present
+        - jaeger_services
+      required_services:
+        - frontend
+      fail_open: false
+      notes: Frontend CPU-pressure task depends on both metrics and entrypoint traces.
     ground_truth:
       acceptable_root_causes:
         - frontend resource exhaustion
+        - frontend cpu pressure
         - frontend latency bottleneck
       acceptable_actions:
         - wait_and_monitor
         - patch_resources(frontend, cpu)
         - patch_resources_then_scale(frontend)
       required_evidence:
+        - get_k8s_state(frontend)
         - get_metrics(frontend)
         - get_traces(frontend)
       traces_required: true
-    notes: User-facing latency case intended to stress frontend reasoning rather than availability rules.
+    notes: User-facing resource-pressure task at the entry service.
 
   - id: network_delay_frontend_productcatalogservice
     status: candidate
     category: dependency_trace
+    task_family: dependency_localization
+    scenario: injected network delay on the frontend -> productcatalogservice hop
+    entry_service: frontend
     experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/chaos_network_delay_frontend_productcatalogservice_react.yaml
     target_service: frontend
     detector_gate:
       require_incident_detected: true
       target_deployment: frontend
       primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - jaeger_services
+      required_services:
+        - frontend
+        - productcatalogservice
+      fail_open: false
+      notes: Dependency-localization tasks are trace-centric and require a reachable Jaeger.
     ground_truth:
       acceptable_root_causes:
         - network-link:frontend->productcatalogservice
@@ -137,20 +224,34 @@ experiments:
         - wait_and_monitor
       required_evidence:
         - get_traces(frontend)
+        - get_dependency_traces(frontend)
         - get_k8s_state(productcatalogservice)
-        - get_metrics(productcatalogservice)
       traces_required: true
-    notes: Healthy-pods network fault candidate. Current detector threshold likely needs calibration.
+    notes: Canonical downstream-latency localization task on a hot user path.
 
   - id: network_delay_frontend_currencyservice
     status: candidate
     category: dependency_trace
+    task_family: dependency_localization
+    scenario: injected network delay on the frontend -> currencyservice hop
+    entry_service: frontend
     experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/chaos_network_delay_frontend_currencyservice_react.yaml
     target_service: frontend
     detector_gate:
       require_incident_detected: true
       target_deployment: frontend
       primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - jaeger_services
+      required_services:
+        - frontend
+        - currencyservice
+      fail_open: false
+      notes: Same task family on a different dependency branch to reduce path overfitting.
     ground_truth:
       acceptable_root_causes:
         - network-link:frontend->currencyservice
@@ -159,32 +260,41 @@ experiments:
         - wait_and_monitor
       required_evidence:
         - get_traces(frontend)
+        - get_dependency_traces(frontend)
         - get_k8s_state(currencyservice)
-        - get_metrics(currencyservice)
       traces_required: true
-    notes: Dependency-trace case on a different frontend branch to reduce single-path overfitting.
+    notes: Alternate dependency-localization task.
 
 stretch_experiments:
-  - id: cascading_bad_rollout_plus_cpu_stress
+  - id: replay_only_checkout_cpu_pressure
     status: stretch
-    category: multi_fault
+    category: resource_latency
+    task_family: replay_benchmark
+    scenario: replayed checkoutservice CPU-pressure incident from a captured live run
     experiment_file: null
-    target_service: frontend
+    target_service: checkoutservice
+    entry_service: frontend
     detector_gate:
       require_incident_detected: true
-      target_deployment: frontend
-      primary_signal: multiple
+      target_deployment: checkoutservice
+      primary_signal: replay
+    telemetry_contract:
+      required_validation_checks: []
+      required_services:
+        - frontend
+        - checkoutservice
+      fail_open: true
+      notes: Replay tasks bypass live telemetry validation and depend on dataset completeness instead.
     ground_truth:
       acceptable_root_causes:
-        - productcatalogservice bad rollout
         - checkoutservice resource exhaustion
+        - checkoutservice cpu pressure
       acceptable_actions:
-        - kubectl rollout undo deployment/productcatalogservice
         - patch_resources(checkoutservice, cpu)
+        - wait_and_monitor
       required_evidence:
-        - get_k8s_state(productcatalogservice)
-        - get_logs(productcatalogservice)
-        - get_traces(frontend)
+        - get_k8s_state(checkoutservice)
         - get_metrics(checkoutservice)
+        - get_traces(checkoutservice)
       traces_required: true
-    notes: Planned multi-fault stretch case once the core suite is stable.
+    notes: Planned replay benchmark task once the capture pipeline has enough high-quality datasets.

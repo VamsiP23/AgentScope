@@ -32,6 +32,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from benchmarking.evaluator import evaluate_agent_run
 from benchmarking.problem import ProblemSpec, resolve_problem_for_experiment
+from benchmarking.reproducibility import evaluate_telemetry_contract
 
 DEFAULT_OUT_DIR = ROOT / "experiment_runs"
 DEFAULT_BENCHMARK_SUITE = ROOT / "benchmark_suite.yaml"
@@ -785,7 +786,11 @@ def build_agent_cmd(
     if agent_type == "react":
         cmd = [
             "python3",
-            "./scripts/run_react_agent.py",
+            "./scripts/run_benchmark_agent.py",
+            "--agent-type",
+            "react",
+            "--backend",
+            "live",
             "--namespace",
             namespace,
             "--prom-url",
@@ -1384,6 +1389,8 @@ def main() -> int:
         required_telemetry_services: List[str] = ["frontend"]
         if benchmark_problem is not None and benchmark_problem.target_service:
             required_telemetry_services.append(benchmark_problem.target_service)
+        if benchmark_problem is not None:
+            required_telemetry_services.extend(list(benchmark_problem.telemetry_contract.required_services))
         detector_target = str_value(detector.get("target_deployment"), "")
         if detector_target:
             required_telemetry_services.append(detector_target)
@@ -1396,8 +1403,14 @@ def main() -> int:
             run_dir,
             required_telemetry_services,
         )
+        summary["steps"]["telemetry_contract"] = evaluate_telemetry_contract(
+            benchmark_problem,
+            summary["steps"]["telemetry_validation"],
+        )
         if summary["steps"]["telemetry_validation"]["returncode"] != 0:
             raise RuntimeError("telemetry validation failed; see telemetry_validation.log")
+        if not bool(summary["steps"]["telemetry_contract"].get("ok", False)):
+            raise RuntimeError("telemetry contract failed for this benchmark task; see telemetry_validation.log")
         print_status("phase=telemetry: validated")
 
         baseline_start_epoch = time.time()

@@ -87,6 +87,8 @@ def main() -> int:
         checks: Dict[str, Dict[str, Any]] = {}
         failures: List[str] = []
 
+        _maybe_repair_local_endpoint(args.namespace, "prometheus", args.prom_url, "/-/ready")
+
         def add_check(name: str, ok: bool, value: Any = None, detail: str = "") -> None:
             checks[name] = {"ok": ok, "value": value, "detail": detail}
             if not ok:
