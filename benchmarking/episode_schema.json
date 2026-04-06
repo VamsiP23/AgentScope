@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AgentScope Benchmark Episode",
+  "type": "object",
+  "required": [
+    "task_id",
+    "family",
+    "scenario",
+    "split",
+    "difficulty",
+    "fault_spec",
+    "initial_context",
+    "phases",
+    "ground_truth",
+    "telemetry_contract",
+    "scoring",
+    "provenance"
+  ],
+  "properties": {
+    "task_id": { "type": "string" },
+    "family": { "type": "string" },
+    "scenario": { "type": "string" },
+    "split": { "type": "string" },
+    "difficulty": { "type": "string" },
+    "fault_spec": { "type": "object" },
+    "initial_context": { "type": "string" },
+    "phases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["phase_id", "label", "tool_responses", "observability", "transitions"],
+        "properties": {
+          "phase_id": { "type": "integer" },
+          "label": { "type": "string" },
+          "tool_responses": { "type": "object" },
+          "observability": { "type": "object" },
+          "transitions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["trigger_type", "trigger_value", "target_phase"],
+              "properties": {
+                "trigger_type": { "type": "string" },
+                "trigger_value": { "type": "string" },
+                "target_phase": { "type": "integer" },
+                "label": { "type": "string" },
+                "threshold": { "type": "integer" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ground_truth": { "type": "object" },
+    "telemetry_contract": { "type": "object" },
+    "scoring": { "type": "object" },
+    "provenance": { "type": "object" }
+  }
+}

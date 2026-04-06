@@ -1,0 +1,320 @@
+{
+  "task_id": "rollout_failure_productcatalogservice_001",
+  "family": "rollout_failure",
+  "scenario": "invalid image tag prevents pods from becoming available",
+  "split": "dev",
+  "difficulty": "medium",
+  "fault_spec": {
+    "type": "rollout_failure",
+    "target_service": "productcatalogservice",
+    "injected_at": "phase_0",
+    "parameters": {
+      "experiment_file": "/Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/bad_rollout_productcatalogservice_react.yaml",
+      "detector_primary_signal": "deployment_availability"
+    }
+  },
+  "initial_context": "PagerDuty alert: an incident has been detected affecting productcatalogservice. Symptoms were detected by the monitoring pipeline. Investigate and recommend the most appropriate remediation action.",
+  "phases": [
+    {
+      "phase_id": 0,
+      "label": "initial_degradation",
+      "tool_responses": {
+        "get_k8s_state|service=productcatalogservice": {
+          "service": "productcatalogservice",
+          "timestamp": "2026-04-01T20:25:23.703018Z",
+          "desired_replicas": 2,
+          "available_replicas": 0,
+          "rollout_progressing": true,
+          "restart_count": 0,
+          "pod_phases": [
+            {
+              "pod_name": "productcatalogservice-5d89ccb5c6-6f7kp",
+              "phase": "Pending",
+              "ready": false,
+              "restart_count": 0
+            },
+            {
+              "pod_name": "productcatalogservice-5d89ccb5c6-f6nv2",
+              "phase": "Pending",
+              "ready": false,
+              "restart_count": 0
+            }
+          ],
+          "recent_events": [
+            {
+              "reason": "Pulling",
+              "message": "Pulling image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:not-a-real-tag\"",
+              "type": "Normal",
+              "object": "productcatalogservice-5d89ccb5c6-6f7kp",
+              "kind": "Pod"
+            },
+            {
+              "reason": "Pulling",
+              "message": "Pulling image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:not-a-real-tag\"",
+              "type": "Normal",
+              "object": "productcatalogservice-5d89ccb5c6-f6nv2",
+              "kind": "Pod"
+            },
+            {
+              "reason": "Failed",
+              "message": "Error: ErrImagePull",
+              "type": "Warning",
+              "object": "productcatalogservice-5d89ccb5c6-f6nv2",
+              "kind": "Pod"
+            },
+            {
+              "reason": "Failed",
+              "message": "Failed to pull image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:not-a-real-tag\": Error response from daemon: manifest for us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:not-a-real-tag not found: manifest unknown: Failed to fetch \"not-a-real-tag\"",
+              "type": "Warning",
+              "object": "productcatalogservice-5d89ccb5c6-f6nv2",
+              "kind": "Pod"
+            },
+            {
+              "reason": "Failed",
+              "message": "Error: ErrImagePull",
+              "type": "Warning",
+              "object": "productcatalogservice-5d89ccb5c6-6f7kp",
+              "kind": "Pod"
+            },
+            {
+              "reason": "Failed",
+              "message": "Failed to pull image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:not-a-real-tag\": Error response from daemon: manifest for us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:not-a-real-tag not found: manifest unknown: Failed to fetch \"not-a-real-tag\"",
+              "type": "Warning",
+              "object": "productcatalogservice-5d89ccb5c6-6f7kp",
+              "kind": "Pod"
+            },
+            {
+              "reason": "Failed",
+              "message": "Error: ImagePullBackOff",
+              "type": "Warning",
+              "object": "productcatalogservice-5d89ccb5c6-f6nv2",
+              "kind": "Pod"
+            },
+            {
+              "reason": "BackOff",
+              "message": "Back-off pulling image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:not-a-real-tag\"",
+              "type": "Normal",
+              "object": "productcatalogservice-5d89ccb5c6-f6nv2",
+              "kind": "Pod"
+            }
+          ],
+          "anomalies": [
+            "availability_degraded"
+          ],
+          "raw_output": {
+            "service": "productcatalogservice",
+            "desired_replicas": 2,
+            "available_replicas": 0,
+            "pod_phases": [
+              {
+                "pod_name": "productcatalogservice-5d89ccb5c6-6f7kp",
+                "phase": "Pending",
+                "ready": false,
+                "restart_count": 0
+              },
+              {
+                "pod_name": "productcatalogservice-5d89ccb5c6-f6nv2",
+                "phase": "Pending",
+                "ready": false,
+                "restart_count": 0
+              }
+            ],
+            "recent_events": [
+              {
+                "reason": "Pulling",
+                "message": "Pulling image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:not-a-real-tag\"",
+                "type": "Normal",
+                "object": "productcatalogservice-5d89ccb5c6-6f7kp",
+                "kind": "Pod"
+              },
+              {
+                "reason": "Pulling",
+                "message": "Pulling image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:not-a-real-tag\"",
+                "type": "Normal",
+                "object": "productcatalogservice-5d89ccb5c6-f6nv2",
+                "kind": "Pod"
+              },
+              {
+                "reason": "Failed",
+                "message": "Error: ErrImagePull",
+                "type": "Warning",
+                "object": "productcatalogservice-5d89ccb5c6-f6nv2",
+                "kind": "Pod"
+              },
+              {
+                "reason": "Failed",
+                "message": "Failed to pull image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:not-a-real-tag\": Error response from daemon: manifest for us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:not-a-real-tag not found: manifest unknown: Failed to fetch \"not-a-real-tag\"",
+                "type": "Warning",
+                "object": "productcatalogservice-5d89ccb5c6-f6nv2",
+                "kind": "Pod"
+              },
+              {
+                "reason": "Failed",
+                "message": "Error: ErrImagePull",
+                "type": "Warning",
+                "object": "productcatalogservice-5d89ccb5c6-6f7kp",
+                "kind": "Pod"
+              },
+              {
+                "reason": "Failed",
+                "message": "Failed to pull image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:not-a-real-tag\": Error response from daemon: manifest for us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:not-a-real-tag not found: manifest unknown: Failed to fetch \"not-a-real-tag\"",
+                "type": "Warning",
+                "object": "productcatalogservice-5d89ccb5c6-6f7kp",
+                "kind": "Pod"
+              },
+              {
+                "reason": "Failed",
+                "message": "Error: ImagePullBackOff",
+                "type": "Warning",
+                "object": "productcatalogservice-5d89ccb5c6-f6nv2",
+                "kind": "Pod"
+              },
+              {
+                "reason": "BackOff",
+                "message": "Back-off pulling image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:not-a-real-tag\"",
+                "type": "Normal",
+                "object": "productcatalogservice-5d89ccb5c6-f6nv2",
+                "kind": "Pod"
+              },
+              {
+                "reason": "Failed",
+                "message": "Error: ImagePullBackOff",
+                "type": "Warning",
+                "object": "productcatalogservice-5d89ccb5c6-6f7kp",
+                "kind": "Pod"
+              },
+              {
+                "reason": "BackOff",
+                "message": "Back-off pulling image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:not-a-real-tag\"",
+                "type": "Normal",
+                "object": "productcatalogservice-5d89ccb5c6-6f7kp",
+                "kind": "Pod"
+              }
+            ],
+            "rollout_progressing": true,
+            "restart_count": 0,
+            "error": null,
+            "call_id": "052759f9-046c-415b-be8e-aa406ae0c7c3",
+            "timestamp": "2026-04-01T20:25:23.703018Z"
+          }
+        },
+        "get_logs|service=productcatalogservice": {
+          "service": "productcatalogservice",
+          "timestamp": "2026-04-01T20:25:38.147131Z",
+          "lines": [
+            {
+              "level": "ERROR",
+              "msg": "Error from server (BadRequest): container \"server\" in pod \"productcatalogservice-5d89ccb5c6-6f7kp\" is waiting to start: image can't be pulled",
+              "signal_class": "application_error"
+            },
+            {
+              "level": "ERROR",
+              "msg": "Error from server (BadRequest): container \"server\" in pod \"productcatalogservice-5d89ccb5c6-f6nv2\" is waiting to start: trying and failing to pull image",
+              "signal_class": "application_error"
+            }
+          ],
+          "dominant_signal": "application_error",
+          "raw_output": {
+            "service": "productcatalogservice",
+            "pod_name": "productcatalogservice-5d89ccb5c6-6f7kp",
+            "error_count": 2,
+            "error_lines": [
+              "Error from server (BadRequest): container \"server\" in pod \"productcatalogservice-5d89ccb5c6-6f7kp\" is waiting to start: image can't be pulled",
+              "Error from server (BadRequest): container \"server\" in pod \"productcatalogservice-5d89ccb5c6-f6nv2\" is waiting to start: trying and failing to pull image"
+            ],
+            "pods": [
+              {
+                "pod_name": "productcatalogservice-5d89ccb5c6-6f7kp",
+                "error_count": 1,
+                "error_lines": [
+                  "Error from server (BadRequest): container \"server\" in pod \"productcatalogservice-5d89ccb5c6-6f7kp\" is waiting to start: image can't be pulled"
+                ],
+                "log_error": "Error from server (BadRequest): container \"server\" in pod \"productcatalogservice-5d89ccb5c6-6f7kp\" is waiting to start: image can't be pulled"
+              },
+              {
+                "pod_name": "productcatalogservice-5d89ccb5c6-f6nv2",
+                "error_count": 1,
+                "error_lines": [
+                  "Error from server (BadRequest): container \"server\" in pod \"productcatalogservice-5d89ccb5c6-f6nv2\" is waiting to start: trying and failing to pull image"
+                ],
+                "log_error": "Error from server (BadRequest): container \"server\" in pod \"productcatalogservice-5d89ccb5c6-f6nv2\" is waiting to start: trying and failing to pull image"
+              }
+            ],
+            "error": "productcatalogservice-5d89ccb5c6-6f7kp: Error from server (BadRequest): container \"server\" in pod \"productcatalogservice-5d89ccb5c6-6f7kp\" is waiting to start: image can't be pulled; productcatalogservice-5d89ccb5c6-f6nv2: Error from server (BadRequest): container \"server\" in pod \"productcatalogservice-5d89ccb5c6-f6nv2\" is waiting to start: trying and failing to pull image",
+            "call_id": "7e56b734-d528-4c47-bc32-c07ea58ca6a9",
+            "timestamp": "2026-04-01T20:25:38.147131Z"
+          }
+        }
+      },
+      "observability": {
+        "metrics_quality": "weak",
+        "logs_quality": "rich",
+        "traces_quality": "weak",
+        "summary_counts": {}
+      },
+      "transitions": [
+        {
+          "trigger_type": "tool",
+          "trigger_value": "wait_and_monitor",
+          "target_phase": 0,
+          "label": "static_replay",
+          "threshold": 0
+        }
+      ]
+    }
+  ],
+  "ground_truth": {
+    "root_cause": "productcatalogservice bad rollout",
+    "root_cause_service": "productcatalogservice",
+    "fault_class": "rollout_failure",
+    "correct_actions": [
+      {
+        "canonical": "rollback_deployment:productcatalogservice",
+        "tool_equivalents": [
+          "rollout_undo(productcatalogservice)"
+        ]
+      }
+    ],
+    "acceptable_actions": [
+      {
+        "canonical": "rollback_deployment:productcatalogservice",
+        "tool_equivalents": [
+          "rollout_undo(productcatalogservice)"
+        ]
+      }
+    ],
+    "incorrect_actions": [
+      {
+        "canonical": "restart_pod:productcatalogservice",
+        "tool_equivalents": [
+          "restart_pod(productcatalogservice)"
+        ]
+      },
+      {
+        "canonical": "rollout_restart:productcatalogservice",
+        "tool_equivalents": [
+          "rollout_restart(productcatalogservice)"
+        ]
+      }
+    ]
+  },
+  "telemetry_contract": {
+    "required_present": [
+      "get_k8s_state(productcatalogservice)",
+      "get_logs(productcatalogservice)"
+    ],
+    "required_nonzero": []
+  },
+  "scoring": {
+    "max_steps": 12,
+    "diagnosis_weight": 0.5,
+    "action_correctness_weight": 0.3,
+    "step_economy_weight": 0.2,
+    "step_economy_baseline": 6
+  },
+  "provenance": {
+    "source_run_dir": "/Users/aarnavsawant/Documents/CS6365/AgentScope/experiment_runs/20260401T202355Z_bad_rollout_productcatalogservice_react",
+    "captured_from_live_run": true,
+    "capture_timestamp_utc": "2026-04-01T20:29:16Z"
+  }
+}

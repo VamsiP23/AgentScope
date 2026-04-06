@@ -108,6 +108,136 @@ experiments:
       traces_required: false
     notes: Second rollout task for service generalization.
 
+  - id: rollout_bad_env_checkoutservice
+    status: candidate
+    category: availability_control
+    task_family: rollout_failure
+    scenario: checkoutservice rollout ships a bad environment configuration and never becomes healthy
+    entry_service: frontend
+    experiment_file: null
+    target_service: checkoutservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: checkoutservice
+      primary_signal: deployment_availability
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+      required_services:
+        - checkoutservice
+      fail_open: true
+      notes: Candidate rollout task to be backed by a live or replay dataset once collected.
+    ground_truth:
+      acceptable_root_causes:
+        - checkoutservice bad rollout
+        - checkoutservice rollout misconfiguration
+      acceptable_actions:
+        - kubectl rollout undo deployment/checkoutservice
+      required_evidence:
+        - get_k8s_state(checkoutservice)
+        - get_logs(checkoutservice)
+      traces_required: false
+    notes: Same rollout family on a latency-critical service.
+
+  - id: rollout_bad_probe_cartservice
+    status: candidate
+    category: availability_control
+    task_family: rollout_failure
+    scenario: cartservice rollout introduces overly strict probes that prevent the new pods from stabilizing
+    entry_service: frontend
+    experiment_file: null
+    target_service: cartservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: cartservice
+      primary_signal: deployment_availability
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+      required_services:
+        - cartservice
+      fail_open: true
+      notes: K8s state and pod events are the primary evidence path.
+    ground_truth:
+      acceptable_root_causes:
+        - cartservice bad rollout
+        - cartservice probe misconfiguration
+      acceptable_actions:
+        - kubectl rollout undo deployment/cartservice
+      required_evidence:
+        - get_k8s_state(cartservice)
+        - get_logs(cartservice)
+      traces_required: false
+    notes: Candidate rollout failure that resembles realistic “bad probe” regressions.
+
+  - id: replica_reduction_frontend
+    status: candidate
+    category: availability_control
+    task_family: capacity_regression
+    scenario: frontend replicas are reduced below healthy serving capacity
+    entry_service: frontend
+    experiment_file: null
+    target_service: frontend
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: frontend
+      primary_signal: deployment_availability
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+      required_services:
+        - frontend
+      fail_open: true
+      notes: Candidate task focused on capacity diagnosis instead of crash or rollout failure.
+    ground_truth:
+      acceptable_root_causes:
+        - frontend capacity regression
+        - frontend replica reduction
+      acceptable_actions:
+        - patch_replicas(frontend)
+        - wait_and_monitor
+      required_evidence:
+        - get_k8s_state(frontend)
+        - get_metrics(frontend)
+      traces_required: false
+    notes: Useful for distinguishing deployment capacity issues from code faults.
+
+  - id: crashloop_paymentservice
+    status: candidate
+    category: availability_control
+    task_family: runtime_failure
+    scenario: paymentservice pods start but crash repeatedly due to a runtime fault
+    entry_service: checkoutservice
+    experiment_file: null
+    target_service: paymentservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: paymentservice
+      primary_signal: deployment_availability
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+      required_services:
+        - paymentservice
+      fail_open: true
+      notes: Logs and restart history are the main evidence channels.
+    ground_truth:
+      acceptable_root_causes:
+        - paymentservice crash loop
+        - paymentservice runtime failure
+      acceptable_actions:
+        - kubectl rollout undo deployment/paymentservice
+        - restart_pod(paymentservice)
+      required_evidence:
+        - get_k8s_state(paymentservice)
+        - get_logs(paymentservice)
+      traces_required: false
+    notes: Runtime-failure control task distinct from rollout/image failures.
+
   - id: cpu_pressure_checkoutservice
     status: candidate
     category: resource_latency
@@ -141,9 +271,10 @@ experiments:
         - checkoutservice cpu pressure
         - checkoutservice latency bottleneck
       acceptable_actions:
-        - wait_and_monitor
         - patch_resources(checkoutservice, cpu)
+        - scale_deployment(checkoutservice)
         - patch_resources_then_scale(checkoutservice)
+        - wait_and_monitor
       required_evidence:
         - get_k8s_state(checkoutservice)
         - get_metrics(checkoutservice)
@@ -183,15 +314,131 @@ experiments:
         - frontend cpu pressure
         - frontend latency bottleneck
       acceptable_actions:
-        - wait_and_monitor
         - patch_resources(frontend, cpu)
+        - scale_deployment(frontend)
         - patch_resources_then_scale(frontend)
+        - wait_and_monitor
       required_evidence:
         - get_k8s_state(frontend)
         - get_metrics(frontend)
         - get_traces(frontend)
       traces_required: true
     notes: User-facing resource-pressure task at the entry service.
+
+  - id: memory_pressure_checkoutservice
+    status: candidate
+    category: resource_latency
+    task_family: resource_pressure
+    scenario: checkoutservice experiences memory pressure and degraded latency without a hard crash
+    entry_service: frontend
+    experiment_file: null
+    target_service: checkoutservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: checkoutservice
+      primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - memory_series_present
+        - memory_request_series_present
+        - jaeger_services
+      required_services:
+        - frontend
+        - checkoutservice
+      fail_open: false
+      notes: Requires memory telemetry and traces or replay equivalents.
+    ground_truth:
+      acceptable_root_causes:
+        - checkoutservice memory pressure
+        - checkoutservice resource exhaustion
+      acceptable_actions:
+        - patch_resources(checkoutservice, memory)
+        - wait_and_monitor
+      required_evidence:
+        - get_k8s_state(checkoutservice)
+        - get_metrics(checkoutservice)
+        - get_logs(checkoutservice)
+      traces_required: false
+    notes: Memory-focused counterpart to the CPU-pressure task.
+
+  - id: memory_pressure_cartservice
+    status: candidate
+    category: resource_latency
+    task_family: resource_pressure
+    scenario: cartservice exceeds healthy memory usage and becomes unstable
+    entry_service: frontend
+    experiment_file: null
+    target_service: cartservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: cartservice
+      primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - memory_series_present
+        - memory_request_series_present
+      required_services:
+        - frontend
+        - cartservice
+      fail_open: false
+      notes: Memory-pressure task that does not rely on full trace availability.
+    ground_truth:
+      acceptable_root_causes:
+        - cartservice memory pressure
+        - cartservice resource exhaustion
+      acceptable_actions:
+        - patch_resources(cartservice, memory)
+        - wait_and_monitor
+      required_evidence:
+        - get_k8s_state(cartservice)
+        - get_metrics(cartservice)
+        - get_logs(cartservice)
+      traces_required: false
+    notes: Candidate service-local memory task.
+
+  - id: cpu_throttling_currencyservice
+    status: candidate
+    category: resource_latency
+    task_family: resource_pressure
+    scenario: currencyservice remains healthy at the pod level but suffers high CPU throttling and latency
+    entry_service: frontend
+    experiment_file: null
+    target_service: currencyservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: currencyservice
+      primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - cpu_series_present
+        - cpu_limit_series_present
+        - jaeger_services
+      required_services:
+        - frontend
+        - currencyservice
+      fail_open: false
+      notes: Designed to test reasoning about throttling rather than crash or outage.
+    ground_truth:
+      acceptable_root_causes:
+        - currencyservice cpu pressure
+        - currencyservice cpu throttling
+      acceptable_actions:
+        - patch_resources(currencyservice, cpu)
+        - wait_and_monitor
+      required_evidence:
+        - get_metrics(currencyservice)
+        - get_traces(frontend)
+      traces_required: true
+    notes: Candidate throttling-specific latency task.
 
   - id: network_delay_frontend_productcatalogservice
     status: candidate
@@ -265,6 +512,452 @@ experiments:
       traces_required: true
     notes: Alternate dependency-localization task.
 
+  - id: network_delay_checkoutservice_paymentservice
+    status: candidate
+    category: dependency_trace
+    task_family: dependency_localization
+    scenario: injected delay on the checkoutservice -> paymentservice hop slows the checkout path
+    entry_service: checkoutservice
+    experiment_file: null
+    target_service: checkoutservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: checkoutservice
+      primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - jaeger_services
+      required_services:
+        - checkoutservice
+        - paymentservice
+      fail_open: false
+      notes: Trace-centric dependency task deeper in the checkout graph.
+    ground_truth:
+      acceptable_root_causes:
+        - network-link:checkoutservice->paymentservice
+        - paymentservice latency bottleneck
+      acceptable_actions:
+        - wait_and_monitor
+      required_evidence:
+        - get_traces(checkoutservice)
+        - get_dependency_traces(checkoutservice)
+        - get_k8s_state(paymentservice)
+      traces_required: true
+    notes: Candidate non-frontend dependency localization task.
+
+  - id: network_delay_checkoutservice_shippingservice
+    status: candidate
+    category: dependency_trace
+    task_family: dependency_localization
+    scenario: injected delay on the checkoutservice -> shippingservice hop slows order completion
+    entry_service: checkoutservice
+    experiment_file: null
+    target_service: checkoutservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: checkoutservice
+      primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - jaeger_services
+      required_services:
+        - checkoutservice
+        - shippingservice
+      fail_open: false
+      notes: Candidate checkout-flow localization task with similar topology but different dependency.
+    ground_truth:
+      acceptable_root_causes:
+        - network-link:checkoutservice->shippingservice
+        - shippingservice latency bottleneck
+      acceptable_actions:
+        - wait_and_monitor
+      required_evidence:
+        - get_traces(checkoutservice)
+        - get_dependency_traces(checkoutservice)
+        - get_k8s_state(shippingservice)
+      traces_required: true
+    notes: Complements paymentservice delay to test path generalization.
+
+  - id: dependency_outage_cartservice_redis
+    status: candidate
+    category: dependency_trace
+    task_family: dependency_localization
+    scenario: redis-cart becomes unavailable and causes cartservice degradation
+    entry_service: frontend
+    experiment_file: null
+    target_service: cartservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: cartservice
+      primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - jaeger_services
+      required_services:
+        - cartservice
+        - redis-cart
+      fail_open: false
+      notes: Dependency outage case that should be solvable with logs, K8s state, and traces.
+    ground_truth:
+      acceptable_root_causes:
+        - redis-cart dependency outage
+        - cartservice blocked on redis-cart
+      acceptable_actions:
+        - restart_pod(redis-cart)
+        - wait_and_monitor
+      required_evidence:
+        - get_k8s_state(redis-cart)
+        - get_logs(cartservice)
+        - get_k8s_state(cartservice)
+      traces_required: false
+    notes: Candidate downstream outage task on a common dependency.
+
+  - id: dependency_slow_recommendationservice_productcatalogservice
+    status: candidate
+    category: dependency_trace
+    task_family: dependency_localization
+    scenario: recommendationservice slows because productcatalogservice becomes the dominant downstream bottleneck
+    entry_service: frontend
+    experiment_file: null
+    target_service: recommendationservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: recommendationservice
+      primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - jaeger_services
+      required_services:
+        - recommendationservice
+        - productcatalogservice
+      fail_open: false
+      notes: Candidate dependency-localization case intended to diversify beyond frontend-rooted paths.
+    ground_truth:
+      acceptable_root_causes:
+        - productcatalogservice latency bottleneck
+        - recommendationservice blocked on productcatalogservice
+      acceptable_actions:
+        - wait_and_monitor
+      required_evidence:
+        - get_traces(recommendationservice)
+        - get_k8s_state(productcatalogservice)
+        - get_metrics(productcatalogservice)
+      traces_required: true
+    notes: Downstream latency on the recommendation branch.
+
+  - id: pod_kill_cartservice
+    status: candidate
+    category: runtime_disturbance
+    task_family: pod_disturbance
+    scenario: cartservice pods are repeatedly killed, causing transient instability
+    entry_service: frontend
+    experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/chaos_pod_kill_cartservice_agent.yaml
+    target_service: cartservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: cartservice
+      primary_signal: restart_history
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+      required_services:
+        - cartservice
+      fail_open: true
+      notes: Runtime disturbance task can rely mostly on Kubernetes state.
+    ground_truth:
+      acceptable_root_causes:
+        - cartservice pod churn
+        - cartservice runtime disturbance
+      acceptable_actions:
+        - wait_and_monitor
+        - restart_pod(cartservice)
+      required_evidence:
+        - get_k8s_state(cartservice)
+        - get_logs(cartservice)
+      traces_required: false
+    notes: Realistic transient-failure task already represented in the repo experiments.
+
+  - id: pod_kill_productcatalogservice
+    status: candidate
+    category: runtime_disturbance
+    task_family: pod_disturbance
+    scenario: productcatalogservice pods are repeatedly killed, causing service instability
+    entry_service: frontend
+    experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/chaos_pod_kill_productcatalogservice_agent.yaml
+    target_service: productcatalogservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: productcatalogservice
+      primary_signal: restart_history
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+      required_services:
+        - productcatalogservice
+      fail_open: true
+      notes: Same disturbance family on a different service to test generalization.
+    ground_truth:
+      acceptable_root_causes:
+        - productcatalogservice pod churn
+        - productcatalogservice runtime disturbance
+      acceptable_actions:
+        - wait_and_monitor
+        - restart_pod(productcatalogservice)
+      required_evidence:
+        - get_k8s_state(productcatalogservice)
+        - get_logs(productcatalogservice)
+      traces_required: false
+    notes: Candidate runtime-disturbance task on a core catalog service.
+
+  - id: single_unhealthy_replica_frontend
+    status: candidate
+    category: runtime_disturbance
+    task_family: partial_degradation
+    scenario: one frontend replica becomes unhealthy while others continue serving traffic
+    entry_service: frontend
+    experiment_file: null
+    target_service: frontend
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: frontend
+      primary_signal: deployment_availability
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+      required_services:
+        - frontend
+      fail_open: true
+      notes: Candidate partial-degradation task focused on per-pod evidence and targeted restart action.
+    ground_truth:
+      acceptable_root_causes:
+        - frontend partial replica failure
+        - one unhealthy frontend replica
+      acceptable_actions:
+        - restart_pod(frontend)
+        - wait_and_monitor
+      required_evidence:
+        - get_k8s_state(frontend)
+        - get_logs(frontend)
+      traces_required: false
+    notes: Tests whether the agent can isolate a single bad replica instead of restarting the whole deployment.
+
+  - id: stuck_rollout_checkoutservice
+    status: candidate
+    category: runtime_disturbance
+    task_family: partial_degradation
+    scenario: checkoutservice rollout progresses but never fully stabilizes because one new replica stays unhealthy
+    entry_service: frontend
+    experiment_file: null
+    target_service: checkoutservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: checkoutservice
+      primary_signal: deployment_availability
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+      required_services:
+        - checkoutservice
+      fail_open: true
+      notes: Candidate task for rollout-progressing and partial-availability reasoning.
+    ground_truth:
+      acceptable_root_causes:
+        - checkoutservice stuck rollout
+        - partial rollout failure on checkoutservice
+      acceptable_actions:
+        - kubectl rollout undo deployment/checkoutservice
+      required_evidence:
+        - get_k8s_state(checkoutservice)
+        - get_logs(checkoutservice)
+      traces_required: false
+    notes: Bridges rollout reasoning and partial degradation.
+
+  - id: latency_with_missing_traces_checkoutservice
+    status: candidate
+    category: observability_gap
+    task_family: observability_challenge
+    scenario: checkoutservice latency incident where traces are unavailable but metrics and Kubernetes state are intact
+    entry_service: frontend
+    experiment_file: null
+    target_service: checkoutservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: checkoutservice
+      primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+      required_services:
+        - checkoutservice
+      fail_open: true
+      notes: Replay-oriented observability challenge where traces are intentionally absent.
+    ground_truth:
+      acceptable_root_causes:
+        - checkoutservice latency bottleneck
+        - checkoutservice resource exhaustion
+      acceptable_actions:
+        - wait_and_monitor
+        - patch_resources(checkoutservice, cpu)
+      required_evidence:
+        - get_k8s_state(checkoutservice)
+        - get_metrics(checkoutservice)
+      traces_required: false
+    notes: Designed to test reasoning when Jaeger cannot help.
+
+  - id: quiet_logs_cpu_pressure_frontend
+    status: candidate
+    category: observability_gap
+    task_family: observability_challenge
+    scenario: frontend CPU pressure produces clear metrics but almost no useful logs
+    entry_service: frontend
+    experiment_file: null
+    target_service: frontend
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: frontend
+      primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - cpu_series_present
+        - jaeger_services
+      required_services:
+        - frontend
+      fail_open: false
+      notes: Replay-oriented task to test correct de-emphasis of logs.
+    ground_truth:
+      acceptable_root_causes:
+        - frontend cpu pressure
+        - frontend resource exhaustion
+      acceptable_actions:
+        - patch_resources(frontend, cpu)
+        - wait_and_monitor
+      required_evidence:
+        - get_metrics(frontend)
+        - get_traces(frontend)
+      traces_required: true
+    notes: Useful for discouraging overreliance on `get_logs`.
+
+  - id: noisy_frontend_errors_checkoutservice_root_cause
+    status: candidate
+    category: observability_gap
+    task_family: observability_challenge
+    scenario: frontend shows distracting error spikes while checkoutservice is the real latency bottleneck
+    entry_service: frontend
+    experiment_file: null
+    target_service: checkoutservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: checkoutservice
+      primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - jaeger_services
+      required_services:
+        - frontend
+        - checkoutservice
+      fail_open: false
+      notes: Candidate noisy-evidence task for causal discipline.
+    ground_truth:
+      acceptable_root_causes:
+        - checkoutservice latency bottleneck
+        - checkoutservice cpu pressure
+      acceptable_actions:
+        - patch_resources(checkoutservice, cpu)
+        - wait_and_monitor
+      required_evidence:
+        - get_metrics(checkoutservice)
+        - get_traces(frontend)
+      traces_required: true
+    notes: Tests whether the agent can avoid blaming the loudest symptom service.
+
+  - id: dns_failure_cartservice
+    status: candidate
+    category: runtime_disturbance
+    task_family: dependency_localization
+    scenario: cartservice experiences DNS failures when resolving a dependency
+    entry_service: frontend
+    experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/chaos_dns_cartservice_baseline.yaml
+    target_service: cartservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: cartservice
+      primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+      required_services:
+        - cartservice
+      fail_open: true
+      notes: DNS failure can often be diagnosed from logs and service state even without traces.
+    ground_truth:
+      acceptable_root_causes:
+        - cartservice dns failure
+        - cartservice dependency resolution failure
+      acceptable_actions:
+        - wait_and_monitor
+      required_evidence:
+        - get_logs(cartservice)
+        - get_k8s_state(cartservice)
+      traces_required: false
+    notes: Existing experiment that broadens the suite beyond pure latency and rollout classes.
+
+  - id: network_delay_frontend_cartservice
+    status: candidate
+    category: dependency_trace
+    task_family: dependency_localization
+    scenario: injected delay on the frontend -> cartservice hop slows cart interactions
+    entry_service: frontend
+    experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/chaos_network_delay_frontend_cartservice_baseline.yaml
+    target_service: frontend
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: cartservice
+      primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - jaeger_services
+      required_services:
+        - frontend
+        - cartservice
+      fail_open: false
+      notes: Baseline network-delay task already represented in the repo.
+    ground_truth:
+      acceptable_root_causes:
+        - network-link:frontend->cartservice
+        - cartservice latency bottleneck
+      acceptable_actions:
+        - wait_and_monitor
+      required_evidence:
+        - get_traces(frontend)
+        - get_k8s_state(cartservice)
+      traces_required: true
+    notes: Existing baseline that can be upgraded to replay and benchmark use.
+
 stretch_experiments:
   - id: replay_only_checkout_cpu_pressure
     status: stretch
@@ -298,3 +991,75 @@ stretch_experiments:
         - get_traces(checkoutservice)
       traces_required: true
     notes: Planned replay benchmark task once the capture pipeline has enough high-quality datasets.
+
+  - id: rollout_failure_plus_dependency_delay
+    status: stretch
+    category: multi_fault
+    task_family: compound_incident
+    scenario: a rollout failure on one service coincides with a downstream latency issue on another path
+    experiment_file: null
+    target_service: frontend
+    entry_service: frontend
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: frontend
+      primary_signal: multiple
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - jaeger_services
+      required_services:
+        - frontend
+        - productcatalogservice
+        - checkoutservice
+      fail_open: false
+      notes: Compound fault task meant for replay or carefully curated live collection.
+    ground_truth:
+      acceptable_root_causes:
+        - productcatalogservice bad rollout
+        - network-link:frontend->currencyservice
+      acceptable_actions:
+        - kubectl rollout undo deployment/productcatalogservice
+        - wait_and_monitor
+      required_evidence:
+        - get_k8s_state(productcatalogservice)
+        - get_logs(productcatalogservice)
+        - get_traces(frontend)
+      traces_required: true
+    notes: Multi-fault prioritization task for advanced agents.
+
+  - id: cpu_pressure_plus_noisy_dependency_signals
+    status: stretch
+    category: multi_fault
+    task_family: compound_incident
+    scenario: checkoutservice CPU pressure occurs alongside distracting downstream warnings and partial frontend errors
+    experiment_file: null
+    target_service: checkoutservice
+    entry_service: frontend
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: checkoutservice
+      primary_signal: service_latency
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - jaeger_services
+      required_services:
+        - frontend
+        - checkoutservice
+      fail_open: false
+      notes: Replay-oriented compound task focused on separating true bottlenecks from noisy secondary evidence.
+    ground_truth:
+      acceptable_root_causes:
+        - checkoutservice cpu pressure
+      acceptable_actions:
+        - patch_resources(checkoutservice, cpu)
+        - wait_and_monitor
+      required_evidence:
+        - get_metrics(checkoutservice)
+        - get_traces(frontend)
+      traces_required: true
+    notes: Stress test for causal reasoning under distracting evidence.
