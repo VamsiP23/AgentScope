@@ -18,9 +18,29 @@ if str(ROOT) not in sys.path:
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-import run_experiment as runner  # noqa: E402
 from agent_graph.aci import AgentCloudInterface  # noqa: E402
 from benchmarking.problem import resolve_problem_for_experiment  # noqa: E402
+from runner_common import (  # noqa: E402
+    DEFAULT_BENCHMARK_SUITE,
+    bool_value,
+    int_value,
+    list_value,
+    print_status,
+    rel_path,
+    require_binary,
+    run_cmd,
+    run_cmd_streaming,
+    sanitize_name,
+    sleep_with_progress,
+    start_process,
+    str_value,
+    terminate_process,
+    ts_compact,
+    ensure_reusable_local_endpoint,
+)
+from runner_env import build_fault_apply_cmd, build_fault_revert_cmd, build_reset_cmd  # noqa: E402
+from runner_agent import build_monitor_cmd, wait_for_incident  # noqa: E402
+from runner_k8s import assess_reset_need, verify_chaos_mesh_health, verify_environment  # noqa: E402
 
 
 TOPOLOGY: Dict[str, List[str]] = {
@@ -205,8 +225,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = build_parser().parse_args()
 
-    runner.require_binary("kubectl")
-    runner.require_binary("python3")
+    require_binary("kubectl")
+    require_binary("python3")
 
     experiment_path = Path(args.experiment_file)
     if not experiment_path.is_absolute():
@@ -215,26 +235,26 @@ def main() -> int:
         raise RuntimeError(f"Experiment file not found: {experiment_path}")
 
     config = _read_yaml(experiment_path)
-    name = runner.sanitize_name(f"{runner.str_value(config.get('name'), experiment_path.stem)}_evidence")
-    namespace = runner.str_value(config.get("namespace"), "default")
+    name = sanitize_name(f"{str_value(config.get('name'), experiment_path.stem)}_evidence")
+    namespace = str_value(config.get("namespace"), "default")
     timings = config.get("timings", {}) or {}
-    pre_fault_delay = runner.int_value(timings.get("pre_fault_delay_seconds"), 60)
-    post_fault_delay = runner.int_value(timings.get("post_fault_delay_seconds"), 30)
+    pre_fault_delay = int_value(timings.get("pre_fault_delay_seconds"), 60)
+    post_fault_delay = int_value(timings.get("post_fault_delay_seconds"), 30)
     detector = config.get("detector", {}) or {}
     traffic = config.get("traffic", {}) or {}
     fault_cfg = config.get("fault", {}) or {}
     reset_cfg = config.get("reset", {}) or {}
     agent_cfg = config.get("agent", {}) or {}
 
-    run_dir = Path(args.out_dir).resolve() / f"{runner.ts_compact()}_{name}"
+    run_dir = Path(args.out_dir).resolve() / f"{ts_compact()}_{name}"
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "experiment.yaml").write_text(experiment_path.read_text())
 
-    runner.print_status(f"starting evidence probe '{name}'")
-    runner.print_status(f"artifacts directory: {run_dir}")
+    print_status(f"starting evidence probe '{name}'")
+    print_status(f"artifacts directory: {run_dir}")
 
     summary: Dict[str, Any] = {
-        "name": runner.str_value(config.get("name"), experiment_path.stem),
+        "name": str_value(config.get("name"), experiment_path.stem),
         "run_id": run_dir.name,
         "started_at_utc": utc_now(),
         "experiment_file": str(experiment_path),
@@ -250,23 +270,23 @@ def main() -> int:
 
     try:
         startup = config.get("startup", {}) or {}
-        startup_enabled = runner.bool_value(startup.get("enabled"), True) and not args.skip_startup
+        startup_enabled = bool_value(startup.get("enabled"), True) and not args.skip_startup
         if startup_enabled:
-            runner.print_status("phase=startup: running start_all.sh")
+            print_status("phase=startup: running start_all.sh")
             cmd = ["./scripts/start_all.sh", "-n", namespace]
-            cmd.extend(runner.list_value(startup.get("args")))
-            summary["steps"]["startup"] = runner.run_cmd(cmd, ROOT, run_dir / "startup.log")
+            cmd.extend(list_value(startup.get("args")))
+            summary["steps"]["startup"] = run_cmd(cmd, ROOT, run_dir / "startup.log")
             if summary["steps"]["startup"]["returncode"] != 0:
                 raise RuntimeError("start_all.sh failed; see startup.log")
         else:
-            runner.print_status("phase=startup: skipped")
+            print_status("phase=startup: skipped")
 
-        if runner.bool_value(reset_cfg.get("enabled"), False) and runner.bool_value(reset_cfg.get("before_run"), True):
-            summary["steps"]["reset_before_check"] = runner.assess_reset_need(namespace)
+        if bool_value(reset_cfg.get("enabled"), False) and bool_value(reset_cfg.get("before_run"), True):
+            summary["steps"]["reset_before_check"] = assess_reset_need(namespace)
             if summary["steps"]["reset_before_check"]["needs_reset"]:
-                runner.print_status("phase=reset: restoring cluster baseline")
-                reset_cmd = runner.build_reset_cmd(namespace, reset_cfg)
-                summary["steps"]["reset_before"] = runner.run_cmd_streaming(
+                print_status("phase=reset: restoring cluster baseline")
+                reset_cmd = build_reset_cmd(namespace, reset_cfg)
+                summary["steps"]["reset_before"] = run_cmd_streaming(
                     reset_cmd,
                     ROOT,
                     run_dir / "reset_before.log",
@@ -275,51 +295,51 @@ def main() -> int:
                 if summary["steps"]["reset_before"]["returncode"] != 0:
                     raise RuntimeError("cluster reset failed before run; see reset_before.log")
             else:
-                runner.print_status("phase=reset: skipped (cluster baseline already healthy)")
+                print_status("phase=reset: skipped (cluster baseline already healthy)")
 
-        runner.verify_environment(namespace)
-        runner.verify_chaos_mesh_health()
-        runner.print_status("phase=environment: verified")
+        verify_environment(namespace)
+        verify_chaos_mesh_health()
+        print_status("phase=environment: verified")
 
-        prom_url = runner.str_value(detector.get("prom_url"), "http://localhost:9090")
-        jaeger_url = runner.str_value(agent_cfg.get("jaeger_url"), "http://localhost:16686")
-        summary["steps"]["port_forward_prometheus"] = runner.ensure_reusable_local_endpoint(namespace, "prometheus", prom_url, "/-/ready")
-        summary["steps"]["port_forward_jaeger"] = runner.ensure_reusable_local_endpoint(namespace, "jaeger", jaeger_url, "/api/services")
+        prom_url = str_value(detector.get("prom_url"), "http://localhost:9090")
+        jaeger_url = str_value(agent_cfg.get("jaeger_url"), "http://localhost:16686")
+        summary["steps"]["port_forward_prometheus"] = ensure_reusable_local_endpoint(namespace, "prometheus", prom_url, "/-/ready")
+        summary["steps"]["port_forward_jaeger"] = ensure_reusable_local_endpoint(namespace, "jaeger", jaeger_url, "/api/services")
 
-        if runner.bool_value(traffic.get("enabled"), False):
+        if bool_value(traffic.get("enabled"), False):
             traffic_cmd = [
                 "./scripts/generate_traffic.sh",
                 "-u",
-                runner.str_value(traffic.get("base_url"), "http://localhost:8080"),
+                str_value(traffic.get("base_url"), "http://localhost:8080"),
                 "-d",
-                str(runner.int_value(traffic.get("duration_seconds"), 300)),
+                str(int_value(traffic.get("duration_seconds"), 300)),
                 "-r",
-                str(runner.int_value(traffic.get("rps"), 1)),
+                str(int_value(traffic.get("rps"), 1)),
                 "-m",
-                runner.str_value(traffic.get("mode"), "realistic"),
+                str_value(traffic.get("mode"), "realistic"),
             ]
-            traffic_proc = runner.start_process(traffic_cmd, ROOT, run_dir / "traffic.log")
+            traffic_proc = start_process(traffic_cmd, ROOT, run_dir / "traffic.log")
             summary["steps"]["traffic"] = {"cmd": traffic_cmd, "pid": traffic_proc.pid}
-            runner.print_status(f"phase=traffic: started (pid={traffic_proc.pid})")
+            print_status(f"phase=traffic: started (pid={traffic_proc.pid})")
 
         baseline = config.get("baseline", {}) or {}
-        if runner.bool_value(baseline.get("enabled"), False):
+        if bool_value(baseline.get("enabled"), False):
             baseline_cmd = [
                 "./scripts/collect_baseline.sh",
                 "-n",
                 namespace,
                 "-i",
-                str(runner.int_value(baseline.get("interval_seconds"), 15)),
+                str(int_value(baseline.get("interval_seconds"), 15)),
                 "-d",
-                str(runner.int_value(baseline.get("duration_seconds"), 300)),
+                str(int_value(baseline.get("duration_seconds"), 300)),
             ]
-            baseline_proc = runner.start_process(baseline_cmd, ROOT, run_dir / "baseline.log")
+            baseline_proc = start_process(baseline_cmd, ROOT, run_dir / "baseline.log")
             summary["steps"]["baseline"] = {"cmd": baseline_cmd, "pid": baseline_proc.pid}
-            runner.print_status(f"phase=baseline: started (pid={baseline_proc.pid})")
+            print_status(f"phase=baseline: started (pid={baseline_proc.pid})")
 
-        if runner.bool_value(detector.get("enabled"), False):
-            monitor_cmd = runner.build_monitor_cmd(namespace, detector, run_dir)
-            monitor_proc = runner.start_process(
+        if bool_value(detector.get("enabled"), False):
+            monitor_cmd = build_monitor_cmd(namespace, detector, run_dir)
+            monitor_proc = start_process(
                 monitor_cmd,
                 ROOT,
                 run_dir / "monitor.log",
@@ -327,37 +347,37 @@ def main() -> int:
                 stdout_prefix="[monitor] ",
             )
             summary["steps"]["monitor"] = {"cmd": monitor_cmd, "pid": monitor_proc.pid}
-            runner.print_status(f"phase=monitor: started (pid={monitor_proc.pid})")
+            print_status(f"phase=monitor: started (pid={monitor_proc.pid})")
 
-        runner.sleep_with_progress(pre_fault_delay, "phase=pre_fault_delay")
+        sleep_with_progress(pre_fault_delay, "phase=pre_fault_delay")
 
         if fault_cfg:
-            runner.print_status("phase=fault_apply: applying fault")
-            apply_cmd = runner.build_fault_apply_cmd(namespace, fault_cfg)
-            summary["steps"]["fault_apply"] = runner.run_cmd(apply_cmd, ROOT, run_dir / "fault_apply.log")
+            print_status("phase=fault_apply: applying fault")
+            apply_cmd = build_fault_apply_cmd(namespace, fault_cfg)
+            summary["steps"]["fault_apply"] = run_cmd(apply_cmd, ROOT, run_dir / "fault_apply.log")
             if summary["steps"]["fault_apply"]["returncode"] != 0:
                 raise RuntimeError("fault apply failed; see fault_apply.log")
             fault_active = True
-            runner.print_status("phase=fault_apply: completed")
+            print_status("phase=fault_apply: completed")
 
         detection = {}
-        if runner.bool_value(detector.get("enabled"), False):
+        if bool_value(detector.get("enabled"), False):
             max_wait = 120
             poll_interval = 2
-            runner.print_status(f"phase=evidence_wait: waiting up to {max_wait}s for detector confirmation")
-            detection = runner.wait_for_incident(run_dir / "detector_runs", max_wait, poll_interval)
+            print_status(f"phase=evidence_wait: waiting up to {max_wait}s for detector confirmation")
+            detection = wait_for_incident(run_dir / "detector_runs", max_wait, poll_interval)
             (run_dir / "seeded_detection.json").write_text(json.dumps(detection, indent=2))
             summary["steps"]["detection"] = detection
 
-        runner.print_status("phase=evidence: collecting ACI evidence")
-        benchmark_problem = resolve_problem_for_experiment(experiment_path, runner.DEFAULT_BENCHMARK_SUITE)
+        print_status("phase=evidence: collecting ACI evidence")
+        benchmark_problem = resolve_problem_for_experiment(experiment_path, DEFAULT_BENCHMARK_SUITE)
         target_service = ""
         category = ""
         if benchmark_problem is not None:
             target_service = benchmark_problem.target_service
             category = benchmark_problem.category
         if not target_service:
-            target_service = runner.str_value(agent_cfg.get("target_deployment"), runner.str_value(detector.get("target_deployment"), ""))
+            target_service = str_value(agent_cfg.get("target_deployment"), str_value(detector.get("target_deployment"), ""))
         if not target_service:
             raise RuntimeError("Could not determine target service for evidence probe")
 
@@ -365,14 +385,14 @@ def main() -> int:
             namespace=namespace,
             prom_url=prom_url,
             jaeger_url=jaeger_url,
-            jaeger_enabled=runner.bool_value(agent_cfg.get("jaeger_enabled"), True),
+            jaeger_enabled=bool_value(agent_cfg.get("jaeger_enabled"), True),
             dry_run=True,
             run_log_path=str(run_dir / "aci_run_log.jsonl"),
         )
         evidence = collect_evidence(
             aci,
             target_service=target_service,
-            jaeger_enabled=runner.bool_value(agent_cfg.get("jaeger_enabled"), True),
+            jaeger_enabled=bool_value(agent_cfg.get("jaeger_enabled"), True),
             category=category,
             lookback_minutes=max(1, args.lookback_minutes),
             include_dependencies=bool(args.include_dependencies),
@@ -385,17 +405,17 @@ def main() -> int:
             "target_service": target_service,
             "category": category,
             "counts": evidence["summary"]["counts"],
-            "report_file": runner.rel_path(run_dir / "evidence_report.json"),
-            "aci_run_log": runner.rel_path(run_dir / "aci_run_log.jsonl"),
+            "report_file": rel_path(run_dir / "evidence_report.json"),
+            "aci_run_log": rel_path(run_dir / "aci_run_log.jsonl"),
         }
-        runner.print_status(f"phase=evidence: collected for target={target_service}")
+        print_status(f"phase=evidence: collected for target={target_service}")
 
-        runner.sleep_with_progress(post_fault_delay, "phase=post_fault_delay")
+        sleep_with_progress(post_fault_delay, "phase=post_fault_delay")
 
-        if fault_active and not runner.bool_value(fault_cfg.get("auto_revert"), False):
-            runner.print_status("phase=fault_revert: reverting active fault")
-            revert_cmd = runner.build_fault_revert_cmd(namespace, fault_cfg)
-            summary["steps"]["fault_revert"] = runner.run_cmd(revert_cmd, ROOT, run_dir / "fault_revert.log")
+        if fault_active and not bool_value(fault_cfg.get("auto_revert"), False):
+            print_status("phase=fault_revert: reverting active fault")
+            revert_cmd = build_fault_revert_cmd(namespace, fault_cfg)
+            summary["steps"]["fault_revert"] = run_cmd(revert_cmd, ROOT, run_dir / "fault_revert.log")
             if summary["steps"]["fault_revert"]["returncode"] != 0:
                 raise RuntimeError("fault revert failed; see fault_revert.log")
             fault_active = False
@@ -403,9 +423,9 @@ def main() -> int:
     finally:
         if fault_active:
             try:
-                runner.print_status("phase=fault_revert_on_exit: reverting active fault")
-                revert_cmd = runner.build_fault_revert_cmd(namespace, fault_cfg)
-                summary["steps"]["fault_revert_on_exit"] = runner.run_cmd(
+                print_status("phase=fault_revert_on_exit: reverting active fault")
+                revert_cmd = build_fault_revert_cmd(namespace, fault_cfg)
+                summary["steps"]["fault_revert_on_exit"] = run_cmd(
                     revert_cmd,
                     ROOT,
                     run_dir / "fault_revert_on_exit.log",
@@ -413,11 +433,11 @@ def main() -> int:
             except Exception as exc:
                 summary["steps"]["fault_revert_on_exit"] = {"error": str(exc)}
         if traffic_proc is not None:
-            summary["steps"]["traffic_exit"] = {"returncode": runner.terminate_process(traffic_proc)}
+            summary["steps"]["traffic_exit"] = {"returncode": terminate_process(traffic_proc)}
         if baseline_proc is not None:
-            summary["steps"]["baseline_exit"] = {"returncode": runner.terminate_process(baseline_proc)}
+            summary["steps"]["baseline_exit"] = {"returncode": terminate_process(baseline_proc)}
         if monitor_proc is not None:
-            summary["steps"]["monitor_exit"] = {"returncode": runner.terminate_process(monitor_proc)}
+            summary["steps"]["monitor_exit"] = {"returncode": terminate_process(monitor_proc)}
 
         summary["finished_at_utc"] = utc_now()
         (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))

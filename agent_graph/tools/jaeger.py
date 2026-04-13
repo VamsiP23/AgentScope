@@ -6,6 +6,26 @@ import time
 from collections import Counter, defaultdict
 from http.client import RemoteDisconnected
 from typing import Any, Dict, List, Optional
+
+from agent_graph.tools.jaeger_support import (
+    classify_health,
+    dependency_health_summary,
+    dependency_trace_quality,
+    dependency_trace_summary_text,
+    duration_ms,
+    entry_point_summary,
+    extract_error_types,
+    find_common_bottleneck,
+    focus_service_path,
+    is_probe_or_health_trace,
+    normalize_service_name,
+    observability_error_message,
+    parse_trace,
+    percentile,
+    service_name,
+    trace_contains_service,
+    trace_quality,
+)
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import urlopen
@@ -41,21 +61,21 @@ class JaegerTools:
         application_traces = self._application_traces(traces)
         durations = [trace["total_duration_ms"] for trace in application_traces]
         slowest_trace = max(application_traces, key=lambda trace: trace["total_duration_ms"], default=None)
-        bottleneck = self._find_common_bottleneck(application_traces)
+        bottleneck = find_common_bottleneck(application_traces)
         return {
             "service": service,
             "service_present": True,
-            "trace_quality": self._trace_quality(application_traces, traces),
+            "trace_quality": trace_quality(application_traces, traces),
             "raw_trace_count": len(traces),
             "application_trace_count": len(application_traces),
             "probe_trace_count_filtered": max(0, len(traces) - len(application_traces)),
             "trace_count": len(application_traces),
-            "p50_duration_ms": self._percentile(durations, 50),
-            "p95_duration_ms": self._percentile(durations, 95),
-            "p99_duration_ms": self._percentile(durations, 99),
+            "p50_duration_ms": percentile(durations, 50),
+            "p95_duration_ms": percentile(durations, 95),
+            "p99_duration_ms": percentile(durations, 99),
             "slowest_trace": slowest_trace,
             "common_bottleneck": bottleneck,
-            "summary": self._entry_point_summary(service, application_traces, bottleneck),
+            "summary": entry_point_summary(service, application_traces, bottleneck),
         }
 
     def get_dependency_health(
@@ -73,11 +93,11 @@ class JaegerTools:
         total = len(application_traces)
         error_traces = [trace for trace in application_traces if trace["has_error"]]
         slow_traces = [trace for trace in application_traces if trace["total_duration_ms"] >= slow_threshold_ms]
-        error_types = self._extract_error_types(application_traces)
+        error_types = extract_error_types(application_traces)
         return {
             "service": service,
             "service_present": True,
-            "trace_quality": self._trace_quality(application_traces, traces),
+            "trace_quality": trace_quality(application_traces, traces),
             "raw_trace_count": len(traces),
             "application_trace_count": total,
             "probe_trace_count_filtered": max(0, len(traces) - total),
@@ -85,13 +105,13 @@ class JaegerTools:
             "error_rate": (len(error_traces) / total) if total else 0.0,
             "slow_rate": (len(slow_traces) / total) if total else 0.0,
             "error_types": error_types,
-            "health_classification": self._classify_health(bool(error_traces), bool(slow_traces), total > 0),
-            "summary": self._dependency_health_summary(service, total, error_traces, slow_traces, error_types),
+            "health_classification": classify_health(bool(error_traces), bool(slow_traces), total > 0),
+            "summary": dependency_health_summary(service, total, error_traces, slow_traces, error_types),
         }
 
     def get_call_chain(self, trace_id: str) -> Dict[str, Any]:
         raw_trace = self._fetch_trace(trace_id)
-        parsed = self._parse_trace(raw_trace)
+        parsed = parse_trace(raw_trace)
         return {
             "trace_id": trace_id,
             "service": parsed["service"],
@@ -245,7 +265,7 @@ class JaegerTools:
                 "summary": f"trace data unavailable from Jaeger while analyzing {service} via {entry_service}",
             }
 
-        relevant_traces = [trace for trace in application_traces if self._trace_contains_service(trace, service)]
+        relevant_traces = [trace for trace in application_traces if trace_contains_service(trace, service)]
         downstream_stats: Dict[str, Dict[str, Any]] = defaultdict(
             lambda: {
                 "service": "",
@@ -295,8 +315,8 @@ class JaegerTools:
         )
 
         slowest_relevant = max(relevant_traces, key=lambda trace: trace.get("total_duration_ms", 0.0), default=None)
-        focus_path = self._focus_service_path(slowest_relevant, service) if slowest_relevant else []
-        trace_quality = self._dependency_trace_quality(raw_traces, application_traces, relevant_traces, downstream_candidates)
+        focus_path = focus_service_path(slowest_relevant, service) if slowest_relevant else []
+        trace_quality = dependency_trace_quality(raw_traces, application_traces, relevant_traces, downstream_candidates)
         bottleneck = downstream_candidates[0] if downstream_candidates else {}
 
         return {
@@ -315,7 +335,7 @@ class JaegerTools:
             "observability_error": False,
             "observability_status": "",
             "error": None,
-            "summary": self._dependency_trace_summary_text(
+            "summary": dependency_trace_summary_text(
                 service=service,
                 entry_service=entry_service,
                 relevant_trace_count=len(relevant_traces),
@@ -357,14 +377,14 @@ class JaegerTools:
         traces = self._search_traces(service, lookback_minutes=lookback_minutes, limit=limit)
         application_traces = self._application_traces(traces)
         durations = [trace["total_duration_ms"] for trace in application_traces]
-        baseline_p50 = self._percentile(durations, 50)
-        baseline_p99 = self._percentile(durations, 99)
+        baseline_p50 = percentile(durations, 50)
+        baseline_p99 = percentile(durations, 99)
         deviation_factor = (current_ms / baseline_p99) if baseline_p99 > 0 else 0.0
         is_anomalous = bool(baseline_p99 > 0 and current_ms > baseline_p99 * 1.5)
         return {
             "service": service,
             "service_present": True,
-            "trace_quality": self._trace_quality(application_traces, traces),
+            "trace_quality": trace_quality(application_traces, traces),
             "raw_trace_count": len(traces),
             "application_trace_count": len(application_traces),
             "probe_trace_count_filtered": max(0, len(traces) - len(application_traces)),
@@ -403,9 +423,9 @@ class JaegerTools:
                     time.sleep(backoff_seconds)
                     backoff_seconds *= 2.0
                     continue
-                raise RuntimeError(self._observability_error_message(exc)) from exc
+                raise RuntimeError(observability_error_message(exc)) from exc
 
-        raise RuntimeError(self._observability_error_message(last_error))
+        raise RuntimeError(observability_error_message(last_error))
 
     def _search_traces(self, service: str, lookback_minutes: int, limit: int) -> List[Dict[str, Any]]:
         last_error: Exception | None = None
@@ -448,7 +468,7 @@ class JaegerTools:
         try:
             return service in (self.list_services().get("services", []) or [])
         except Exception as exc:
-            raise RuntimeError(self._observability_error_message(exc)) from exc
+            raise RuntimeError(observability_error_message(exc)) from exc
 
     def _missing_service(self, service: str, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         payload = {
@@ -465,161 +485,10 @@ class JaegerTools:
     def _application_traces(self, traces: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         parsed: List[Dict[str, Any]] = []
         for trace in traces:
-            if self._is_probe_or_health_trace(trace):
+            if is_probe_or_health_trace(trace):
                 continue
-            parsed.append(self._parse_trace(trace))
+            parsed.append(parse_trace(trace))
         return parsed
-
-    def _parse_trace(self, trace: Dict[str, Any]) -> Dict[str, Any]:
-        spans = list(trace.get("spans", []) or [])
-        processes = dict(trace.get("processes", {}) or {})
-        root_span = self._root_span(spans)
-        total_duration_ms = self._duration_ms(root_span.get("duration", 0) if root_span else 0)
-        if spans:
-            total_duration_ms = max(
-                total_duration_ms,
-                max(self._duration_ms(span.get("duration", 0)) for span in spans),
-            )
-        hops: List[Dict[str, Any]] = []
-        error_types: List[str] = []
-        for span in sorted(spans, key=lambda item: int(item.get("startTime", 0))):
-            service_name = self._service_name(processes, span.get("processID", ""))
-            duration_ms = self._duration_ms(span.get("duration", 0))
-            error = self._span_has_error(span)
-            error_message = self._span_error_message(span)
-            peer_service = self._span_peer_service(span)
-            if error and error_message:
-                error_types.append(error_message)
-            hop = {
-                "span_id": span.get("spanID", ""),
-                "service": service_name,
-                "operation": span.get("operationName", ""),
-                "duration_ms": duration_ms,
-                "pct_of_total": min((duration_ms / total_duration_ms), 1.0) if total_duration_ms > 0 else 0.0,
-                "error": error,
-                "error_message": error_message,
-            }
-            if peer_service:
-                hop["peer_service"] = peer_service
-            hops.append(hop)
-        return {
-            "trace_id": trace.get("traceID", ""),
-            "service": self._service_name(processes, root_span.get("processID", "")) if root_span else "",
-            "total_duration_ms": total_duration_ms,
-            "has_error": any(hop["error"] for hop in hops),
-            "error_types": sorted({item for item in error_types if item}),
-            "hops": hops,
-        }
-
-    def _root_span(self, spans: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-        span_ids = {str(span.get("spanID", "")) for span in spans}
-        for span in spans:
-            refs = span.get("references", []) or []
-            if not refs:
-                return span
-            parent_ids = {str(ref.get("spanID", "")) for ref in refs if str(ref.get("refType", "")) == "CHILD_OF"}
-            if not parent_ids.intersection(span_ids):
-                return span
-        return spans[0] if spans else None
-
-    def _is_probe_or_health_trace(self, trace: Dict[str, Any]) -> bool:
-        spans = list(trace.get("spans", []) or [])
-        if not spans:
-            return True
-        meaningful_spans = 0
-        for span in spans:
-            tags = {str(tag.get("key", "")): str(tag.get("value", "")) for tag in span.get("tags", []) or []}
-            user_agent = tags.get("user_agent.original", "").lower()
-            http_target = tags.get("http.target", "")
-            operation = str(span.get("operationName", "")).lower()
-            if "kube-probe" in user_agent:
-                continue
-            if http_target == "/_healthz":
-                continue
-            if "grpc.health" in operation or "healthcheck" in operation:
-                continue
-            if "traceservice/export" in operation:
-                continue
-            meaningful_spans += 1
-        return meaningful_spans == 0
-
-    def _find_common_bottleneck(self, traces: List[Dict[str, Any]]) -> Dict[str, Any]:
-        service_totals: Dict[str, List[float]] = defaultdict(list)
-        for trace in traces:
-            total = trace["total_duration_ms"]
-            for hop in trace["hops"]:
-                service = hop["service"]
-                if not service or service == trace["service"]:
-                    continue
-                service_totals[service].append(hop["duration_ms"] / total if total > 0 else 0.0)
-        if not service_totals:
-            return {}
-        best_service = max(service_totals.items(), key=lambda item: sum(item[1]) / len(item[1]))[0]
-        ratios = service_totals[best_service]
-        avg_ratio = sum(ratios) / len(ratios)
-        avg_durations: List[float] = []
-        for trace in traces:
-            for hop in trace["hops"]:
-                if hop["service"] == best_service:
-                    avg_durations.append(hop["duration_ms"])
-        return {
-            "service": best_service,
-            "avg_duration_ms": (sum(avg_durations) / len(avg_durations)) if avg_durations else 0.0,
-            "pct_of_total": avg_ratio,
-        }
-
-    def _extract_error_types(self, traces: List[Dict[str, Any]]) -> List[str]:
-        counts: Counter[str] = Counter()
-        for trace in traces:
-            for item in trace["error_types"]:
-                counts[item] += 1
-        return [name for name, _ in counts.most_common(5)]
-
-    def _classify_health(self, has_errors: bool, has_slowness: bool, has_data: bool) -> str:
-        if not has_data:
-            return "unknown"
-        if has_errors and has_slowness:
-            return "both"
-        if has_errors:
-            return "erroring"
-        if has_slowness:
-            return "slow"
-        return "healthy"
-
-    def _trace_quality(self, application_traces: List[Dict[str, Any]], raw_traces: List[Dict[str, Any]]) -> str:
-        if not raw_traces:
-            return "missing"
-        if not application_traces:
-            return "weak"
-        if any(self._trace_has_invalid_percentages(trace) for trace in application_traces):
-            return "weak"
-        return "good"
-
-    def _dependency_trace_quality(
-        self,
-        raw_traces: List[Dict[str, Any]],
-        application_traces: List[Dict[str, Any]],
-        relevant_traces: List[Dict[str, Any]],
-        downstream_candidates: List[Dict[str, Any]],
-    ) -> str:
-        if not raw_traces:
-            return "missing"
-        if not application_traces:
-            return "weak"
-        if not relevant_traces:
-            return "weak"
-        if any(self._trace_has_invalid_percentages(trace) for trace in relevant_traces):
-            return "weak"
-        if not downstream_candidates:
-            return "weak"
-        return "good"
-
-    def _trace_has_invalid_percentages(self, trace: Dict[str, Any]) -> bool:
-        for hop in trace.get("hops", []) or []:
-            pct = float(hop.get("pct_of_total", 0.0) or 0.0)
-            if pct < 0.0 or pct > 1.0:
-                return True
-        return False
 
     def _is_retryable_exception(self, exc: Exception) -> bool:
         if isinstance(exc, (RemoteDisconnected, ConnectionResetError, TimeoutError, socket.timeout)):
@@ -760,7 +629,7 @@ class JaegerTools:
     ) -> str:
         if total == 0:
             return f"no application traces found for {service}"
-        classification = self._classify_health(bool(error_traces), bool(slow_traces), total > 0)
+        classification = classify_health(bool(error_traces), bool(slow_traces), total > 0)
         top_error = error_types[0] if error_types else "none"
         return (
             f"{service} classified as {classification}; "

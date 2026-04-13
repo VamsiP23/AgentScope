@@ -1,23 +1,17 @@
 from __future__ import annotations
 
 import json
-import re
 import shlex
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
+from agent_graph.tools.kubernetes_support import (
+    aggregate_log_summaries,
+    injector_event,
+    summarize_deployment_pods,
+    summarize_pod_logs,
+    validate_kubectl_command,
+)
 from detectors.utils import run_cmd
-
-
-ERROR_LINE_PATTERN = re.compile(
-    r"(?i)(error|exception|fatal|panic|traceback|timeout|deadline exceeded|connection refused|crashloop|unavailable)"
-)
-SIGNAL_LINE_PATTERN = re.compile(
-    r"(?i)(error|exception|fatal|panic|traceback|timeout|deadline exceeded|connection refused|unavailable|warn|throttl|oom|killed|refused|failed)"
-)
-MAX_LOG_LINES_RETURNED = 8
-FORBIDDEN_SHELL_TOKENS = {"|", "||", "&", "&&", ";", ">", ">>", "<", "<<", "$(", "`"}
-ALLOWED_KUBECTL_VERBS = {"get", "describe", "logs", "rollout", "delete", "patch"}
-RESOURCE_LIMIT_KEYS = {"limits", "requests"}
 
 
 class KubernetesTools:
@@ -102,7 +96,7 @@ class KubernetesTools:
             reason = str(item.get("reason", ""))
             message = str(item.get("message", ""))
 
-            if self._is_injector_event(api_version, kind, name, reason, message):
+            if injector_event(api_version, kind, name, reason, message):
                 continue
 
             rows.append(
@@ -163,37 +157,7 @@ class KubernetesTools:
             }
 
         pod_items = json.loads(pods_result["stdout"]).get("items", [])
-        pods: List[Dict[str, Any]] = []
-        ready_pod_count = 0
-        for item in pod_items:
-            conditions = item.get("status", {}).get("conditions", []) or []
-            ready = any(
-                condition.get("type") == "Ready" and condition.get("status") == "True"
-                for condition in conditions
-            )
-            restart_count = sum(
-                int(status.get("restartCount", 0))
-                for status in item.get("status", {}).get("containerStatuses", []) or []
-            )
-            if ready:
-                ready_pod_count += 1
-            pods.append(
-                {
-                    "name": item.get("metadata", {}).get("name", ""),
-                    "phase": item.get("status", {}).get("phase", ""),
-                    "ready": ready,
-                    "restart_count": restart_count,
-                }
-            )
-
-        return {
-            "exists": True,
-            "selector": selector,
-            "pods": pods,
-            "pod_count": len(pods),
-            "ready_pod_count": ready_pod_count,
-            "progressing": len(pods) > 0 and ready_pod_count < len(pods),
-        }
+        return summarize_deployment_pods(dep, pod_items)
 
     def pods_for_service(
         self,
@@ -244,9 +208,6 @@ class KubernetesTools:
             }
 
         pod_summaries: List[Dict[str, Any]] = []
-        aggregate_error_lines: List[str] = []
-        aggregate_signal_lines: List[str] = []
-        aggregate_recent_lines: List[str] = []
         errors: List[str] = []
 
         for pod in pods:
@@ -256,7 +217,6 @@ class KubernetesTools:
             if result["returncode"] != 0:
                 log_error = result["stderr"] or result["stdout"]
                 errors.append(f"{pod}: {log_error}")
-                aggregate_error_lines.append(log_error)
                 pod_summaries.append(
                     {
                         "pod_name": pod,
@@ -269,42 +229,11 @@ class KubernetesTools:
                 )
                 continue
 
-            all_lines = [line.strip() for line in result["stdout"].splitlines() if line.strip()]
-            error_lines = [line for line in all_lines if ERROR_LINE_PATTERN.search(line)]
-            signal_lines = [line for line in all_lines if SIGNAL_LINE_PATTERN.search(line)]
-            recent_lines = all_lines[-MAX_LOG_LINES_RETURNED:]
-            aggregate_error_lines.extend(error_lines)
-            aggregate_signal_lines.extend(signal_lines[:MAX_LOG_LINES_RETURNED])
-            aggregate_recent_lines.extend(recent_lines)
-            pod_summaries.append(
-                {
-                    "pod_name": pod,
-                    "error_count": len(error_lines),
-                    "error_lines": error_lines[:MAX_LOG_LINES_RETURNED],
-                    "signal_lines": signal_lines[:MAX_LOG_LINES_RETURNED],
-                    "recent_lines": recent_lines,
-                }
-            )
+            pod_summary = summarize_pod_logs(result["stdout"])
+            pod_summary["pod_name"] = pod
+            pod_summaries.append(pod_summary)
 
-        pod_summaries.sort(key=lambda item: item.get("error_count", 0), reverse=True)
-        primary = pod_summaries[0] if pod_summaries else {
-            "pod_name": "",
-            "error_count": 0,
-            "error_lines": [],
-            "signal_lines": [],
-            "recent_lines": [],
-        }
-
-        return {
-            "service": service,
-            "pod_name": primary.get("pod_name", ""),
-            "error_count": sum(item.get("error_count", 0) for item in pod_summaries),
-            "error_lines": aggregate_error_lines[:MAX_LOG_LINES_RETURNED],
-            "signal_lines": aggregate_signal_lines[:MAX_LOG_LINES_RETURNED],
-            "recent_lines": primary.get("recent_lines", [])[:MAX_LOG_LINES_RETURNED],
-            "pods": pod_summaries,
-            "error": "; ".join(errors) if errors else None,
-        }
+        return aggregate_log_summaries(service, pod_summaries, errors)
 
     def service_state(
         self,
@@ -372,7 +301,7 @@ class KubernetesTools:
             reason = str(item.get("reason", ""))
             message = str(item.get("message", ""))
 
-            if self._is_injector_event(api_version, kind, name, reason, message):
+            if injector_event(api_version, kind, name, reason, message):
                 continue
 
             haystack = f"{name} {message}".lower()
@@ -431,7 +360,7 @@ class KubernetesTools:
                 "error": f"failed to parse command: {exc}",
             }
 
-        allowed, reason = self._validate_kubectl_command(tokens)
+        allowed, reason = validate_kubectl_command(tokens)
         if not allowed:
             return {
                 "stdout": "",
@@ -463,130 +392,3 @@ class KubernetesTools:
         if not context or "--context" in tokens:
             return tokens
         return ["kubectl", "--context", context, *tokens[1:]]
-
-    def _is_injector_event(self, api_version: str, kind: str, name: str, reason: str, message: str) -> bool:
-        if "chaos-mesh.org" in api_version:
-            return True
-        if kind.lower().endswith("chaos"):
-            return True
-        if name.endswith("-pod-kill") or ("-to-" in name and ("delay" in name or "loss" in name)):
-            return True
-        if reason in {"Started", "Applied", "Recovered", "FinalizerInited", "Updated", "TimeUp"} and (
-            "chaos" in message.lower() or "chaos" in name.lower()
-        ):
-            return True
-        return False
-
-    def _validate_kubectl_command(self, tokens: List[str]) -> tuple[bool, str]:
-        if not tokens:
-            return False, "empty command"
-        if any(token in FORBIDDEN_SHELL_TOKENS for token in tokens):
-            return False, "shell operators are not allowed"
-        if tokens[0] != "kubectl":
-            return False, "only kubectl commands are allowed"
-
-        verb_index = self._find_kubectl_verb_index(tokens)
-        if verb_index is None:
-            return False, "no supported kubectl verb found"
-
-        verb = tokens[verb_index]
-        if verb not in ALLOWED_KUBECTL_VERBS:
-            return False, f"kubectl {verb} is not whitelisted"
-
-        if verb in {"get", "describe", "logs"}:
-            return True, ""
-
-        if verb == "rollout":
-            subcommand_index = self._first_non_flag_index(tokens, verb_index + 1)
-            if subcommand_index is None:
-                return False, "kubectl rollout requires a subcommand"
-            subcommand = tokens[subcommand_index]
-            if subcommand not in {"undo", "restart"}:
-                return False, "only kubectl rollout undo/restart are allowed"
-            return True, ""
-
-        if verb == "delete":
-            resource_index = self._first_non_flag_index(tokens, verb_index + 1)
-            if resource_index is None:
-                return False, "kubectl delete requires a resource"
-            resource = tokens[resource_index]
-            if resource != "pod" and not resource.startswith("pod/"):
-                return False, "only kubectl delete pod is allowed"
-            return True, ""
-
-        if verb == "patch":
-            return self._validate_patch_command(tokens[verb_index:])
-
-        return False, "unsupported kubectl command"
-
-    def _find_kubectl_verb_index(self, tokens: List[str]) -> Optional[int]:
-        for index, token in enumerate(tokens[1:], start=1):
-            if token in ALLOWED_KUBECTL_VERBS:
-                return index
-        return None
-
-    def _first_non_flag_index(self, tokens: List[str], start: int) -> Optional[int]:
-        for index in range(start, len(tokens)):
-            if not tokens[index].startswith("-"):
-                return index
-        return None
-
-    def _validate_patch_command(self, patch_tokens: List[str]) -> tuple[bool, str]:
-        if len(patch_tokens) < 3:
-            return False, "kubectl patch requires a resource target"
-        patch_arg: Optional[str] = None
-        for index, token in enumerate(patch_tokens):
-            if token in {"-p", "--patch"}:
-                if index + 1 >= len(patch_tokens):
-                    return False, "kubectl patch requires a patch payload"
-                patch_arg = patch_tokens[index + 1]
-                break
-        if patch_arg is None:
-            return False, "kubectl patch is only allowed with inline JSON patch payload"
-        try:
-            payload = json.loads(patch_arg)
-        except Exception as exc:
-            return False, f"patch payload must be valid JSON: {exc}"
-        if not self._patch_only_touches_resources(payload):
-            return False, "kubectl patch is restricted to container resource requests/limits"
-        return True, ""
-
-    def _patch_only_touches_resources(self, payload: Any) -> bool:
-        if not isinstance(payload, dict):
-            return False
-        if "spec" not in payload:
-            return False
-        spec = payload.get("spec")
-        if not isinstance(spec, dict):
-            return False
-
-        if "template" in spec:
-            pod_spec = (((spec.get("template") or {}).get("spec")) if isinstance(spec.get("template"), dict) else None)
-        else:
-            pod_spec = spec
-
-        if not isinstance(pod_spec, dict):
-            return False
-
-        allowed_top_level = {"containers", "initContainers"}
-        if any(key not in allowed_top_level for key in pod_spec.keys()):
-            return False
-
-        for container_key in ("containers", "initContainers"):
-            containers = pod_spec.get(container_key)
-            if containers is None:
-                continue
-            if not isinstance(containers, list):
-                return False
-            for container in containers:
-                if not isinstance(container, dict):
-                    return False
-                for key in container.keys():
-                    if key not in {"name", "resources"}:
-                        return False
-                resources = container.get("resources")
-                if not isinstance(resources, dict):
-                    return False
-                if any(key not in RESOURCE_LIMIT_KEYS for key in resources.keys()):
-                    return False
-        return True

@@ -18,7 +18,7 @@ if str(ROOT) not in sys.path:
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-import run_experiment as runner
+from runner_common import ensure_reusable_local_endpoint
 
 
 def prom_query(prom_url: str, query: str, timeout: int = 10) -> Dict[str, Any]:
@@ -60,7 +60,7 @@ def _maybe_repair_local_endpoint(namespace: str, service_name: str, local_url: s
     if host not in {"localhost", "127.0.0.1"}:
         return None
     try:
-        result = runner.ensure_reusable_local_endpoint(namespace, service_name, local_url, probe_path)
+        result = ensure_reusable_local_endpoint(namespace, service_name, local_url, probe_path)
         return f"repaired local {service_name} access ({result.get('mode', 'unknown')})"
     except Exception as exc:
         return f"unable to repair local {service_name} access: {exc}"

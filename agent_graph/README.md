@@ -1,39 +1,24 @@
-# LangGraph Migration Layout
+# Agent Graph
 
-This package is the LangGraph-backed incident response agent.
+This package now centers on one agent path: a typed-tool ReAct incident agent.
 
-Files:
-- `agent_graph/state.py`
-- `agent_graph/nodes/detect.py`
-- `agent_graph/nodes/hypothesize.py`
-- `agent_graph/nodes/research.py`
-- `agent_graph/nodes/policy.py`
-- `agent_graph/nodes/act.py`
-- `agent_graph/nodes/verify.py`
-- `agent_graph/workflow.py`
-- `agent_graph/cli.py`
+Main files:
+- `agent_graph/aci.py`
+- `agent_graph/react_agent.py`
+- `agent_graph/react_prompt.py`
+- `agent_graph/react_support.py`
+- `agent_graph/tools/`
+- `agent_graph/reasoning/llm.py`
 
 Design:
-- LangGraph manages state transitions and retry loops
-- `agent_graph` owns the full implementation
-- the graph is: `detect -> hypothesize -> research -> policy -> act -> verify`
-- the graph loops from `verify` back to `hypothesize` when recovery fails and iterations remain
-- the detector remains heuristic; the agentic stages are:
-  - `Hypothesizer`: ranks root-cause candidates
-  - `Researcher`: gathers evidence, optionally by LLM-selected tool calls
-  - `Policy`: decides whether evidence supports a hypothesis enough to act
-  - `Actor`: selects one bounded remediation action
-  - `Verifier`: collects structured recovery evidence and interprets it
+- `AgentCloudInterface` exposes the observation and action tools used by agents.
+- `ReActAgent` runs the investigation loop.
+- `react_prompt.py` holds the system prompt.
+- `react_support.py` holds shared normalization and signal helpers.
+- `tools/` contains the live backend integrations for Kubernetes, Prometheus, Jaeger, and safe actions.
 
-Run it after installing `langgraph`:
+Current entrypoints:
+- `python3 ./scripts/run_benchmark_agent.py --agent-type react --backend live ...`
+- `python3 ./scripts/run_benchmark_agent.py --agent-type react --backend replay ...`
 
-```bash
-python3 -m agent_graph.cli \
-  --namespace default \
-  --prom-url http://localhost:9090 \
-  --jaeger-url http://localhost:16686 \
-  --target-deployment cartservice \
-  --mode heuristic \
-  --research-max-tool-calls 5 \
-  --dry-run
-```
+The older LangGraph workflow agent was removed as part of the cleanup so the repo has one primary agent architecture instead of parallel agent stacks.
