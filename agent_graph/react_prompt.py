@@ -88,6 +88,11 @@ get_logs(service, tail_lines=100)
 
 SAFE ACTION TOOLS
 
+These tools are available only in live-remediation mode. In replay benchmark or
+diagnosis-only mode, do not call remediation tools. Instead, investigate with
+evidence tools and put the intended remediation in submit_solution.action_taken
+and submit_solution.action_type.
+
 restart_pod(service, pod_name="")
   Deletes one pod for the service so Kubernetes recreates it
 

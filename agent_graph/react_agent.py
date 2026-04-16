@@ -26,12 +26,22 @@ from agent_graph.react_render import format_thought, summarize_output, summarize
 from agent_graph.reasoning.llm import ResponsesJSONClient
 
 class ReActAgent:
-    def __init__(self, aci: AgentCloudInterface, provider: str | None = None, model: str | None = None, max_steps: int = 35, allow_exec_shell: bool = True, step_callback: Optional[Callable[[Dict[str, Any]], None]] = None) -> None:
+    def __init__(
+        self,
+        aci: AgentCloudInterface,
+        provider: str | None = None,
+        model: str | None = None,
+        max_steps: int = 35,
+        allow_exec_shell: bool = True,
+        diagnosis_only: bool = False,
+        step_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+    ) -> None:
         self.aci = aci
         self.provider = normalize_provider(provider or os.environ.get("LLM_PROVIDER", "openai"))
         self.model = model or default_model(self.provider)
         self.max_steps = max_steps
         self.allow_exec_shell = allow_exec_shell
+        self.diagnosis_only = diagnosis_only
         self.step_callback = step_callback
         self.client = ResponsesJSONClient(model=self.model, provider=self.provider)
         self.trace: List[Dict[str, Any]] = []
@@ -92,7 +102,7 @@ class ReActAgent:
         allowed = ["get_k8s_state", "get_metrics", "get_logs"]
         if self.aci.jaeger_enabled:
             allowed.extend(["get_traces", "get_dependency_traces"])
-        if len(evidence_calls) >= 2:
+        if len(evidence_calls) >= 2 and not self.diagnosis_only:
             allowed.extend(
                 [
                     "restart_pod",
@@ -118,6 +128,7 @@ class ReActAgent:
             "provider": self.provider,
             "model": self.model,
             "jaeger_enabled": self.aci.jaeger_enabled,
+            "diagnosis_only": self.diagnosis_only,
             "step_number": step_number,
             "max_steps": self.max_steps,
             "available_tools": tool_signatures(allowed_tools),
@@ -139,6 +150,7 @@ class ReActAgent:
                 "must_not_repeat_the_same_evidence_question_without_time_based_change": True,
                 "prefer_metrics_before_repeated_logs_for_healthy_but_slow_services": True,
                 "must_use_typed_action_tools_instead_of_raw_shell": True,
+                "must_not_execute_remediation_tools_in_diagnosis_only_mode": self.diagnosis_only,
             },
             "completed_steps": list(self._decision_history),
             "available_call_ids": [step["call_id"] for step in self.trace if step["tool_called"] != "submit_solution"],

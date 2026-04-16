@@ -136,6 +136,7 @@ def main() -> int:
         model=args.model or None,
         max_steps=args.max_steps,
         allow_exec_shell=not bool(args.dry_run),
+        diagnosis_only=args.backend == "replay",
         step_callback=None,
     )
 
@@ -154,6 +155,7 @@ def main() -> int:
         "model": result.get("model", args.model or ""),
         "agent_variant": result.get("agent_variant", args.agent_type),
         "backend": args.backend,
+        "diagnosis_only": args.backend == "replay",
         "replay_dataset": args.replay_dataset,
         "problem": problem,
         "seeded_detection": seeded_detection,
