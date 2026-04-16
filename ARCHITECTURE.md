@@ -4,7 +4,7 @@ AgentScope is organized as a layered incident-triage benchmark:
 
 1. Environment
    - Online Boutique on Docker Desktop Kubernetes
-   - Chaos Mesh faults in `chaosmesh/experiments/`
+   - Native Kubernetes faults in `faults/native.py` and `experiments/native_*.yaml`
    - Prometheus, Jaeger, Kubernetes logs/events/state
    - workload scripts in `scripts/generate_traffic.sh` and `scripts/collect_baseline.sh`
 

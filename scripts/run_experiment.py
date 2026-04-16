@@ -14,8 +14,10 @@ import argparse
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, List
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -65,11 +67,11 @@ from runner_agent import (
 from runner_k8s import (
     assess_reset_need,
     capture_snapshot,
-    cleanup_existing_chaos,
+    cleanup_existing_native_faults,
     collect_window_metrics,
-    verify_chaos_mesh_health,
     verify_environment,
 )
+
 
 def write_evaluation_artifact(
     problem: ProblemSpec | None,
@@ -88,6 +90,91 @@ def write_evaluation_artifact(
     evaluation = evaluate_agent_run(problem, agent_report).to_dict()
     out_path.write_text(json.dumps(evaluation, indent=2))
     return evaluation
+
+
+def write_episode_artifact(
+    *,
+    run_dir: Path,
+    summary: Dict[str, Any],
+    experiment_path: Path,
+    benchmark_suite_path: Path,
+    problem: ProblemSpec | None,
+    config: Dict[str, Any],
+    agent_report: Dict[str, Any],
+    evaluation: Dict[str, Any],
+) -> Dict[str, Any]:
+    agent_cfg = config.get("agent", {}) or {}
+    detector_cfg = config.get("detector", {}) or {}
+    fault_cfg = config.get("fault", {}) or {}
+    timings_cfg = config.get("timings", {}) or {}
+    baseline_cfg = config.get("baseline", {}) or {}
+    traffic_cfg = config.get("traffic", {}) or {}
+    telemetry_validation = dict((summary.get("steps", {}) or {}).get("telemetry_validation", {}) or {})
+    telemetry_contract = dict((summary.get("steps", {}) or {}).get("telemetry_contract", {}) or {})
+    solution = dict(agent_report.get("solution", {}) or {})
+
+    payload = {
+        "episode_id": str(summary.get("run_id", run_dir.name)),
+        "mode": "live",
+        "status": str(summary.get("result", "")),
+        "started_at_utc": str(summary.get("started_at_utc", "")),
+        "finished_at_utc": str(summary.get("finished_at_utc", "")),
+        "experiment": {
+            "name": str(summary.get("name", experiment_path.stem)),
+            "file": str(experiment_path),
+            "namespace": str(summary.get("namespace", "")),
+            "benchmark_suite": str(benchmark_suite_path),
+        },
+        "task": problem.to_dict() if problem is not None else {},
+        "fault": {
+            "filepath": str(fault_cfg.get("filepath", "")),
+            "apply_cmd": list(fault_cfg.get("apply_cmd", []) or []),
+            "revert_cmd": list(fault_cfg.get("revert_cmd", []) or []),
+            "duration_seconds": int(fault_cfg.get("duration_seconds", 0) or 0),
+            "auto_revert": bool(fault_cfg.get("auto_revert", False)),
+        },
+        "budgets": {
+            "pre_fault_delay_seconds": int(timings_cfg.get("pre_fault_delay_seconds", 0) or 0),
+            "post_fault_delay_seconds": int(timings_cfg.get("post_fault_delay_seconds", 0) or 0),
+            "agent_max_steps": int(agent_cfg.get("max_steps", 0) or 0),
+            "agent_wait_timeout_seconds": int(agent_cfg.get("wait_for_incident_timeout_seconds", 0) or 0),
+            "baseline_duration_seconds": int(baseline_cfg.get("duration_seconds", 0) or 0),
+            "traffic_duration_seconds": int(traffic_cfg.get("duration_seconds", 0) or 0),
+        },
+        "detection": dict((summary.get("steps", {}) or {}).get("detection", {}) or {}),
+        "seeded_detection": dict(agent_report.get("seeded_detection", {}) or {}),
+        "telemetry": {
+            "validation": telemetry_validation,
+            "contract": telemetry_contract,
+        },
+        "agent": {
+            "enabled": bool(agent_cfg.get("enabled", False)),
+            "type": str(agent_cfg.get("type", "")),
+            "provider": str(agent_report.get("provider", "")),
+            "model": str(agent_report.get("model", "")),
+            "variant": str(agent_report.get("agent_variant", "")),
+            "dry_run": bool(agent_cfg.get("dry_run", False)),
+            "steps": list(agent_report.get("steps", []) or []),
+            "guardrail_events": list(agent_report.get("guardrail_events", []) or []),
+            "solution": solution,
+        },
+        "evaluation": dict(evaluation or {}),
+        "artifacts": {
+            "run_dir": str(run_dir),
+            "summary": str(run_dir / "summary.json"),
+            "evaluation": str(run_dir / "evaluation.json"),
+            "agent_report": str(run_dir / "agent_report.json"),
+            "seeded_detection": str(run_dir / "seeded_detection.json"),
+            "aci_run_log": str(run_dir / "aci_run_log.jsonl"),
+            "baseline_metrics": str(run_dir / "baseline_metrics.json"),
+            "fault_metrics": str(run_dir / "fault_metrics.json"),
+            "episode": str(run_dir / "episode.json"),
+        },
+        "error": str(summary.get("error", "")),
+    }
+    out_path = run_dir / "episode.json"
+    out_path.write_text(json.dumps(payload, indent=2))
+    return payload
 
 
 def main() -> int:
@@ -135,6 +222,8 @@ def main() -> int:
     summary_path = run_dir / "summary.json"
     baseline_metrics_path = run_dir / "baseline_metrics.json"
     fault_metrics_path = run_dir / "fault_metrics.json"
+    agent_report: Dict[str, Any] = {}
+    evaluation: Dict[str, Any] = {}
 
     traffic_proc = None
     baseline_proc = None
@@ -197,7 +286,6 @@ def main() -> int:
                 print_status("phase=reset: skipped (cluster baseline already healthy)")
 
         verify_environment(namespace)
-        verify_chaos_mesh_health()
         print_status("phase=environment: verified")
 
         summary["steps"]["port_forward_prometheus"] = ensure_reusable_local_endpoint(
@@ -213,8 +301,8 @@ def main() -> int:
             "/api/services",
         )
 
-        print_status("phase=cleanup: removing lingering chaos resources")
-        summary["steps"]["cleanup"] = cleanup_existing_chaos(namespace, run_dir / "cleanup.log")
+        print_status("phase=cleanup: removing lingering native fault resources")
+        summary["steps"]["cleanup"] = cleanup_existing_native_faults(namespace, run_dir / "cleanup.log")
         print_status("phase=cleanup: completed")
 
         print_status("phase=snapshot: capturing before snapshot")
@@ -222,11 +310,20 @@ def main() -> int:
         print_status("phase=snapshot: before snapshot captured")
 
         traffic = config.get("traffic", {}) or {}
+        frontend_base_url = str_value(traffic.get("base_url"), "http://localhost:8080")
+        if (urlparse(frontend_base_url).hostname or "").lower() in {"localhost", "127.0.0.1"}:
+            summary["steps"]["port_forward_frontend"] = ensure_reusable_local_endpoint(
+                namespace,
+                "frontend-external",
+                frontend_base_url,
+                "/_healthz",
+                remote_port=80,
+            )
         if bool_value(traffic.get("enabled"), False):
             traffic_cmd = [
                 "./scripts/generate_traffic.sh",
                 "-u",
-                str_value(traffic.get("base_url"), "http://localhost:8080"),
+                frontend_base_url,
                 "-d",
                 str(int_value(traffic.get("duration_seconds"), 300)),
                 "-r",
@@ -332,10 +429,10 @@ def main() -> int:
             benchmark_problem,
             summary["steps"]["telemetry_validation"],
         )
-        if summary["steps"]["telemetry_validation"]["returncode"] != 0:
-            raise RuntimeError("telemetry validation failed; see telemetry_validation.log")
         if not bool(summary["steps"]["telemetry_contract"].get("ok", False)):
             raise RuntimeError("telemetry contract failed for this benchmark task; see telemetry_validation.log")
+        if summary["steps"]["telemetry_validation"]["returncode"] != 0:
+            print_status("phase=telemetry: validation had non-contract failures; continuing")
         print_status("phase=telemetry: validated")
 
         baseline_start_epoch = time.time()
@@ -345,7 +442,11 @@ def main() -> int:
         summary["baseline_window_end_utc"] = epoch_to_utc(baseline_end_epoch)
 
         if fault_cfg:
-            fault_label = str_value(fault_cfg.get("filepath")) or str_value(fault_cfg.get("scenario"), "fault")
+            fault_label = (
+                str_value(fault_cfg.get("kind"))
+                or str_value(fault_cfg.get("filepath"))
+                or str_value(fault_cfg.get("scenario"), "fault")
+            )
             print_status(
                 "phase=fault_apply: applying "
                 f"{fault_label}"
@@ -421,7 +522,7 @@ def main() -> int:
                     "tool_calls_to_solution": evaluation.get("tool_calls_to_solution"),
                 }
                 summary["steps"]["agent"]["agent_type"] = agent_type
-                summary["steps"]["agent"]["agent_variant"] = str_value(agent_report.get("agent_variant"), "pure_react")
+                summary["steps"]["agent"]["agent_variant"] = str_value(agent_report.get("agent_variant"), "react_diagnosis")
                 verification = agent_report.get("verification") or {}
                 if agent_type == "react":
                     solution = agent_report.get("solution") or {}
@@ -526,7 +627,11 @@ def main() -> int:
             print_status("phase=metrics: fault metrics written")
 
         if fault_active:
-            fault_label = str_value(fault_cfg.get("filepath")) or str_value(fault_cfg.get("scenario"), "fault")
+            fault_label = (
+                str_value(fault_cfg.get("kind"))
+                or str_value(fault_cfg.get("filepath"))
+                or str_value(fault_cfg.get("scenario"), "fault")
+            )
             print_status(
                 "phase=fault_revert: reverting "
                 f"{fault_label}"
@@ -589,6 +694,16 @@ def main() -> int:
                 }
                 print_status("phase=reset_after: skipped (cluster baseline already healthy)")
         summary_path.write_text(json.dumps(summary, indent=2))
+        write_episode_artifact(
+            run_dir=run_dir,
+            summary=summary,
+            experiment_path=experiment_path,
+            benchmark_suite_path=benchmark_suite_path,
+            problem=benchmark_problem,
+            config=config,
+            agent_report=agent_report,
+            evaluation=evaluation,
+        )
         print_status("phase=complete: experiment finished successfully")
         print(f"Experiment complete. Artifacts: {run_dir}")
         return 0
@@ -632,6 +747,16 @@ def main() -> int:
                 }
                 print_status("phase=reset_on_error: skipped (cluster baseline already healthy)")
         summary_path.write_text(json.dumps(summary, indent=2))
+        write_episode_artifact(
+            run_dir=run_dir,
+            summary=summary,
+            experiment_path=experiment_path,
+            benchmark_suite_path=benchmark_suite_path,
+            problem=benchmark_problem,
+            config=config,
+            agent_report=agent_report,
+            evaluation=evaluation,
+        )
         print(f"Experiment failed. Artifacts: {run_dir}", file=sys.stderr)
         print(str(exc), file=sys.stderr)
         return 1

@@ -34,17 +34,7 @@ CORE_DEPLOYMENTS = [
     "kube-state-metrics",
     "jaeger",
     "prometheus",
-    "grafana",
 ]
-CHAOS_RESOURCE_TYPES = [
-    "podchaos",
-    "stresschaos",
-    "networkchaos",
-    "dnschaos",
-    "httpchaos",
-]
-
-
 def utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -164,6 +154,23 @@ def start_process(
     )
     stream_thread.start()
     proc._agentscope_stream_thread = stream_thread  # type: ignore[attr-defined]
+    return proc
+
+
+def start_detached_process(cmd: List[str], cwd: Path, log_path: Path) -> subprocess.Popen[str]:
+    handle = open(log_path, "a", encoding="utf-8")
+    handle.write("COMMAND: " + " ".join(shlex.quote(part) for part in cmd) + "\n\n")
+    handle.flush()
+    proc = subprocess.Popen(
+        cmd,
+        cwd=cwd,
+        stdout=handle,
+        stderr=subprocess.STDOUT,
+        stdin=subprocess.DEVNULL,
+        text=True,
+        start_new_session=True,
+    )
+    handle.close()
     return proc
 
 
@@ -304,7 +311,30 @@ def _terminate_pid(pid: int | None) -> None:
         return
 
 
-def ensure_reusable_local_endpoint(namespace: str, service_name: str, local_url: str, probe_path: str) -> Dict[str, Any]:
+def _terminate_stale_port_forwards(local_port: int) -> List[int]:
+    pattern = f"kubectl.*port-forward.*{local_port}:"
+    proc = subprocess.run(["pgrep", "-f", pattern], capture_output=True, text=True, check=False)
+    killed: List[int] = []
+    if proc.returncode != 0:
+        return killed
+    for line in proc.stdout.splitlines():
+        try:
+            pid = int(line.strip())
+        except ValueError:
+            continue
+        _terminate_pid(pid)
+        killed.append(pid)
+    return killed
+
+
+def ensure_reusable_local_endpoint(
+    namespace: str,
+    service_name: str,
+    local_url: str,
+    probe_path: str,
+    *,
+    remote_port: int | None = None,
+) -> Dict[str, Any]:
     parsed = urlparse(local_url)
     host = (parsed.hostname or "").lower()
     port = parsed.port
@@ -321,10 +351,18 @@ def ensure_reusable_local_endpoint(namespace: str, service_name: str, local_url:
         print_status(f"phase=port_forward: repairing stale session forward for {service_name} at {local_url}")
         _terminate_pid(pid)
         time.sleep(1)
+    killed = _terminate_stale_port_forwards(port)
+    if killed:
+        print_status(
+            "phase=port_forward: removed stale kubectl forwards "
+            f"for local port {port}: {', '.join(str(pid) for pid in killed)}"
+        )
+        time.sleep(1)
     pid_path.unlink(missing_ok=True)
 
-    cmd = ["kubectl", "port-forward", "-n", namespace, f"svc/{service_name}", f"{port}:{port}"]
-    proc = start_process(cmd, ROOT, log_path)
+    target_port = int(remote_port or port)
+    cmd = ["kubectl", "port-forward", "-n", namespace, f"svc/{service_name}", f"{port}:{target_port}"]
+    proc = start_detached_process(cmd, ROOT, log_path)
     pid_path.write_text(f"{proc.pid}\n")
 
     deadline = time.time() + 20

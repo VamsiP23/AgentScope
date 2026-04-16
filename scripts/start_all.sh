@@ -16,17 +16,11 @@ PF_FAILED=0
 DISABLE_BUILTIN_LOADGEN=1
 STABLE_LOCAL_MODE=1
 KUBE_CONTEXT=""
-CHAOS_MESH_NAMESPACE="chaos-mesh"
-CHAOS_MESH_RELEASE="chaos-mesh"
-CHAOS_MESH_CHART="chaos-mesh/chaos-mesh"
-CHAOS_DAEMON_RUNTIME="${CHAOS_DAEMON_RUNTIME:-docker}"
-CHAOS_DAEMON_SOCKET_PATH="${CHAOS_DAEMON_SOCKET_PATH:-/var/run/docker.sock}"
 OBSERVABILITY_DEPLOYMENTS=(
   opentelemetrycollector
   kube-state-metrics
   jaeger
   prometheus
-  grafana
 )
 KEY_MULTI_REPLICA_DEPLOYMENTS=(
   frontend:2
@@ -50,7 +44,6 @@ CORE_DEPLOYMENTS=(
   kube-state-metrics
   jaeger
   prometheus
-  grafana
 )
 
 usage() {
@@ -125,10 +118,6 @@ ensure_brew_package() {
 
 ensure_brew_package curl
 
-ensure_helm_binary() {
-  ensure_brew_package helm
-}
-
 retry_cmd() {
   local attempts="$1"
   local sleep_seconds="$2"
@@ -194,73 +183,6 @@ observability_stack_healthy() {
     fi
   done
   return 0
-}
-
-chaos_mesh_healthy() {
-  local controller_ready ds_desired ds_ready
-
-  if ! kubectl get namespace "$CHAOS_MESH_NAMESPACE" >/dev/null 2>&1; then
-    return 1
-  fi
-
-  if ! kubectl get deployment/chaos-controller-manager -n "$CHAOS_MESH_NAMESPACE" >/dev/null 2>&1; then
-    return 1
-  fi
-
-  controller_ready=$(kubectl get deployment chaos-controller-manager -n "$CHAOS_MESH_NAMESPACE" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)
-  controller_ready=${controller_ready:-0}
-  if [ "$controller_ready" -lt 1 ]; then
-    return 1
-  fi
-
-  if kubectl get daemonset/chaos-daemon -n "$CHAOS_MESH_NAMESPACE" >/dev/null 2>&1; then
-    ds_desired=$(kubectl get daemonset chaos-daemon -n "$CHAOS_MESH_NAMESPACE" -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || echo 0)
-    ds_ready=$(kubectl get daemonset chaos-daemon -n "$CHAOS_MESH_NAMESPACE" -o jsonpath='{.status.numberReady}' 2>/dev/null || echo 0)
-    ds_desired=${ds_desired:-0}
-    ds_ready=${ds_ready:-0}
-    if [ "$ds_desired" -gt 0 ] && [ "$ds_ready" -lt "$ds_desired" ]; then
-      return 1
-    fi
-  fi
-
-  if kubectl get deployment/chaos-dashboard -n "$CHAOS_MESH_NAMESPACE" >/dev/null 2>&1; then
-    if ! deployment_is_available "$CHAOS_MESH_NAMESPACE" "chaos-dashboard"; then
-      return 1
-    fi
-  fi
-
-  return 0
-}
-
-ensure_chaos_mesh() {
-  if chaos_mesh_healthy; then
-    echo "Reusing existing healthy Chaos Mesh installation."
-    return
-  fi
-
-  ensure_helm_binary
-
-  if ! kubectl get namespace "$CHAOS_MESH_NAMESPACE" >/dev/null 2>&1; then
-    echo "Creating namespace: $CHAOS_MESH_NAMESPACE"
-    kubectl create namespace "$CHAOS_MESH_NAMESPACE" >/dev/null
-  fi
-
-  echo "Chaos Mesh is missing or unhealthy; repairing installation..."
-  helm repo add chaos-mesh https://charts.chaos-mesh.org >/dev/null 2>&1 || true
-  retry_cmd 3 5 helm repo update >/dev/null
-  retry_cmd 3 5 helm upgrade --install "$CHAOS_MESH_RELEASE" "$CHAOS_MESH_CHART" \
-    -n "$CHAOS_MESH_NAMESPACE" \
-    --set chaosDaemon.runtime="$CHAOS_DAEMON_RUNTIME" \
-    --set chaosDaemon.socketPath="$CHAOS_DAEMON_SOCKET_PATH" >/dev/null
-
-  echo "Waiting for Chaos Mesh components..."
-  wait_for_deployment_ready "$CHAOS_MESH_NAMESPACE" "chaos-controller-manager" 300
-  if kubectl get daemonset/chaos-daemon -n "$CHAOS_MESH_NAMESPACE" >/dev/null 2>&1; then
-    wait_for_daemonset_ready "$CHAOS_MESH_NAMESPACE" "chaos-daemon" 300
-  fi
-  if kubectl get deployment/chaos-dashboard -n "$CHAOS_MESH_NAMESPACE" >/dev/null 2>&1; then
-    wait_for_deployment_ready "$CHAOS_MESH_NAMESPACE" "chaos-dashboard" 300
-  fi
 }
 
 ensure_observability_stack() {
@@ -488,6 +410,24 @@ capture_restart_snapshot() {
   kubectl get pods -n "$NAMESPACE" --no-headers 2>/dev/null | awk '{print $1 "|" $4}' | LC_ALL=C sort
 }
 
+restart_counts_increased() {
+  local before_snapshot="$1"
+  local after_snapshot="$2"
+  awk -F'|' '
+    NR == FNR {
+      before[$1] = $2 + 0
+      next
+    }
+    ($1 in before) && (($2 + 0) > before[$1]) {
+      increased = 1
+      exit 0
+    }
+    END {
+      exit increased ? 0 : 1
+    }
+  ' <(printf '%s\n' "$before_snapshot") <(printf '%s\n' "$after_snapshot")
+}
+
 report_cluster_health() {
   echo ""
   echo "Current deployment health:"
@@ -542,8 +482,8 @@ verify_cluster_stability() {
   done
 
   end_restarts=$(capture_restart_snapshot || true)
-  if [ -n "$start_restarts" ] && [ -n "$end_restarts" ] && [ "$start_restarts" != "$end_restarts" ]; then
-    echo "Pod restart counts changed during the startup stabilization window." >&2
+  if [ -n "$start_restarts" ] && [ -n "$end_restarts" ] && restart_counts_increased "$start_restarts" "$end_restarts"; then
+    echo "Observed restart count increases on surviving pods during the startup stabilization window." >&2
     echo "Before:" >&2
     echo "$start_restarts" >&2
     echo "After:" >&2
@@ -582,8 +522,6 @@ if [ ! -f "$MANIFEST" ]; then
 fi
 
 ensure_current_cluster
-
-ensure_chaos_mesh
 
 ensure_namespace
 
@@ -709,7 +647,7 @@ verify_cluster_stability 45
 if [ "$PF_FAILED" -ne 0 ]; then
   echo ""
   echo "One or more long-lived port-forwards failed. Check logs in: $PORT_FORWARD_DIR" >&2
-  echo "Most common cause: local ports already in use (8080, 16686, 9090, 3000)." >&2
+  echo "Most common cause: local ports already in use (8080, 16686, 9090)." >&2
   echo "Fix: pkill -f \"kubectl port-forward\" and rerun ./scripts/start_all.sh" >&2
   exit 1
 fi
@@ -718,7 +656,6 @@ echo "Starting port-forwards..."
 start_pf frontend frontend "8080:80" "http://127.0.0.1:8080/_healthz" "Cookie: shop_session-id=x-readiness-probe"
 start_pf jaeger jaeger "16686:16686" "http://127.0.0.1:16686/api/services"
 start_pf prometheus prometheus "9090:9090" "http://127.0.0.1:9090/-/ready"
-start_pf grafana grafana "3000:3000" "http://127.0.0.1:3000/api/health"
 
 if [ "$PF_FAILED" -ne 0 ]; then
   echo ""
@@ -757,7 +694,6 @@ URLs:
 - Frontend:   http://localhost:8080
 - Jaeger:     http://localhost:16686
 - Prometheus: http://localhost:9090
-- Grafana:    http://localhost:3000 (admin/admin)
 
 Runtime files:
 - Logs/PIDs: $RUN_DIR
@@ -767,6 +703,5 @@ To stop port-forwards quickly:
   kill \
     \\$(cat $PORT_FORWARD_DIR/frontend.pid) \
     \\$(cat $PORT_FORWARD_DIR/jaeger.pid) \
-    \\$(cat $PORT_FORWARD_DIR/prometheus.pid) \
-    \\$(cat $PORT_FORWARD_DIR/grafana.pid)
+    \\$(cat $PORT_FORWARD_DIR/prometheus.pid)
 DONE

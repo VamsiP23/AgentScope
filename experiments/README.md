@@ -1,17 +1,20 @@
 # Experiments
 
-The experiment runner supports Chaos Mesh fault manifests through:
-- `fault.filepath`
+The benchmark collection path uses native Kubernetes faults implemented in this repository.
+The preferred fault shape is:
+- `fault.kind: native_kubernetes`
+- `fault.spec`: a reversible native fault spec consumed by `python3 -m faults.native`
 
 Current state:
 - the runner supports baseline traffic, detection, optional agent execution, and artifact capture
-- faults are defined as checked-in Chaos Mesh YAML files under `chaosmesh/experiments/`
-- the runner applies and reverts them through `python3 -m faults.cli`
+- benchmark collection should use checked-in `native_*` experiment YAMLs
+- native faults store rollback state in short-lived ConfigMaps labeled `agentscope.dev/native-fault=true`
+- Chaos Mesh and LitmusChaos are not runtime requirements for benchmark collection
 
 Supported experiment shape:
 
 ```yaml
-name: Chaos Pod Kill Cartservice Agent
+name: Native Service Selector Mismatch Cartservice Baseline
 namespace: default
 startup:
   enabled: false
@@ -23,15 +26,22 @@ traffic:
   enabled: true
   base_url: http://localhost:8080
   duration_seconds: 300
-  rps: 1
+  rps: 4
+  mode: cart-heavy
 baseline:
   enabled: true
   duration_seconds: 300
   interval_seconds: 15
 fault:
-  filepath: chaosmesh/experiments/podchaos.yaml
-  duration_seconds: 60
-  auto_revert: false
+  kind: native_kubernetes
+  duration_seconds: 120
+  auto_revert: true
+  spec:
+    id: selector-mismatch-cartservice
+    type: service_selector
+    service: cartservice
+    selector:
+      app: cartservice-missing
 detector:
   enabled: true
   prom_url: http://localhost:9090
@@ -52,17 +62,18 @@ agent:
 ```
 
 Checked-in examples:
-- `chaos_pod_kill_cartservice_baseline.yaml`
-- `chaos_pod_kill_cartservice_agent.yaml`
-- `chaos_network_delay_frontend_cartservice_baseline.yaml`
-- `chaos_cpu_stress_checkoutservice_baseline.yaml`
-- `chaos_dns_cartservice_baseline.yaml`
+- `native_service_selector_mismatch_cartservice_baseline.yaml`
+- `native_bad_image_productcatalogservice_baseline.yaml`
+- `native_bad_probe_cartservice_baseline.yaml`
+- `native_cpu_limit_throttle_checkoutservice_baseline.yaml`
+- `native_memory_limit_oom_cartservice_baseline.yaml`
+- `native_dependency_bad_endpoint_frontend_cartservice_baseline.yaml`
 
-For a first agent validation run, prefer:
-- `chaos_pod_kill_cartservice_agent.yaml`
+For first collection, prefer:
+- `native_service_selector_mismatch_cartservice_baseline.yaml`
 
 Why:
-- it produces a clean transient incident on a replicated service
+- it produces a clean endpoint/config incident without external fault controllers
 - the detector signal is straightforward
-- the agent can run in `dry_run` mode without changing cluster state
-- it exercises the LLM-backed hypothesize, research, policy, act, and verify stages
+- apply/revert is deterministic and self-contained
+- it exercises Kubernetes state, service endpoints, Prometheus, and trace evidence collection

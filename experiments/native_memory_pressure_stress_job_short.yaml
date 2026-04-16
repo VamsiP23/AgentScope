@@ -1,0 +1,54 @@
+name: Native Memory Pressure Stress Job Short
+namespace: default
+startup:
+  enabled: false
+  args: []
+timings:
+  pre_fault_delay_seconds: 10
+  post_fault_delay_seconds: 10
+traffic:
+  enabled: true
+  base_url: http://localhost:8080
+  mode: checkout-heavy
+  duration_seconds: 70
+  rps: 6
+baseline:
+  enabled: false
+  duration_seconds: 70
+  interval_seconds: 10
+fault:
+  kind: native_kubernetes
+  duration_seconds: 30
+  auto_revert: true
+  spec:
+    id: memory-pressure-stress-job-short
+    type: stress_job
+    job_name: agentscope-memory-pressure-short
+    image: python:3.12-alpine
+    command: ["python", "-c"]
+    args:
+      - "import time; blob = bytearray(180 * 1024 * 1024); blob[0] = 1; time.sleep(30)"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 192Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+detector:
+  enabled: true
+  prom_url: http://localhost:9090
+  target_deployment: frontend
+  service_latency_threshold_ms: 750
+  interval_seconds: 5
+agent:
+  enabled: false
+  mode: llm
+  dry_run: true
+  max_iterations: 2
+  verify_wait_seconds: 10
+  jaeger_url: http://localhost:16686
+  target_deployment: frontend
+  require_incident_detected: true
+  wait_for_incident_timeout_seconds: 30
+  wait_for_incident_poll_seconds: 5

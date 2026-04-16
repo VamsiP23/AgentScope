@@ -20,7 +20,7 @@ Options:
   -d   Total duration in seconds (default: 300)
   -r   Workflow starts per second (default: 4)
   -o   Output root directory (default: traffic_runs)
-  -m   Traffic mode: realistic | checkout-heavy | browse-heavy (default: realistic)
+  -m   Traffic mode: realistic | checkout-heavy | browse-heavy | cart-heavy (default: realistic)
   -h   Show this help
 USAGE
 }
@@ -66,9 +66,10 @@ fi
 case "$MODE" in
   realistic|basic|full-flow) MODE="realistic" ;;
   checkout-heavy|checkout|cpu-stress) MODE="checkout-heavy" ;;
+  cart-heavy|cart) MODE="cart-heavy" ;;
   browse-heavy|browse) MODE="browse-heavy" ;;
   *)
-    echo "Mode must be one of: realistic, checkout-heavy, browse-heavy." >&2
+    echo "Mode must be one of: realistic, checkout-heavy, browse-heavy, cart-heavy." >&2
     exit 1
     ;;
 esac
@@ -340,6 +341,18 @@ run_workflow_for_mode() {
         echo "full_checkout"
       fi
       ;;
+    cart-heavy)
+      if [ "$roll" -lt 10 ]; then
+        browse_workflow "$request_csv" "$cookie_jar"
+        echo "browse_only"
+      elif [ "$roll" -lt 85 ]; then
+        cart_workflow "$request_csv" "$cookie_jar"
+        echo "browse_cart"
+      else
+        checkout_workflow "$request_csv" "$cookie_jar" 1
+        echo "full_checkout"
+      fi
+      ;;
     *)
       if [ "$roll" -lt 55 ]; then
         browse_workflow "$request_csv" "$cookie_jar"
@@ -398,6 +411,7 @@ fi
 case "$MODE" in
   checkout-heavy) echo "Workflow weights: browse-only=5% browse+cart=5% full-checkout=90% (direct checkout path)" ;;
   browse-heavy) echo "Workflow weights: browse-only=80% browse+cart=15% full-checkout=5%" ;;
+  cart-heavy) echo "Workflow weights: browse-only=10% browse+cart=75% full-checkout=15%" ;;
   *) echo "Workflow weights: browse-only=55% browse+cart=25% full-checkout=20%" ;;
 esac
 

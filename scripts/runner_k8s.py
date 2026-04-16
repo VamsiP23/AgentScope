@@ -10,7 +10,6 @@ from urllib.parse import urlencode
 from urllib.request import urlopen
 
 from runner_common import (
-    CHAOS_RESOURCE_TYPES,
     CORE_DEPLOYMENTS,
     ROOT,
     epoch_to_utc,
@@ -221,41 +220,58 @@ def verify_environment(namespace: str) -> None:
         raise RuntimeError(f"required deployments unavailable in namespace {namespace}: {', '.join(missing)}")
 
 
-def verify_chaos_mesh_health() -> None:
-    controller = kubectl_json(
-        ["kubectl", "get", "deploy", "chaos-controller-manager", "-n", "chaos-mesh", "-o", "json"]
-    )
-    desired = int(controller.get("spec", {}).get("replicas", 0) or 0)
-    available = int(controller.get("status", {}).get("availableReplicas", 0) or 0)
-    ready = int(controller.get("status", {}).get("readyReplicas", 0) or 0)
-    if desired < 1 or available < 1 or ready < 1:
-        raise RuntimeError(
-            "Chaos Mesh controller is not healthy: "
-            f"desired={desired} available={available} ready={ready}"
-        )
-
-    endpoints = kubectl_json(
-        ["kubectl", "get", "endpoints", "chaos-mesh-controller-manager", "-n", "chaos-mesh", "-o", "json"]
-    )
-    subsets = endpoints.get("subsets") or []
-    addresses = sum(len(subset.get("addresses") or []) for subset in subsets)
-    ports = sum(len(subset.get("ports") or []) for subset in subsets)
-    if addresses < 1 or ports < 1:
-        raise RuntimeError(
-            "Chaos Mesh webhook service has no ready endpoints; "
-            f"addresses={addresses} ports={ports}"
-        )
-
-
-def list_existing_chaos_objects(namespace: str) -> List[str]:
+def list_existing_native_fault_state(namespace: str) -> List[str]:
     existing: List[str] = []
-    for resource in CHAOS_RESOURCE_TYPES:
-        existing.extend(kubectl_lines_or_empty(["kubectl", "get", resource, "-n", namespace, "-o", "name"]))
+    existing.extend(
+        kubectl_lines_or_empty(
+            [
+                "kubectl",
+                "get",
+                "configmap",
+                "-n",
+                namespace,
+                "-l",
+                "agentscope.dev/native-fault=true",
+                "-o",
+                "name",
+            ]
+        )
+    )
+    existing.extend(
+        kubectl_lines_or_empty(
+            [
+                "kubectl",
+                "get",
+                "job",
+                "-n",
+                namespace,
+                "-l",
+                "agentscope.dev/native-fault=true",
+                "-o",
+                "name",
+            ]
+        )
+    )
+    existing.extend(
+        kubectl_lines_or_empty(
+            [
+                "kubectl",
+                "get",
+                "pod",
+                "-n",
+                namespace,
+                "-l",
+                "agentscope.dev/native-fault=true",
+                "-o",
+                "name",
+            ]
+        )
+    )
     return existing
 
 
-def cleanup_existing_chaos(namespace: str, log_path: Path) -> Dict[str, Any]:
-    existing = list_existing_chaos_objects(namespace)
+def cleanup_existing_native_faults(namespace: str, log_path: Path) -> Dict[str, Any]:
+    existing = list_existing_native_fault_state(namespace)
     log_lines = [f"timestamp_utc: {utc_now()}", f"namespace: {namespace}", f"found: {len(existing)}"]
     if existing:
         log_lines.append("existing_objects:")
@@ -264,12 +280,34 @@ def cleanup_existing_chaos(namespace: str, log_path: Path) -> Dict[str, Any]:
         log_lines.append("existing_objects: []")
 
     deleted: List[str] = []
-    for resource in CHAOS_RESOURCE_TYPES:
-        names = kubectl_lines_or_empty(["kubectl", "get", resource, "-n", namespace, "-o", "name"])
+    for resource in ["job", "pod", "configmap"]:
+        names = kubectl_lines_or_empty(
+            [
+                "kubectl",
+                "get",
+                resource,
+                "-n",
+                namespace,
+                "-l",
+                "agentscope.dev/native-fault=true",
+                "-o",
+                "name",
+            ]
+        )
         if not names:
             continue
         proc = kubectl_run(
-            ["kubectl", "delete", resource, "--all", "-n", namespace, "--ignore-not-found", "--timeout=120s"]
+            [
+                "kubectl",
+                "delete",
+                resource,
+                "-n",
+                namespace,
+                "-l",
+                "agentscope.dev/native-fault=true",
+                "--ignore-not-found",
+                "--timeout=120s",
+            ]
         )
         log_lines.extend(
             [
@@ -283,17 +321,17 @@ def cleanup_existing_chaos(namespace: str, log_path: Path) -> Dict[str, Any]:
         )
         if proc.returncode != 0:
             log_path.write_text("\n".join(log_lines) + "\n")
-            raise RuntimeError(proc.stderr.strip() or proc.stdout.strip() or f"failed to delete existing {resource}")
+            raise RuntimeError(proc.stderr.strip() or proc.stdout.strip() or f"failed to delete native {resource}")
         deleted.extend(names)
 
     deadline = time.time() + 60
     while deleted and time.time() < deadline:
-        remaining = list_existing_chaos_objects(namespace)
+        remaining = list_existing_native_fault_state(namespace)
         if not remaining:
             break
         time.sleep(2)
 
-    remaining = list_existing_chaos_objects(namespace)
+    remaining = list_existing_native_fault_state(namespace)
     log_lines.extend(["", f"deleted: {len(deleted)}"])
     if deleted:
         log_lines.extend(f"  - {name}" for name in deleted)
@@ -305,7 +343,7 @@ def cleanup_existing_chaos(namespace: str, log_path: Path) -> Dict[str, Any]:
     log_path.write_text("\n".join(log_lines) + "\n")
 
     if remaining:
-        raise RuntimeError(f"stale Chaos Mesh resources still present in namespace {namespace}: {', '.join(remaining)}")
+        raise RuntimeError(f"stale native fault resources still present in namespace {namespace}: {', '.join(remaining)}")
 
     return {
         "found": len(existing),
@@ -337,13 +375,13 @@ def assess_reset_need(namespace: str) -> Dict[str, Any]:
     details: Dict[str, Any] = {}
 
     try:
-        stale_chaos = list_existing_chaos_objects(namespace)
+        stale_native = list_existing_native_fault_state(namespace)
     except Exception as exc:
-        stale_chaos = []
-        reasons.append(f"failed to inspect chaos resources: {exc}")
-    if stale_chaos:
-        reasons.append(f"found {len(stale_chaos)} lingering chaos resources")
-        details["stale_chaos_resources"] = stale_chaos
+        stale_native = []
+        reasons.append(f"failed to inspect native fault resources: {exc}")
+    if stale_native:
+        reasons.append(f"found {len(stale_native)} lingering native fault resources")
+        details["stale_native_fault_resources"] = stale_native
 
     try:
         unhealthy = unhealthy_core_deployments(namespace)
@@ -359,11 +397,6 @@ def assess_reset_need(namespace: str) -> Dict[str, Any]:
     except Exception as exc:
         reasons.append(f"environment verification failed: {exc}")
 
-    try:
-        verify_chaos_mesh_health()
-    except Exception as exc:
-        reasons.append(f"chaos mesh health check failed: {exc}")
-
     return {"needs_reset": bool(reasons), "reasons": reasons, "details": details, "checked_at_utc": utc_now()}
 
 
@@ -372,6 +405,9 @@ def capture_snapshot(namespace: str, label: str, out_dir: Path) -> Dict[str, Any
     commands = {
         f"{label}_deployments.txt": ["kubectl", "get", "deploy", "-n", namespace],
         f"{label}_pods.txt": ["kubectl", "get", "pods", "-n", namespace],
+        f"{label}_services.txt": ["kubectl", "get", "services", "-n", namespace, "-o", "wide"],
+        f"{label}_endpoints.txt": ["kubectl", "get", "endpoints", "-n", namespace, "-o", "wide"],
+        f"{label}_endpointslices.txt": ["kubectl", "get", "endpointslices", "-n", namespace, "-o", "wide"],
         f"{label}_events.txt": [
             "kubectl",
             "get",

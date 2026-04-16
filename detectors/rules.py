@@ -102,7 +102,9 @@ class DetectorRunner:
         triggered = not dep.get("healthy", False)
         severity = "critical" if triggered else "info"
         reason = (
-            f"deployment {self.config.target_deployment} available={dep.get('available', 0)} desired={dep.get('desired', 0)}"
+            f"deployment {self.config.target_deployment} available={dep.get('available', 0)} "
+            f"updated={dep.get('updated', 0)} unavailable={dep.get('unavailable', 0)} "
+            f"desired={dep.get('desired', 0)}"
         )
         return DetectorFinding(
             name="deployment_availability",
@@ -113,6 +115,81 @@ class DetectorRunner:
             value=dep.get("available", 0),
             threshold=dep.get("desired", 0),
             details=dep,
+        )
+
+    def service_endpoints_detector(self) -> DetectorFinding:
+        if not self.config.target_deployment:
+            return DetectorFinding(
+                name="service_endpoints",
+                triggered=False,
+                severity="info",
+                reason="no target service configured",
+            )
+        endpoints = self.k8s.service_endpoint_health(self.config.namespace, self.config.target_deployment)
+        triggered = endpoints.get("exists", False) and int(endpoints.get("ready_addresses", 0)) == 0
+        severity = "high" if triggered else "info"
+        reason = (
+            f"service {self.config.target_deployment} ready_endpoints="
+            f"{endpoints.get('ready_addresses', 0)} not_ready_endpoints={endpoints.get('not_ready_addresses', 0)}"
+        )
+        return DetectorFinding(
+            name="service_endpoints",
+            triggered=triggered,
+            severity=severity,
+            reason=reason,
+            service=self.config.target_deployment,
+            value=int(endpoints.get("ready_addresses", 0)),
+            threshold=1,
+            details=endpoints,
+        )
+
+    def service_port_alignment_detector(self) -> DetectorFinding:
+        if not self.config.target_deployment:
+            return DetectorFinding(
+                name="service_port_alignment",
+                triggered=False,
+                severity="info",
+                reason="no target service configured",
+            )
+        alignment = self.k8s.service_port_alignment(self.config.namespace, self.config.target_deployment)
+        triggered = alignment.get("exists", False) and not alignment.get("aligned", True)
+        severity = "high" if triggered else "info"
+        mismatches = alignment.get("mismatches", [])
+        reason = (
+            f"service {self.config.target_deployment} port alignment "
+            f"{'mismatch' if triggered else 'ok'}"
+        )
+        if mismatches:
+            reason += f": {mismatches}"
+        return DetectorFinding(
+            name="service_port_alignment",
+            triggered=triggered,
+            severity=severity,
+            reason=reason,
+            service=self.config.target_deployment,
+            value=len(mismatches),
+            threshold=0,
+            details=alignment,
+        )
+
+    def native_stress_job_detector(self) -> DetectorFinding:
+        jobs = self.k8s.active_native_stress_jobs(self.config.namespace)
+        triggered = bool(jobs)
+        severity = "high" if triggered else "info"
+        reason = (
+            f"active native stress jobs: {', '.join(item['job'] or item['pod'] for item in jobs)}"
+            if jobs
+            else "no active native stress jobs"
+        )
+        return DetectorFinding(
+            name="native_stress_job",
+            triggered=triggered,
+            severity=severity,
+            reason=reason,
+            service=self.config.target_deployment,
+            value=len(jobs),
+            threshold=0,
+            details={"active_stress_jobs": jobs},
         )
 
     def restart_history_detector(self) -> DetectorFinding:
@@ -160,5 +237,8 @@ class DetectorRunner:
             self._safe_detector("service_error_rate", self.service_error_rate_detector),
             self._safe_detector("service_latency", self.service_latency_detector),
             self._safe_detector("deployment_availability", self.availability_detector),
+            self._safe_detector("service_endpoints", self.service_endpoints_detector),
+            self._safe_detector("service_port_alignment", self.service_port_alignment_detector),
+            self._safe_detector("native_stress_job", self.native_stress_job_detector),
             self._safe_detector("restart_history", self.restart_history_detector),
         ]

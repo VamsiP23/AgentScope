@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -20,9 +21,24 @@ def build_fault_apply_cmd(namespace: str, fault: Dict[str, Any]) -> List[str]:
     if apply_cmd:
         return apply_cmd
 
+    if str_value(fault.get("kind")) == "native_kubernetes":
+        spec = fault.get("spec")
+        if not isinstance(spec, dict):
+            raise RuntimeError("fault.spec is required for native_kubernetes faults")
+        return [
+            "python3",
+            "-m",
+            "faults.native",
+            "apply",
+            "--namespace",
+            namespace,
+            "--spec-json",
+            json.dumps(spec, sort_keys=True),
+        ]
+
     filepath = str_value(fault.get("filepath"))
     if not filepath:
-        raise RuntimeError("fault.filepath or fault.apply_cmd is required")
+        raise RuntimeError("fault.filepath, fault.apply_cmd, or fault.kind=native_kubernetes is required")
 
     fault_path = Path(filepath)
     if not fault_path.is_absolute():
@@ -35,9 +51,24 @@ def build_fault_revert_cmd(namespace: str, fault: Dict[str, Any]) -> List[str]:
     if revert_cmd:
         return revert_cmd
 
+    if str_value(fault.get("kind")) == "native_kubernetes":
+        spec = fault.get("spec")
+        if not isinstance(spec, dict):
+            raise RuntimeError("fault.spec is required for native_kubernetes faults")
+        return [
+            "python3",
+            "-m",
+            "faults.native",
+            "revert",
+            "--namespace",
+            namespace,
+            "--spec-json",
+            json.dumps(spec, sort_keys=True),
+        ]
+
     filepath = str_value(fault.get("filepath"))
     if not filepath:
-        raise RuntimeError("fault.filepath or fault.revert_cmd is required")
+        raise RuntimeError("fault.filepath, fault.revert_cmd, or fault.kind=native_kubernetes is required")
 
     fault_path = Path(filepath)
     if not fault_path.is_absolute():

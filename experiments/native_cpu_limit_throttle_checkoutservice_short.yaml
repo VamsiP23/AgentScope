@@ -1,0 +1,51 @@
+name: Native CPU Limit Throttle Checkoutservice Short
+namespace: default
+startup:
+  enabled: false
+  args: []
+timings:
+  pre_fault_delay_seconds: 10
+  post_fault_delay_seconds: 10
+traffic:
+  enabled: true
+  base_url: http://localhost:8080
+  mode: checkout-heavy
+  duration_seconds: 90
+  rps: 8
+baseline:
+  enabled: false
+  duration_seconds: 90
+  interval_seconds: 10
+fault:
+  kind: native_kubernetes
+  duration_seconds: 50
+  auto_revert: true
+  spec:
+    id: cpu-limit-throttle-checkoutservice-short
+    type: deployment_resources
+    deployment: checkoutservice
+    container: server
+    resources:
+      requests:
+        cpu: 5m
+        memory: 64Mi
+      limits:
+        cpu: 20m
+        memory: 256Mi
+detector:
+  enabled: true
+  prom_url: http://localhost:9090
+  target_deployment: checkoutservice
+  service_latency_threshold_ms: 300
+  interval_seconds: 5
+agent:
+  enabled: false
+  mode: llm
+  dry_run: true
+  max_iterations: 2
+  verify_wait_seconds: 10
+  jaeger_url: http://localhost:16686
+  target_deployment: checkoutservice
+  require_incident_detected: true
+  wait_for_incident_timeout_seconds: 30
+  wait_for_incident_poll_seconds: 5

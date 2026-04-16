@@ -9,10 +9,10 @@ from .common import kubectl_apply_manifest, kubectl_delete_manifest
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Apply or delete a Chaos Mesh manifest from a YAML file."
+        description="Apply or delete a legacy Kubernetes manifest from a YAML file."
     )
     parser.add_argument("action", choices=["apply", "revert"])
-    parser.add_argument("filepath", help="Path to the Chaos Mesh YAML manifest")
+    parser.add_argument("filepath", help="Path to the Kubernetes YAML manifest")
     return parser
 
 

@@ -8,6 +8,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
+from urllib.parse import urlparse
 
 import yaml
 
@@ -26,6 +27,7 @@ from runner_common import (  # noqa: E402
     int_value,
     list_value,
     print_status,
+    read_detection_report,
     rel_path,
     require_binary,
     run_cmd,
@@ -39,8 +41,8 @@ from runner_common import (  # noqa: E402
     ensure_reusable_local_endpoint,
 )
 from runner_env import build_fault_apply_cmd, build_fault_revert_cmd, build_reset_cmd  # noqa: E402
-from runner_agent import build_monitor_cmd, wait_for_incident  # noqa: E402
-from runner_k8s import assess_reset_need, verify_chaos_mesh_health, verify_environment  # noqa: E402
+from runner_agent import build_monitor_cmd  # noqa: E402
+from runner_k8s import assess_reset_need, verify_environment  # noqa: E402
 
 
 TOPOLOGY: Dict[str, List[str]] = {
@@ -166,6 +168,49 @@ def _summarize_records(records: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+def _trace_probe_mode(target_service: str, category: str, configured_mode: str) -> str:
+    mode = (configured_mode or "").strip()
+    if mode:
+        return mode
+    if category == "dependency_trace":
+        if target_service == "frontend":
+            return "browse-heavy"
+        return "checkout-heavy"
+    if target_service == "checkoutservice" or category == "resource_latency":
+        return "checkout-heavy"
+    return "realistic"
+
+
+def _trace_records_complete(records: List[Dict[str, Any]]) -> bool:
+    trace_records = [record for record in records if record["tool"] in {"get_traces", "get_dependency_traces"}]
+    return bool(trace_records) and all(record["richness"] == "rich" for record in trace_records)
+
+
+def _trace_followup_services(records: List[Dict[str, Any]], target_service: str) -> List[str]:
+    followups: List[str] = []
+    seen = {target_service}
+    for record in records:
+        output = dict(record.get("output", {}) or {})
+        bottleneck = str(output.get("bottleneck_service", "")).strip()
+        if bottleneck and bottleneck not in seen:
+            followups.append(bottleneck)
+            seen.add(bottleneck)
+        for candidate in list(output.get("downstream_candidates", []) or []):
+            service = str((candidate or {}).get("service", "")).strip()
+            if service and service not in seen:
+                followups.append(service)
+                seen.add(service)
+    return followups[:3]
+
+
+def _dependency_trace_entry_service(target_service: str, record: Dict[str, Any]) -> str:
+    output = dict(record.get("output", {}) or {})
+    entry_service = str(output.get("entry_service", "")).strip()
+    if entry_service:
+        return entry_service
+    return target_service
+
+
 def collect_evidence(
     aci: AgentCloudInterface,
     *,
@@ -174,8 +219,18 @@ def collect_evidence(
     category: str,
     lookback_minutes: int,
     include_dependencies: bool,
+    trace_probe_base_url: str,
+    trace_probe_mode: str,
+    trace_probe_rps: int,
+    trace_probe_duration_seconds: int,
+    trace_probe_output_root: Path,
+    trace_probe_log: Path,
 ) -> Dict[str, Any]:
     records: List[Dict[str, Any]] = []
+    trace_lookback_minutes = max(5, lookback_minutes)
+    trace_probe: Dict[str, Any] = {}
+    trace_attempts: List[Dict[str, Any]] = []
+    effective_include_dependencies = include_dependencies or category == "dependency_trace"
 
     def add(tool: str, target: str, payload: Dict[str, Any]) -> None:
         records.append(_record(tool, target, payload))
@@ -185,21 +240,107 @@ def collect_evidence(
     add("get_logs", target_service, aci.get_logs(target_service, tail_lines=120))
 
     if jaeger_enabled:
-        add("get_traces", target_service, aci.get_traces(target_service, lookback_minutes=lookback_minutes))
-        if category in {"resource_latency", "dependency_trace"}:
-            add("get_traces", "frontend", aci.get_traces("frontend", lookback_minutes=lookback_minutes))
-            if target_service != "frontend":
-                add(
-                    "get_dependency_traces",
-                    target_service,
-                    aci.get_dependency_traces(
+        best_trace_records: List[Dict[str, Any]] = []
+        best_score = (-1, 999)
+        for attempt in range(1, 4):
+            current_trace_records: List[Dict[str, Any]] = []
+            aci.reset_trace_cache()
+            if trace_probe_base_url:
+                attempt_root = (
+                    trace_probe_output_root
+                    if attempt == 1
+                    else trace_probe_output_root.parent / f"{trace_probe_output_root.name}_{attempt}"
+                )
+                attempt_log = (
+                    trace_probe_log
+                    if attempt == 1
+                    else trace_probe_log.with_name(f"{trace_probe_log.stem}_{attempt}.log")
+                )
+                trace_probe_cmd = [
+                    "./scripts/generate_traffic.sh",
+                    "-u",
+                    trace_probe_base_url,
+                    "-d",
+                    str(max(1, int(trace_probe_duration_seconds))),
+                    "-r",
+                    str(max(1, int(trace_probe_rps))),
+                    "-m",
+                    trace_probe_mode or "realistic",
+                    "-o",
+                    str(attempt_root),
+                ]
+                current_probe = run_cmd(trace_probe_cmd, ROOT, attempt_log)
+                current_probe["attempt"] = attempt
+                current_probe["base_url"] = trace_probe_base_url
+                current_probe["mode"] = trace_probe_mode or "realistic"
+                current_probe["output_root"] = rel_path(attempt_root)
+                trace_attempts.append(current_probe)
+                if current_probe["returncode"] == 0:
+                    trace_probe = current_probe
+                    time.sleep(5)
+
+            current_trace_records.append(
+                _record("get_traces", target_service, aci.get_traces(target_service, lookback_minutes=trace_lookback_minutes))
+            )
+            if category == "resource_latency" and target_service != "frontend":
+                current_trace_records.append(
+                    _record("get_traces", "frontend", aci.get_traces("frontend", lookback_minutes=trace_lookback_minutes))
+                )
+                current_trace_records.append(
+                    _record(
+                        "get_dependency_traces",
                         target_service,
-                        entry_service="frontend",
-                        lookback_minutes=lookback_minutes,
-                    ),
+                        aci.get_dependency_traces(
+                            target_service,
+                            entry_service="frontend",
+                            lookback_minutes=trace_lookback_minutes,
+                        ),
+                    )
+                )
+            elif category == "dependency_trace":
+                current_trace_records.append(
+                    _record(
+                        "get_dependency_traces",
+                        target_service,
+                        aci.get_dependency_traces(
+                            target_service,
+                            entry_service="frontend",
+                            lookback_minutes=trace_lookback_minutes,
+                        ),
+                    )
                 )
 
-    if include_dependencies:
+            counts = _summarize_records(current_trace_records)["counts"]
+            score = (counts["rich"], counts["missing"])
+            if score[0] > best_score[0] or (score[0] == best_score[0] and score[1] < best_score[1]):
+                best_trace_records = current_trace_records
+                best_score = score
+            if _trace_records_complete(current_trace_records):
+                best_trace_records = current_trace_records
+                break
+
+        records.extend(best_trace_records)
+        for followup_service in _trace_followup_services(best_trace_records, target_service):
+            add("get_k8s_state", followup_service, aci.get_k8s_state(followup_service))
+            add("get_metrics", followup_service, aci.get_metrics(followup_service, lookback_minutes=lookback_minutes))
+            add("get_logs", followup_service, aci.get_logs(followup_service, tail_lines=80))
+        if category == "dependency_trace":
+            for record in best_trace_records:
+                if record.get("tool") != "get_dependency_traces":
+                    continue
+                entry_service = _dependency_trace_entry_service(target_service, record)
+                for followup_service in _trace_followup_services([record], target_service)[:2]:
+                    add(
+                        "get_dependency_traces",
+                        followup_service,
+                        aci.get_dependency_traces(
+                            followup_service,
+                            entry_service=entry_service,
+                            lookback_minutes=trace_lookback_minutes,
+                        ),
+                    )
+
+    if effective_include_dependencies:
         for dependency in TOPOLOGY.get(target_service, []):
             add("get_k8s_state", dependency, aci.get_k8s_state(dependency))
             add("get_metrics", dependency, aci.get_metrics(dependency, lookback_minutes=lookback_minutes))
@@ -207,6 +348,8 @@ def collect_evidence(
 
     return {
         "collected_at_utc": utc_now(),
+        "trace_probe": trace_probe,
+        "trace_attempts": trace_attempts,
         "records": records,
         "summary": _summarize_records(records),
     }
@@ -219,6 +362,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--skip-startup", action="store_true", help="Skip startup even if the experiment enables it")
     p.add_argument("--include-dependencies", action="store_true", help="Also collect evidence for the target service's direct dependencies")
     p.add_argument("--lookback-minutes", type=int, default=1, help="Prometheus/Jaeger lookback for evidence collection")
+    p.add_argument(
+        "--wait-for-detector",
+        action="store_true",
+        help="Wait for detector confirmation before collecting evidence. Off by default for offline collection.",
+    )
     return p
 
 
@@ -240,6 +388,10 @@ def main() -> int:
     timings = config.get("timings", {}) or {}
     pre_fault_delay = int_value(timings.get("pre_fault_delay_seconds"), 60)
     post_fault_delay = int_value(timings.get("post_fault_delay_seconds"), 30)
+    evidence_collection_delay = int_value(
+        timings.get("evidence_collection_delay_seconds"),
+        min(max(post_fault_delay, 0), 20),
+    )
     detector = config.get("detector", {}) or {}
     traffic = config.get("traffic", {}) or {}
     fault_cfg = config.get("fault", {}) or {}
@@ -298,19 +450,27 @@ def main() -> int:
                 print_status("phase=reset: skipped (cluster baseline already healthy)")
 
         verify_environment(namespace)
-        verify_chaos_mesh_health()
         print_status("phase=environment: verified")
 
         prom_url = str_value(detector.get("prom_url"), "http://localhost:9090")
         jaeger_url = str_value(agent_cfg.get("jaeger_url"), "http://localhost:16686")
+        frontend_base_url = str_value(traffic.get("base_url"), "http://localhost:8080")
         summary["steps"]["port_forward_prometheus"] = ensure_reusable_local_endpoint(namespace, "prometheus", prom_url, "/-/ready")
         summary["steps"]["port_forward_jaeger"] = ensure_reusable_local_endpoint(namespace, "jaeger", jaeger_url, "/api/services")
+        if (urlparse(frontend_base_url).hostname or "").lower() in {"localhost", "127.0.0.1"}:
+            summary["steps"]["port_forward_frontend"] = ensure_reusable_local_endpoint(
+                namespace,
+                "frontend-external",
+                frontend_base_url,
+                "/_healthz",
+                remote_port=80,
+            )
 
         if bool_value(traffic.get("enabled"), False):
             traffic_cmd = [
                 "./scripts/generate_traffic.sh",
                 "-u",
-                str_value(traffic.get("base_url"), "http://localhost:8080"),
+                frontend_base_url,
                 "-d",
                 str(int_value(traffic.get("duration_seconds"), 300)),
                 "-r",
@@ -362,12 +522,40 @@ def main() -> int:
 
         detection = {}
         if bool_value(detector.get("enabled"), False):
-            max_wait = 120
-            poll_interval = 2
-            print_status(f"phase=evidence_wait: waiting up to {max_wait}s for detector confirmation")
-            detection = wait_for_incident(run_dir / "detector_runs", max_wait, poll_interval)
+            latest_detection_path = run_dir / "detector_runs" / "latest_detection.json"
+            if args.wait_for_detector:
+                max_wait = 120
+                poll_interval = 2
+                print_status(f"phase=evidence_wait: waiting up to {max_wait}s for detector confirmation")
+                deadline = time.time() + max_wait
+                last_summary = ""
+                while time.time() <= deadline:
+                    detection = read_detection_report(latest_detection_path)
+                    if detection:
+                        summary_text = str(detection.get("summary", ""))
+                        if summary_text and summary_text != last_summary:
+                            print_status(f"phase=agent_wait: detector summary='{summary_text}'")
+                            last_summary = summary_text
+                        if detection.get("incident_detected", False):
+                            break
+                    time.sleep(max(1, poll_interval))
+            else:
+                if evidence_collection_delay > 0:
+                    print_status(
+                        "phase=evidence_delay: waiting "
+                        f"{evidence_collection_delay}s after fault injection before collecting evidence"
+                    )
+                    sleep_with_progress(evidence_collection_delay, "phase=evidence_delay")
+                detection = read_detection_report(latest_detection_path)
+
             (run_dir / "seeded_detection.json").write_text(json.dumps(detection, indent=2))
             summary["steps"]["detection"] = detection
+        elif evidence_collection_delay > 0:
+            print_status(
+                "phase=evidence_delay: waiting "
+                f"{evidence_collection_delay}s after fault injection before collecting evidence"
+            )
+            sleep_with_progress(evidence_collection_delay, "phase=evidence_delay")
 
         print_status("phase=evidence: collecting ACI evidence")
         benchmark_problem = resolve_problem_for_experiment(experiment_path, DEFAULT_BENCHMARK_SUITE)
@@ -396,6 +584,12 @@ def main() -> int:
             category=category,
             lookback_minutes=max(1, args.lookback_minutes),
             include_dependencies=bool(args.include_dependencies),
+            trace_probe_base_url=frontend_base_url if bool_value(agent_cfg.get("jaeger_enabled"), True) else "",
+            trace_probe_mode=_trace_probe_mode(target_service, category, str_value(traffic.get("mode"), "")),
+            trace_probe_rps=max(6, min(20, int_value(traffic.get("rps"), 8))),
+            trace_probe_duration_seconds=12,
+            trace_probe_output_root=run_dir / "trace_probe_traffic",
+            trace_probe_log=run_dir / "trace_probe.log",
         )
         evidence["target_service"] = target_service
         evidence["category"] = category
@@ -405,6 +599,7 @@ def main() -> int:
             "target_service": target_service,
             "category": category,
             "counts": evidence["summary"]["counts"],
+            "trace_probe": evidence.get("trace_probe", {}),
             "report_file": rel_path(run_dir / "evidence_report.json"),
             "aci_run_log": rel_path(run_dir / "aci_run_log.jsonl"),
         }
@@ -412,7 +607,7 @@ def main() -> int:
 
         sleep_with_progress(post_fault_delay, "phase=post_fault_delay")
 
-        if fault_active and not bool_value(fault_cfg.get("auto_revert"), False):
+        if fault_active:
             print_status("phase=fault_revert: reverting active fault")
             revert_cmd = build_fault_revert_cmd(namespace, fault_cfg)
             summary["steps"]["fault_revert"] = run_cmd(revert_cmd, ROOT, run_dir / "fault_revert.log")

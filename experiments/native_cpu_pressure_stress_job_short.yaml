@@ -1,0 +1,54 @@
+name: Native CPU Pressure Stress Job Short
+namespace: default
+startup:
+  enabled: false
+  args: []
+timings:
+  pre_fault_delay_seconds: 10
+  post_fault_delay_seconds: 10
+traffic:
+  enabled: true
+  base_url: http://localhost:8080
+  mode: checkout-heavy
+  duration_seconds: 70
+  rps: 6
+baseline:
+  enabled: false
+  duration_seconds: 70
+  interval_seconds: 10
+fault:
+  kind: native_kubernetes
+  duration_seconds: 30
+  auto_revert: true
+  spec:
+    id: cpu-pressure-stress-job-short
+    type: stress_job
+    job_name: agentscope-cpu-pressure-short
+    image: busybox:1.36
+    command: ["sh", "-c"]
+    args:
+      - "for i in 1 2; do while true; do :; done & done; sleep 30"
+    resources:
+      requests:
+        cpu: 500m
+        memory: 32Mi
+      limits:
+        cpu: "1"
+        memory: 128Mi
+detector:
+  enabled: true
+  prom_url: http://localhost:9090
+  target_deployment: frontend
+  service_latency_threshold_ms: 750
+  interval_seconds: 5
+agent:
+  enabled: false
+  mode: llm
+  dry_run: true
+  max_iterations: 2
+  verify_wait_seconds: 10
+  jaeger_url: http://localhost:16686
+  target_deployment: frontend
+  require_incident_detected: true
+  wait_for_incident_timeout_seconds: 30
+  wait_for_incident_poll_seconds: 5

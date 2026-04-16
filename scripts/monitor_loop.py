@@ -26,8 +26,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--service-error-rps-threshold", type=float, default=0.50)
     p.add_argument("--service-latency-threshold-ms", type=float, default=1000.0)
     p.add_argument("--latency-consecutive-required", type=int, default=2)
+    p.add_argument("--service-error-consecutive-required", type=int, default=1)
     p.add_argument("--min-total-rps", type=float, default=0.10)
     p.add_argument("--restart-count-threshold", type=int, default=1)
+    p.add_argument(
+        "--primary-detectors",
+        default=(
+            "error_ratio,service_error_rate,service_latency,deployment_availability,"
+            "service_endpoints,service_port_alignment,native_stress_job"
+        ),
+        help="Comma-separated detector names that are allowed to trigger incident_detected.",
+    )
     p.add_argument("--out-dir", required=True)
     p.add_argument("--interval-seconds", type=int, default=10)
     return p
@@ -45,8 +54,12 @@ def main() -> int:
         service_error_rps_threshold=args.service_error_rps_threshold,
         service_latency_threshold_ms=args.service_latency_threshold_ms,
         latency_consecutive_required=max(1, args.latency_consecutive_required),
+        service_error_consecutive_required=max(1, args.service_error_consecutive_required),
         min_total_rps=args.min_total_rps,
         restart_count_threshold=args.restart_count_threshold,
+        primary_detectors=[
+            item.strip() for item in str(args.primary_detectors).split(",") if item.strip()
+        ],
     )
     loop = MonitorLoop(config, args.out_dir, args.interval_seconds)
     return loop.run_forever()

@@ -23,6 +23,27 @@ from runner_common import (
 
 
 def build_monitor_cmd(namespace: str, detector: Dict[str, Any], run_dir: Path) -> List[str]:
+    primary_detectors = detector.get("primary_detectors", [
+        "error_ratio",
+        "service_error_rate",
+        "service_latency",
+        "deployment_availability",
+        "service_endpoints",
+        "service_port_alignment",
+        "native_stress_job",
+    ])
+    if isinstance(primary_detectors, str):
+        primary_detectors = [item.strip() for item in primary_detectors.split(",") if item.strip()]
+    if not isinstance(primary_detectors, list):
+        primary_detectors = [
+            "error_ratio",
+            "service_error_rate",
+            "service_latency",
+            "deployment_availability",
+            "service_endpoints",
+            "service_port_alignment",
+            "native_stress_job",
+        ]
     return [
         "./scripts/monitor_loop.py",
         "--namespace",
@@ -41,10 +62,14 @@ def build_monitor_cmd(namespace: str, detector: Dict[str, Any], run_dir: Path) -
         str(detector.get("service_latency_threshold_ms", 1000.0)),
         "--latency-consecutive-required",
         str(int_value(detector.get("latency_consecutive_required"), 2)),
+        "--service-error-consecutive-required",
+        str(int_value(detector.get("service_error_consecutive_required"), 1)),
         "--min-total-rps",
         str(detector.get("min_total_rps", 0.10)),
         "--restart-count-threshold",
         str(int_value(detector.get("restart_count_threshold"), 1)),
+        "--primary-detectors",
+        ",".join(str(item) for item in primary_detectors),
         "--out-dir",
         str(run_dir / "detector_runs"),
         "--interval-seconds",

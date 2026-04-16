@@ -1,0 +1,48 @@
+name: Native Bad Env Checkoutservice Email Short
+namespace: default
+startup:
+  enabled: false
+  args: []
+timings:
+  pre_fault_delay_seconds: 10
+  post_fault_delay_seconds: 10
+traffic:
+  enabled: true
+  base_url: http://localhost:8080
+  mode: checkout-heavy
+  duration_seconds: 80
+  rps: 4
+baseline:
+  enabled: false
+  duration_seconds: 80
+  interval_seconds: 10
+fault:
+  kind: native_kubernetes
+  duration_seconds: 40
+  auto_revert: true
+  spec:
+    id: bad-env-checkoutservice-email-short
+    type: deployment_env
+    deployment: checkoutservice
+    container: server
+    env_name: EMAIL_SERVICE_ADDR
+    env_value: emailservice:5999
+detector:
+  enabled: true
+  prom_url: http://localhost:9090
+  target_deployment: checkoutservice
+  error_ratio_threshold: 0.02
+  service_error_rps_threshold: 0.05
+  service_latency_threshold_ms: 750
+  interval_seconds: 5
+agent:
+  enabled: false
+  mode: llm
+  dry_run: true
+  max_iterations: 2
+  verify_wait_seconds: 10
+  jaeger_url: http://localhost:16686
+  target_deployment: checkoutservice
+  require_incident_detected: true
+  wait_for_incident_timeout_seconds: 30
+  wait_for_incident_poll_seconds: 5

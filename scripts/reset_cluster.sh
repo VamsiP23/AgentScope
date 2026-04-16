@@ -8,14 +8,6 @@ KILL_PORT_FORWARDS=0
 REFRESH_OBSERVABILITY=0
 DISABLE_BUILTIN_LOADGEN=1
 STABLE_LOCAL_MODE=1
-CHAOS_MESH_NAMESPACE="chaos-mesh"
-CHAOS_RESOURCE_TYPES=(
-  podchaos
-  stresschaos
-  networkchaos
-  dnschaos
-  httpchaos
-)
 CORE_DEPLOYMENTS=(
   frontend
   cartservice
@@ -32,7 +24,6 @@ CORE_DEPLOYMENTS=(
   kube-state-metrics
   jaeger
   prometheus
-  grafana
 )
 KEY_MULTI_REPLICA_DEPLOYMENTS=(
   frontend:2
@@ -116,12 +107,11 @@ kill_port_forwards() {
   pkill -f "kubectl port-forward" >/dev/null 2>&1 || true
 }
 
-cleanup_chaos() {
-  local resource
-  echo "Removing lingering Chaos Mesh resources from namespace: $NAMESPACE"
-  for resource in "${CHAOS_RESOURCE_TYPES[@]}"; do
-    kubectl delete "$resource" --all -n "$NAMESPACE" --ignore-not-found --timeout=120s >/dev/null 2>&1 || true
-  done
+cleanup_native_faults() {
+  echo "Removing lingering AgentScope native fault resources from namespace: $NAMESPACE"
+  kubectl delete job -n "$NAMESPACE" -l agentscope.dev/native-fault=true --ignore-not-found --timeout=120s >/dev/null 2>&1 || true
+  kubectl delete pod -n "$NAMESPACE" -l agentscope.dev/native-fault=true --ignore-not-found --timeout=120s >/dev/null 2>&1 || true
+  kubectl delete configmap -n "$NAMESPACE" -l agentscope.dev/native-fault=true --ignore-not-found --timeout=120s >/dev/null 2>&1 || true
 }
 
 ensure_namespace() {
@@ -288,6 +278,24 @@ capture_restart_snapshot() {
   kubectl get pods -n "$NAMESPACE" --no-headers 2>/dev/null | awk '{print $1 "|" $4}' | LC_ALL=C sort
 }
 
+restart_counts_increased() {
+  local before_snapshot="$1"
+  local after_snapshot="$2"
+  awk -F'|' '
+    NR == FNR {
+      before[$1] = $2 + 0
+      next
+    }
+    ($1 in before) && (($2 + 0) > before[$1]) {
+      increased = 1
+      exit 0
+    }
+    END {
+      exit increased ? 0 : 1
+    }
+  ' <(printf '%s\n' "$before_snapshot") <(printf '%s\n' "$after_snapshot")
+}
+
 report_cluster_health() {
   echo ""
   echo "Current deployment health:"
@@ -342,8 +350,8 @@ verify_cluster_stability() {
   done
 
   end_restarts=$(capture_restart_snapshot || true)
-  if [ -n "$start_restarts" ] && [ -n "$end_restarts" ] && [ "$start_restarts" != "$end_restarts" ]; then
-    echo "Pod restart counts changed during the reset stabilization window." >&2
+  if [ -n "$start_restarts" ] && [ -n "$end_restarts" ] && restart_counts_increased "$start_restarts" "$end_restarts"; then
+    echo "Observed restart count increases on surviving pods during the reset stabilization window." >&2
     echo "Before:" >&2
     echo "$start_restarts" >&2
     echo "After:" >&2
@@ -396,7 +404,7 @@ wait_core_deployments() {
 
 require_service_endpoints() {
   local svc addresses
-  for svc in frontend jaeger prometheus grafana kube-state-metrics; do
+  for svc in frontend jaeger prometheus kube-state-metrics; do
     if ! kubectl get svc "$svc" -n "$NAMESPACE" >/dev/null 2>&1; then
       echo "Required service missing: $svc" >&2
       exit 1
@@ -409,22 +417,13 @@ require_service_endpoints() {
   done
 }
 
-require_chaos_mesh_health() {
-  local ready
-  ready=$(kubectl get deploy chaos-controller-manager -n "$CHAOS_MESH_NAMESPACE" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || true)
-  if [ -z "$ready" ] || [ "$ready" = "0" ]; then
-    echo "Chaos Mesh controller is not ready." >&2
-    exit 1
-  fi
-}
-
 require_binary kubectl
 [ -f "$MANIFEST" ] || { echo "Manifest not found: $MANIFEST" >&2; exit 1; }
 
 use_context
 kill_port_forwards
 ensure_namespace
-cleanup_chaos
+cleanup_native_faults
 
 echo "Reapplying app manifest: $MANIFEST"
 kubectl apply -n "$NAMESPACE" -f "$MANIFEST" >/dev/null
@@ -445,7 +444,6 @@ fi
 
 wait_core_deployments
 require_service_endpoints
-require_chaos_mesh_health
 verify_cluster_stability "$STABILITY_WINDOW_SECONDS"
 
 echo "Cluster reset complete."

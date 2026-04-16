@@ -1,0 +1,43 @@
+name: Native Pod Delete Cartservice Short
+namespace: default
+startup:
+  enabled: false
+  args: []
+timings:
+  pre_fault_delay_seconds: 10
+  post_fault_delay_seconds: 60
+traffic:
+  enabled: true
+  base_url: http://localhost:8080
+  mode: cart-heavy
+  duration_seconds: 60
+  rps: 4
+baseline:
+  enabled: false
+  duration_seconds: 60
+  interval_seconds: 10
+fault:
+  kind: native_kubernetes
+  duration_seconds: 20
+  auto_revert: true
+  spec:
+    id: pod-delete-cartservice-short
+    type: pod_delete
+    selector: app=cartservice
+    limit: 1
+detector:
+  enabled: true
+  prom_url: http://localhost:9090
+  target_deployment: cartservice
+  interval_seconds: 5
+agent:
+  enabled: false
+  mode: llm
+  dry_run: true
+  max_iterations: 2
+  verify_wait_seconds: 10
+  jaeger_url: http://localhost:16686
+  target_deployment: cartservice
+  require_incident_detected: false
+  wait_for_incident_timeout_seconds: 30
+  wait_for_incident_poll_seconds: 5
