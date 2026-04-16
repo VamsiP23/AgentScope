@@ -126,16 +126,25 @@ def next_episode_path(problem_id: str) -> Path:
 def build_initial_context(problem: Dict[str, Any], summary: Dict[str, Any]) -> str:
     detector = dict((summary.get("steps", {}) or {}).get("detection", {}) or {})
     target = str(problem.get("target_service") or detector.get("config", {}).get("target_deployment", "")).strip()
-    detector_summary = str(detector.get("summary", "")).strip()
+    category = str(problem.get("category", "")).strip()
+    family = str(problem.get("task_family", "")).strip()
+    impact = "availability or latency symptoms"
+    if category == "resource_latency" or "pressure" in family or "throttle" in family:
+        impact = "latency and resource-related symptoms"
+    elif "dependency" in family or category == "dependency_trace":
+        impact = "request failures or degraded dependency behavior"
+    elif category == "availability_control" or "rollout" in family or "service" in family:
+        impact = "availability symptoms"
+
     if target:
         return (
             f"PagerDuty alert: an incident has been detected affecting {target}. "
-            f"{detector_summary or 'Symptoms were detected by the monitoring pipeline.'} "
+            f"The monitoring pipeline observed {impact}. "
             "Investigate and recommend the most appropriate remediation action."
         )
     return (
         "PagerDuty alert: an incident has been detected in the Online Boutique cluster. "
-        f"{detector_summary or 'Symptoms were detected by the monitoring pipeline.'} "
+        f"The monitoring pipeline observed {impact}. "
         "Investigate and recommend the most appropriate remediation action."
     )
 
