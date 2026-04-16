@@ -54,6 +54,12 @@ class AgentCloudInterface:
         self.run_log: List[Dict[str, Any]] = []
         self.submitted_solution: Optional[Dict[str, Any]] = None
 
+    def reset_trace_cache(self) -> None:
+        """Compatibility hook for evidence collectors that retry Jaeger probes."""
+        reset = getattr(self.jaeger, "reset_cache", None)
+        if callable(reset):
+            reset()
+
     def get_metrics(self, service: str, lookback_minutes: int = 5) -> Dict[str, Any]:
         return self._run_logged_call(
             "get_metrics",
@@ -200,16 +206,30 @@ class AgentCloudInterface:
         action_taken: str,
         confidence: float,
         evidence: List[str],
+        fault_class: str = "",
+        affected_service: str = "",
+        action_type: str = "",
     ) -> Dict[str, Any]:
         return self._run_logged_call(
             "submit_solution",
             {
                 "root_cause": root_cause,
                 "action_taken": action_taken,
+                "fault_class": fault_class,
+                "affected_service": affected_service,
+                "action_type": action_type,
                 "confidence": confidence,
                 "evidence": list(evidence),
             },
-            lambda: self._submit_solution_impl(root_cause, action_taken, confidence, evidence),
+            lambda: self._submit_solution_impl(
+                root_cause,
+                action_taken,
+                confidence,
+                evidence,
+                fault_class=fault_class,
+                affected_service=affected_service,
+                action_type=action_type,
+            ),
         )
 
     def _get_metrics_impl(self, service: str, lookback_minutes: int) -> Dict[str, Any]:
@@ -241,8 +261,20 @@ class AgentCloudInterface:
         action_taken: str,
         confidence: float,
         evidence: List[str],
+        fault_class: str = "",
+        affected_service: str = "",
+        action_type: str = "",
     ) -> Dict[str, Any]:
-        solution = validate_solution_payload(self.run_log, root_cause, action_taken, confidence, evidence)
+        solution = validate_solution_payload(
+            self.run_log,
+            root_cause,
+            action_taken,
+            confidence,
+            evidence,
+            fault_class=fault_class,
+            affected_service=affected_service,
+            action_type=action_type,
+        )
         self.submitted_solution = solution
         return solution
 

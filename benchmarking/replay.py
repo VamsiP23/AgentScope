@@ -17,12 +17,67 @@ class ReplayDataset:
     @classmethod
     def load(cls, path: Path) -> "ReplayDataset":
         payload = json.loads(path.read_text())
+        initial_context = payload.get("initial_context", {}) or {}
+        if isinstance(initial_context, str):
+            initial_context = {
+                "summary": initial_context,
+                "suspicious_services": [str(payload.get("fault_spec", {}).get("target_service", "")).strip()],
+            }
+        elif not isinstance(initial_context, dict):
+            initial_context = {"summary": str(initial_context)}
+
+        metadata = dict(payload.get("metadata", {}) or {})
+        if not metadata:
+            provenance = dict(payload.get("provenance", {}) or {})
+            metadata = {
+                "task_id": str(payload.get("task_id", "")),
+                "family": str(payload.get("family", "")),
+                "namespace": str(provenance.get("namespace", "default") or "default"),
+                "captured_at_utc": str(provenance.get("capture_timestamp_utc", "")),
+            }
+
+        calls = list(payload.get("calls", []) or [])
+        if not calls and payload.get("phases"):
+            calls = _calls_from_episode_phases(list(payload.get("phases", []) or []))
+
         return cls(
             path=path.resolve(),
-            metadata=dict(payload.get("metadata", {}) or {}),
-            initial_context=dict(payload.get("initial_context", {}) or {}),
-            calls=list(payload.get("calls", []) or []),
+            metadata=metadata,
+            initial_context=dict(initial_context),
+            calls=calls,
         )
+
+
+def _calls_from_episode_phases(phases: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    calls: List[Dict[str, Any]] = []
+    for phase in phases:
+        responses = dict((phase or {}).get("tool_responses", {}) or {})
+        for fingerprint, output in responses.items():
+            method, inputs = _parse_episode_fingerprint(str(fingerprint))
+            if not method:
+                continue
+            calls.append(
+                {
+                    "method": method,
+                    "inputs": inputs,
+                    "outputs": dict(output or {}),
+                }
+            )
+    return calls
+
+
+def _parse_episode_fingerprint(fingerprint: str) -> Tuple[str, Dict[str, Any]]:
+    parts = [part.strip() for part in fingerprint.split("|") if part.strip()]
+    if not parts:
+        return "", {}
+    method = parts[0]
+    inputs: Dict[str, Any] = {}
+    for part in parts[1:]:
+        if "=" not in part:
+            continue
+        key, value = part.split("=", 1)
+        inputs[key.strip()] = value.strip()
+    return method, inputs
 
 
 class ReplayAgentCloudInterface:
@@ -108,6 +163,9 @@ class ReplayAgentCloudInterface:
         action_taken: str,
         confidence: float,
         evidence: List[str],
+        fault_class: str = "",
+        affected_service: str = "",
+        action_type: str = "",
     ) -> Dict[str, Any]:
         payload = {
             "call_id": str(uuid4()),
@@ -117,6 +175,9 @@ class ReplayAgentCloudInterface:
             "invalid_evidence": [],
             "root_cause": root_cause,
             "action_taken": action_taken,
+            "fault_class": fault_class,
+            "affected_service": affected_service,
+            "action_type": action_type,
             "confidence": confidence,
             "evidence": list(evidence),
             "error": None,
@@ -125,6 +186,9 @@ class ReplayAgentCloudInterface:
         self._append_log("submit_solution", {
             "root_cause": root_cause,
             "action_taken": action_taken,
+            "fault_class": fault_class,
+            "affected_service": affected_service,
+            "action_type": action_type,
             "confidence": confidence,
             "evidence": list(evidence),
         }, payload)

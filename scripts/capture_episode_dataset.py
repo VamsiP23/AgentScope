@@ -114,6 +114,15 @@ def canonical_action(tool_name: str, service: str) -> Dict[str, Any]:
     return {"canonical": canonical, "tool_equivalents": tool_equivalents}
 
 
+def next_episode_path(problem_id: str) -> Path:
+    episode_dir = ROOT / "datasets" / "episodes" / problem_id
+    for index in range(1, 1000):
+        candidate = episode_dir / f"{problem_id}_{index:03d}.json"
+        if not candidate.exists():
+            return candidate
+    raise RuntimeError(f"no available episode slot for {problem_id}")
+
+
 def build_initial_context(problem: Dict[str, Any], summary: Dict[str, Any]) -> str:
     detector = dict((summary.get("steps", {}) or {}).get("detection", {}) or {})
     target = str(problem.get("target_service") or detector.get("config", {}).get("target_deployment", "")).strip()
@@ -402,8 +411,11 @@ def main() -> int:
         },
     }
 
+    out_path = Path(args.out_file).resolve() if args.out_file else next_episode_path(problem.problem_id)
+    task_id = out_path.stem
+
     episode = BenchmarkEpisode(
-        task_id=f"{problem.problem_id}_001",
+        task_id=task_id,
         family=problem.task_family or problem.category,
         scenario=problem.scenario or problem.problem_id,
         split=args.split,
@@ -421,9 +433,6 @@ def main() -> int:
         ),
     )
 
-    out_path = Path(args.out_file).resolve() if args.out_file else (
-        ROOT / "datasets" / "episodes" / problem.problem_id / f"{problem.problem_id}_001.json"
-    )
     episode.write(out_path)
     print(str(out_path))
     return 0

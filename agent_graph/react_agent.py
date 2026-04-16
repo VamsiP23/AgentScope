@@ -187,6 +187,9 @@ class ReActAgent:
             "tool_input",
             "root_cause",
             "action_taken",
+            "fault_class",
+            "affected_service",
+            "action_type",
             "confidence",
             "evidence",
         ]
@@ -213,6 +216,50 @@ class ReActAgent:
                     "tool_input": tool_input_schema,
                     "root_cause": {"type": "string"},
                     "action_taken": {"type": "string"},
+                    "fault_class": {
+                        "type": "string",
+                        "enum": [
+                            "unknown",
+                            "capacity_regression",
+                            "compound_incident",
+                            "dependency_localization",
+                            "observability_challenge",
+                            "partial_degradation",
+                            "pod_disturbance",
+                            "replay_benchmark",
+                            "resource_pressure",
+                            "runtime_failure",
+                            "rollout_failure",
+                            "native_service_selector_mismatch",
+                            "native_service_port_mismatch",
+                            "native_bad_image_rollout",
+                            "native_bad_probe_rollout",
+                            "native_bad_env",
+                            "native_scale_zero",
+                            "native_pod_delete",
+                            "native_dependency_bad_endpoint",
+                            "native_cpu_limit_throttle",
+                            "native_memory_limit_oom",
+                            "native_cpu_pressure_stress_job",
+                            "native_memory_pressure_stress_job",
+                        ],
+                    },
+                    "affected_service": {"type": "string"},
+                    "action_type": {
+                        "type": "string",
+                        "enum": [
+                            "unknown",
+                            "rollout_undo",
+                            "rollout_restart",
+                            "restart_pod",
+                            "patch_resources",
+                            "patch_resources_then_scale",
+                            "patch_service_selector",
+                            "patch_service_target_port",
+                            "scale_deployment",
+                            "wait_and_monitor",
+                        ],
+                    },
                     "confidence": {"type": "number"},
                     "evidence": {
                         "type": "array",
@@ -359,6 +406,13 @@ class ReActAgent:
         elif tool == "submit_solution":
             root_cause = str(decision.get("root_cause", "")).strip()
             action_taken = str(decision.get("action_taken", "")).strip()
+            fault_class = str(decision.get("fault_class", "")).strip()
+            affected_service = str(decision.get("affected_service", "")).strip()
+            action_type = str(decision.get("action_type", "")).strip()
+            if fault_class == "unknown":
+                fault_class = ""
+            if action_type == "unknown":
+                action_type = ""
             confidence = float(decision.get("confidence", 0.0) or 0.0)
             evidence = [str(item).strip() for item in list(decision.get("evidence", []) or []) if str(item).strip()]
             if confidence <= 0.0 and (root_cause or action_taken):
@@ -366,6 +420,9 @@ class ReActAgent:
             output = self.aci.submit_solution(
                 root_cause=root_cause,
                 action_taken=action_taken,
+                fault_class=fault_class,
+                affected_service=affected_service,
+                action_type=action_type,
                 confidence=confidence,
                 evidence=evidence,
             )

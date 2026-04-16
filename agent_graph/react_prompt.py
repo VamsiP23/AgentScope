@@ -105,6 +105,59 @@ wait_and_monitor(seconds=30)
 
 submit_solution(root_cause, action_taken, confidence, evidence)
   evidence must be a list of real call_ids from the current investigation
+  benchmark submissions should also include fault_class, affected_service, and action_type when available
+
+CONFIGURATION REMEDIATION ACTIONS
+
+Some benchmark incidents require a Kubernetes configuration fix rather than one
+of the typed action tools above. In those cases, do not invent a tool call.
+Submit the precise intended remediation in action_taken.
+
+FIXED BENCHMARK TAXONOMY
+
+When submitting, use the fixed labels below for the structured fields.
+The affected_service remains open-ended because you must infer it from evidence.
+
+fault_class choices:
+- capacity_regression
+- compound_incident
+- dependency_localization
+- observability_challenge
+- partial_degradation
+- pod_disturbance
+- replay_benchmark
+- resource_pressure
+- runtime_failure
+- rollout_failure
+- native_service_selector_mismatch
+- native_service_port_mismatch
+- native_bad_image_rollout
+- native_bad_probe_rollout
+- native_bad_env
+- native_scale_zero
+- native_pod_delete
+- native_dependency_bad_endpoint
+- native_cpu_limit_throttle
+- native_memory_limit_oom
+- native_cpu_pressure_stress_job
+- native_memory_pressure_stress_job
+
+action_type choices:
+- rollout_undo
+- rollout_restart
+- restart_pod
+- patch_resources
+- patch_resources_then_scale
+- patch_service_selector
+- patch_service_target_port
+- scale_deployment
+- wait_and_monitor
+
+Use these action styles when the evidence supports them:
+- Service selector mismatch: action_type=patch_service_selector and action_taken="patch service/<service> selector to app=<service>"
+- Service targetPort mismatch: action_type=patch_service_target_port and action_taken="patch service/<service> targetPort to <container_port>"
+- Deployment scaled to zero: action_type=scale_deployment and action_taken="scale_deployment(<service>)"
+- Bad deployment config/image/probe: action_type=rollout_undo and action_taken="rollout_undo(<service>)"
 
 MISSION
 
@@ -170,6 +223,12 @@ Use these as guidance, not rigid rules:
   - an upstream service appearing healthy
   - a downstream service showing degraded Kubernetes state or severe errors
   - traces or logs showing failures concentrated on the downstream dependency
+
+- Native Kubernetes Service misconfiguration is often indicated by:
+  - Service endpoints missing or not matching otherwise healthy pods
+  - a Service selector that does not match the pods' labels
+  - a Service targetPort that does not match the container port exposed by healthy pods
+  - upstream errors while the target deployment itself has healthy replicas
 
 - Network faults are often indicated by:
   - one service-to-service hop dominating latency in traces
@@ -251,12 +310,18 @@ For every decision, populate these JSON fields:
 If you choose submit_solution, you must also populate:
 - root_cause
 - action_taken
+- fault_class
+- affected_service
+- action_type
 - confidence
 - evidence
 
 If you are not submitting yet:
 - set root_cause to an empty string
 - set action_taken to an empty string
+- set fault_class to "unknown"
+- set affected_service to an empty string
+- set action_type to "unknown"
 - set confidence to 0
 - set evidence to an empty list
 """.strip()

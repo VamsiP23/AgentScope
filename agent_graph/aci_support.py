@@ -107,9 +107,15 @@ def validate_solution_payload(
     action_taken: str,
     confidence: float,
     evidence: List[str],
+    fault_class: str = "",
+    affected_service: str = "",
+    action_type: str = "",
 ) -> Dict[str, Any]:
     normalized_root_cause = str(root_cause).strip()
     normalized_action = str(action_taken).strip()
+    normalized_fault_class = str(fault_class).strip()
+    normalized_affected_service = str(affected_service).strip()
+    normalized_action_type = str(action_type).strip()
     valid_call_ids = {
         record["call_id"]
         for record in run_log
@@ -129,6 +135,9 @@ def validate_solution_payload(
         "solution_logged": len(validation_errors) == 0,
         "root_cause": normalized_root_cause,
         "action_taken": normalized_action,
+        "fault_class": normalized_fault_class,
+        "affected_service": normalized_affected_service,
+        "action_type": normalized_action_type,
         "confidence": float(confidence),
         "evidence": list(evidence),
         "evidence_valid": len(invalid_evidence) == 0,

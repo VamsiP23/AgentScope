@@ -238,6 +238,199 @@ experiments:
       traces_required: false
     notes: Runtime-failure control task distinct from rollout/image failures.
 
+  - id: native_service_selector_mismatch_cartservice
+    status: candidate
+    category: availability_control
+    task_family: native_service_selector_mismatch
+    scenario: cartservice Service selector is changed so it no longer matches healthy cartservice pods
+    entry_service: frontend
+    experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/native_service_selector_mismatch_cartservice_baseline.yaml
+    target_service: cartservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: cartservice
+      primary_signal: service_endpoints
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - cpu_series_present
+        - memory_series_present
+        - jaeger_services
+      required_services:
+        - frontend
+        - cartservice
+      fail_open: false
+      notes: Full-observability native service-selector episode.
+    ground_truth:
+      acceptable_root_causes:
+        - cartservice service selector mismatch
+        - cartservice service selector does not match pods
+      acceptable_actions:
+        - patch service/cartservice selector to app=cartservice
+      required_evidence:
+        - get_k8s_state(cartservice)
+        - get_logs(cartservice)
+      traces_required: false
+    notes: Easy native configuration task; Kubernetes Service/endpoints state is primary evidence and logs are a sanity check.
+
+  - id: native_bad_image_productcatalogservice
+    status: candidate
+    category: availability_control
+    task_family: native_bad_image_rollout
+    scenario: productcatalogservice deployment is patched to an invalid image tag
+    entry_service: frontend
+    experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/native_bad_image_productcatalogservice_baseline.yaml
+    target_service: productcatalogservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: productcatalogservice
+      primary_signal: deployment_availability
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - cpu_series_present
+        - memory_series_present
+        - jaeger_services
+      required_services:
+        - frontend
+        - productcatalogservice
+      fail_open: false
+      notes: Full-observability native bad-image rollout episode.
+    ground_truth:
+      acceptable_root_causes:
+        - productcatalogservice bad image rollout
+        - productcatalogservice invalid image tag
+      acceptable_actions:
+        - kubectl rollout undo deployment/productcatalogservice
+      required_evidence:
+        - get_k8s_state(productcatalogservice)
+        - get_logs(productcatalogservice)
+        - get_metrics(productcatalogservice)
+      traces_required: false
+    notes: Easy native rollout task with image pull and rollout state evidence.
+
+  - id: native_bad_probe_cartservice
+    status: candidate
+    category: availability_control
+    task_family: native_bad_probe_rollout
+    scenario: cartservice readiness probe is patched to an invalid TCP port
+    entry_service: frontend
+    experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/native_bad_probe_cartservice_baseline.yaml
+    target_service: cartservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: cartservice
+      primary_signal: deployment_availability
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - cpu_series_present
+        - memory_series_present
+        - jaeger_services
+      required_services:
+        - frontend
+        - cartservice
+      fail_open: false
+      notes: Full-observability native bad-probe rollout episode.
+    ground_truth:
+      acceptable_root_causes:
+        - cartservice bad readiness probe
+        - cartservice probe misconfiguration
+      acceptable_actions:
+        - kubectl rollout undo deployment/cartservice
+      required_evidence:
+        - get_k8s_state(cartservice)
+        - get_logs(cartservice)
+        - get_metrics(cartservice)
+      traces_required: false
+    notes: Easy native probe regression with Kubernetes events as primary evidence.
+
+  - id: native_service_port_mismatch_productcatalogservice
+    status: candidate
+    category: availability_control
+    task_family: native_service_port_mismatch
+    scenario: productcatalogservice Service targetPort is changed away from the container port
+    entry_service: frontend
+    experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/native_service_port_mismatch_productcatalogservice_baseline.yaml
+    target_service: productcatalogservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: productcatalogservice
+      primary_signal: service_port_alignment
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - cpu_series_present
+        - memory_series_present
+        - jaeger_services
+      required_services:
+        - frontend
+        - productcatalogservice
+      fail_open: false
+      notes: Full-observability native service-port mismatch episode.
+    ground_truth:
+      acceptable_root_causes:
+        - productcatalogservice service targetPort mismatch
+        - productcatalogservice service port misconfiguration
+        - productcatalogservice targetPort mismatch
+        - productcatalogservice service targetPort misconfiguration
+      acceptable_actions:
+        - patch service/productcatalogservice targetPort to 3550
+        - patch productcatalogservice service targetPort to 3550
+        - restore productcatalogservice service targetPort to 3550
+        - fix productcatalogservice Service targetPort to 3550
+      required_evidence:
+        - get_k8s_state(productcatalogservice)
+        - get_logs(productcatalogservice)
+      traces_required: false
+    notes: Easy native service config task; Kubernetes Service port alignment is primary evidence and logs are a sanity check.
+
+  - id: native_scale_zero_recommendationservice
+    status: candidate
+    category: availability_control
+    task_family: native_scale_zero
+    scenario: recommendationservice deployment is scaled to zero replicas
+    entry_service: frontend
+    experiment_file: /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/native_scale_zero_recommendationservice_baseline.yaml
+    target_service: recommendationservice
+    detector_gate:
+      require_incident_detected: true
+      target_deployment: recommendationservice
+      primary_signal: deployment_availability
+    telemetry_contract:
+      required_validation_checks:
+        - otel_spanmetrics_up
+        - kube_state_metrics_up
+        - cadvisor_up
+        - cpu_series_present
+        - memory_series_present
+        - jaeger_services
+      required_services:
+        - frontend
+        - recommendationservice
+      fail_open: false
+      notes: Full-observability native scale-to-zero episode.
+    ground_truth:
+      acceptable_root_causes:
+        - recommendationservice scaled to zero
+        - recommendationservice has zero replicas
+      acceptable_actions:
+        - scale_deployment(recommendationservice)
+      required_evidence:
+        - get_k8s_state(recommendationservice)
+        - get_metrics(recommendationservice)
+        - get_logs(recommendationservice)
+      traces_required: false
+    notes: Easy native capacity/availability task with desired replicas set to zero.
+
   - id: cpu_pressure_checkoutservice
     status: candidate
     category: resource_latency

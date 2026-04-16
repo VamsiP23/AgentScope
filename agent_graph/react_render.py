@@ -61,6 +61,9 @@ def summarize_output_for_prompt(output: Dict[str, Any]) -> Dict[str, Any]:
         "solution_logged",
         "root_cause",
         "action_taken",
+        "fault_class",
+        "affected_service",
+        "action_type",
         "evidence_valid",
     ]
     for key in scalar_keys:
@@ -191,6 +194,6 @@ def tool_signatures(allowed_tools: List[str]) -> Dict[str, str]:
         "patch_resources": "patch_resources(service, cpu_request='', cpu_limit='', memory_request='', memory_limit='', container='server') -> {call_id, timestamp, service, executed, command, result, error}",
         "wait_and_monitor": "wait_and_monitor(seconds=30) -> {call_id, timestamp, executed, command, result, error}",
         "exec_shell": "exec_shell(command) -> {call_id, timestamp, stdout, stderr, exit_code, rejected, error}",
-        "submit_solution": "submit_solution(root_cause, action_taken, confidence, evidence) -> {call_id, timestamp, solution_logged, evidence_valid, invalid_evidence, error}",
+        "submit_solution": "submit_solution(root_cause, action_taken, fault_class='', affected_service='', action_type='', confidence, evidence) -> {call_id, timestamp, solution_logged, evidence_valid, invalid_evidence, error}",
     }
     return {tool: signatures[tool] for tool in allowed_tools}

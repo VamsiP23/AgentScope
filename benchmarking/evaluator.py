@@ -28,6 +28,12 @@ class RunEvaluation:
     missing_required_evidence: List[str] = field(default_factory=list)
     submitted_root_cause: str = ""
     submitted_action: str = ""
+    submitted_fault_class: str = ""
+    expected_fault_class: str = ""
+    submitted_affected_service: str = ""
+    expected_affected_service: str = ""
+    submitted_action_type: str = ""
+    expected_action_types: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -47,6 +53,12 @@ class RunEvaluation:
             "missing_required_evidence": list(self.missing_required_evidence),
             "submitted_root_cause": self.submitted_root_cause,
             "submitted_action": self.submitted_action,
+            "submitted_fault_class": self.submitted_fault_class,
+            "expected_fault_class": self.expected_fault_class,
+            "submitted_affected_service": self.submitted_affected_service,
+            "expected_affected_service": self.expected_affected_service,
+            "submitted_action_type": self.submitted_action_type,
+            "expected_action_types": list(self.expected_action_types),
         }
 
 
@@ -61,14 +73,36 @@ def evaluate_agent_run(problem: ProblemSpec, agent_report: Dict[str, Any]) -> Ru
 
     submitted_root_cause = str(solution.get("root_cause", "")).strip()
     submitted_action = str(solution.get("action_taken", "")).strip()
-    diagnosis_correct = _normalized_match(
-        submitted_root_cause,
-        problem.ground_truth.acceptable_root_causes,
-    )
-    action_correct = _normalized_match(
-        submitted_action,
-        problem.ground_truth.acceptable_actions,
-    )
+    submitted_fault_class = str(solution.get("fault_class", "")).strip()
+    submitted_affected_service = str(solution.get("affected_service", "")).strip()
+    submitted_action_type = str(solution.get("action_type", "")).strip()
+    expected_fault_class = _expected_fault_class(problem)
+    expected_affected_service = problem.target_service
+    expected_action_types = _expected_action_types(problem)
+
+    structured_diagnosis_present = bool(submitted_fault_class or submitted_affected_service)
+    if structured_diagnosis_present:
+        diagnosis_correct = (
+            _normalize_label(submitted_fault_class) == _normalize_label(expected_fault_class)
+            and _normalize_service(submitted_affected_service) == _normalize_service(expected_affected_service)
+        )
+    else:
+        diagnosis_correct = _normalized_match(
+            submitted_root_cause,
+            problem.ground_truth.acceptable_root_causes,
+        )
+
+    if submitted_action_type:
+        action_correct = _normalize_label(submitted_action_type) in {
+            _normalize_label(action_type) for action_type in expected_action_types
+        } and _action_targets_expected_service(submitted_action, submitted_affected_service, expected_affected_service)
+    else:
+        action_correct = _action_text_match(
+            submitted_action,
+            problem.ground_truth.acceptable_actions,
+            expected_action_types,
+            expected_affected_service,
+        )
 
     submit_step = _first_successful_submit_step(steps)
     tool_calls_to_solution = len(
@@ -109,6 +143,12 @@ def evaluate_agent_run(problem: ProblemSpec, agent_report: Dict[str, Any]) -> Ru
         missing_required_evidence=missing,
         submitted_root_cause=submitted_root_cause,
         submitted_action=submitted_action,
+        submitted_fault_class=submitted_fault_class,
+        expected_fault_class=expected_fault_class,
+        submitted_affected_service=submitted_affected_service,
+        expected_affected_service=expected_affected_service,
+        submitted_action_type=submitted_action_type,
+        expected_action_types=expected_action_types,
     )
 
 
@@ -121,6 +161,79 @@ def _normalized_match(value: str, accepted: List[str]) -> bool:
 
 def _normalize_text(value: str) -> str:
     return " ".join(value.strip().lower().split())
+
+
+def _normalize_label(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", value.strip().lower()).strip("_")
+
+
+def _normalize_service(value: str) -> str:
+    normalized = _normalize_label(value)
+    if normalized.startswith("deployment_"):
+        normalized = normalized[len("deployment_") :]
+    if normalized.startswith("service_"):
+        normalized = normalized[len("service_") :]
+    return normalized
+
+
+def _expected_fault_class(problem: ProblemSpec) -> str:
+    return problem.task_family or problem.category or problem.problem_id
+
+
+def _expected_action_types(problem: ProblemSpec) -> List[str]:
+    action_types: List[str] = []
+    for action in problem.ground_truth.acceptable_actions:
+        action_type = _action_type_from_text(action)
+        if action_type and action_type not in action_types:
+            action_types.append(action_type)
+    return action_types or ["wait_and_monitor"]
+
+
+def _action_type_from_text(value: str) -> str:
+    text = _normalize_text(value)
+    label = _normalize_label(value)
+    if "patch_service_target_port" in label or ("targetport" in text and "service" in text):
+        return "patch_service_target_port"
+    if "patch_service_selector" in label or ("selector" in text and "service" in text):
+        return "patch_service_selector"
+    if "patch_resources_then_scale" in label:
+        return "patch_resources_then_scale"
+    if "patch_resources" in label or "patch resource" in text:
+        return "patch_resources"
+    if "scale_deployment" in label or text.startswith("scale deployment") or text.startswith("kubectl scale"):
+        return "scale_deployment"
+    if "rollout_undo" in label or "rollout undo" in text:
+        return "rollout_undo"
+    if "rollout_restart" in label or "rollout restart" in text:
+        return "rollout_restart"
+    if "restart_pod" in label or "delete pod" in text:
+        return "restart_pod"
+    if "wait_and_monitor" in label or "wait and monitor" in text or "monitor" == text:
+        return "wait_and_monitor"
+    return ""
+
+
+def _action_text_match(
+    submitted_action: str,
+    accepted_actions: List[str],
+    expected_action_types: List[str],
+    expected_service: str,
+) -> bool:
+    if _normalized_match(submitted_action, accepted_actions):
+        return True
+    submitted_type = _action_type_from_text(submitted_action)
+    if not submitted_type:
+        return False
+    if _normalize_label(submitted_type) not in {_normalize_label(action_type) for action_type in expected_action_types}:
+        return False
+    normalized_action = _normalize_text(submitted_action)
+    return _normalize_service(expected_service) in _normalize_service(normalized_action)
+
+
+def _action_targets_expected_service(submitted_action: str, submitted_affected_service: str, expected_service: str) -> bool:
+    if submitted_affected_service:
+        return _normalize_service(submitted_affected_service) == _normalize_service(expected_service)
+    return _normalize_service(expected_service) in _normalize_service(submitted_action)
 
 
 def _first_successful_submit_step(steps: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
