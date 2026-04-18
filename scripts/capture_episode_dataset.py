@@ -23,6 +23,13 @@ from benchmarking.episode import (
 from benchmarking.problem import load_benchmark_suite
 
 
+def repo_relative(path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
 def load_json(path: Path) -> Dict[str, Any]:
     return json.loads(path.read_text()) if path.exists() else {}
 
@@ -94,8 +101,14 @@ def canonical_action(tool_name: str, service: str) -> Dict[str, Any]:
         canonical = f"patch_resources:{service}"
     elif tool_name == "patch_resources_then_scale":
         canonical = f"patch_resources_then_scale:{service}"
+    elif tool_name == "patch_service_selector":
+        canonical = f"patch_service_selector:{service}"
+    elif tool_name == "patch_service_target_port":
+        canonical = f"patch_service_target_port:{service}"
     elif tool_name == "scale_deployment":
         canonical = f"scale_deployment:{service}"
+    elif tool_name == "delete_stress_job":
+        canonical = f"delete_stress_job:{service}"
     elif tool_name == "wait_and_monitor":
         canonical = "wait_and_monitor"
     else:
@@ -109,6 +122,12 @@ def canonical_action(tool_name: str, service: str) -> Dict[str, Any]:
         ]
     elif tool_name == "wait_and_monitor":
         tool_equivalents = ["wait_and_monitor"]
+    elif tool_name == "patch_service_selector":
+        tool_equivalents = [f"patch_service_selector({service})"]
+    elif tool_name == "patch_service_target_port":
+        tool_equivalents = [f"patch_service_target_port({service})"]
+    elif tool_name == "delete_stress_job":
+        tool_equivalents = ["delete_stress_job"]
     else:
         tool_equivalents = [f"{tool_name}({service})"] if service else [tool_name]
     return {"canonical": canonical, "tool_equivalents": tool_equivalents}
@@ -236,11 +255,25 @@ def build_tool_response(record: Dict[str, Any], latency_threshold_ms: float) -> 
     if tool == "get_k8s_state":
         pod_phases = list(output.get("pod_phases", []) or [])
         recent_events = list(output.get("recent_events", []) or [])
+        service_config = dict(output.get("service_config", {}) or {})
+        service_config_summary = dict(output.get("service_config_summary", {}) or service_config.get("summary", {}) or {})
+        deployment_config = dict(output.get("deployment_config", {}) or {})
         anomalies = []
         if int(output.get("available_replicas", 0) or 0) < int(output.get("desired_replicas", 0) or 0):
             anomalies.append("availability_degraded")
         if any("Unhealthy" == str(event.get("reason", "")) for event in recent_events):
             anomalies.append("probe_failures")
+        endpoints = dict(service_config.get("endpoints", {}) or {})
+        effective_ready = (
+            dict(service_config_summary.get("endpoint_counts", {}) or {}).get("effective_ready")
+            if service_config_summary
+            else endpoints.get("ready_addresses", 0)
+        )
+        if service_config and int(effective_ready or 0) == 0:
+            anomalies.append("service_has_no_ready_endpoints")
+        for anomaly in service_config_summary.get("anomalies", []) or []:
+            if anomaly not in anomalies:
+                anomalies.append(str(anomaly))
         return {
             "service": output.get("service", ""),
             "timestamp": timestamp,
@@ -249,7 +282,25 @@ def build_tool_response(record: Dict[str, Any], latency_threshold_ms: float) -> 
             "rollout_progressing": bool(output.get("rollout_progressing", False)),
             "restart_count": int(output.get("restart_count", 0) or 0),
             "pod_phases": pod_phases,
+            "service_config_summary": service_config_summary,
             "recent_events": recent_events[:8],
+            "deployment_selector": output.get("deployment_selector", {}),
+            "deployment_config": deployment_config,
+            "service_config": {
+                "selector": service_config.get("selector", {}),
+                "ports": service_config.get("ports", []),
+                "selected_pods": service_config.get("selected_pods", []),
+                "deployment_pods": service_config.get("deployment_pods", []),
+                "endpoints": {
+                    "ready_addresses": endpoints.get("ready_addresses", 0),
+                    "not_ready_addresses": endpoints.get("not_ready_addresses", 0),
+                    "subsets": endpoints.get("subsets", []),
+                    "endpoint_slices": endpoints.get("endpoint_slices", []),
+                    "endpoints_error": endpoints.get("endpoints_error"),
+                    "endpoint_slices_error": endpoints.get("endpoint_slices_error"),
+                },
+                "error": service_config.get("error"),
+            },
             "anomalies": anomalies,
             "raw_output": output,
         }
@@ -371,7 +422,11 @@ def main() -> int:
     acceptable_actions: List[Dict[str, Any]] = []
     for action in problem.ground_truth.acceptable_actions:
         lowered = action.lower()
-        if "patch_resources_then_scale" in lowered:
+        if "targetport" in lowered and "service" in lowered:
+            acceptable_actions.append(canonical_action("patch_service_target_port", problem.target_service))
+        elif "selector" in lowered and "service" in lowered:
+            acceptable_actions.append(canonical_action("patch_service_selector", problem.target_service))
+        elif "patch_resources_then_scale" in lowered:
             acceptable_actions.append(canonical_action("patch_resources_then_scale", problem.target_service))
         elif "rollout undo" in lowered:
             acceptable_actions.append(canonical_action("rollout_undo", problem.target_service))
@@ -379,6 +434,8 @@ def main() -> int:
             acceptable_actions.append(canonical_action("patch_resources", problem.target_service))
         elif "scale_deployment" in lowered or "scale(" in lowered:
             acceptable_actions.append(canonical_action("scale_deployment", problem.target_service))
+        elif "stress job" in lowered and "delete" in lowered:
+            acceptable_actions.append(canonical_action("delete_stress_job", problem.target_service))
         elif "wait_and_monitor" in lowered:
             acceptable_actions.append(canonical_action("wait_and_monitor", problem.target_service))
     if not acceptable_actions:
@@ -415,7 +472,7 @@ def main() -> int:
         "target_service": problem.target_service,
         "injected_at": "phase_0",
         "parameters": {
-            "experiment_file": str(problem.experiment_file) if problem.experiment_file else "",
+            "experiment_file": repo_relative(problem.experiment_file) if problem.experiment_file else "",
             "detector_primary_signal": str((problem.detector_gate or {}).get("primary_signal", "")),
         },
     }
@@ -436,7 +493,7 @@ def main() -> int:
         telemetry_contract=telemetry_contract,
         scoring=EpisodeScoring(),
         provenance=EpisodeProvenance(
-            source_run_dir=str(run_dir),
+            source_run_dir=repo_relative(run_dir),
             captured_from_live_run=True,
             capture_timestamp_utc=str(summary.get("finished_at_utc", summary.get("started_at_utc", ""))),
         ),

@@ -89,13 +89,19 @@ class BenchmarkSuite:
 
 
 def load_benchmark_suite(path: Path) -> BenchmarkSuite:
-    payload = yaml.safe_load(path.read_text())
+    suite_path = path.resolve()
+    payload = yaml.safe_load(suite_path.read_text())
     if not isinstance(payload, dict):
         raise RuntimeError(f"benchmark suite must parse to a mapping: {path}")
 
     def parse_problem(item: Dict[str, Any]) -> ProblemSpec:
         experiment_value = item.get("experiment_file")
-        experiment_path = Path(str(experiment_value)).resolve() if experiment_value else None
+        experiment_path = None
+        if experiment_value:
+            raw_experiment_path = Path(str(experiment_value))
+            if not raw_experiment_path.is_absolute():
+                raw_experiment_path = suite_path.parent / raw_experiment_path
+            experiment_path = raw_experiment_path.resolve()
         ground_truth_raw = item.get("ground_truth", {}) or {}
         ground_truth = GroundTruth(
             acceptable_root_causes=[str(v) for v in ground_truth_raw.get("acceptable_root_causes", []) or []],
@@ -128,7 +134,7 @@ def load_benchmark_suite(path: Path) -> BenchmarkSuite:
     problems = [parse_problem(item) for item in payload.get("experiments", []) or []]
     stretch = [parse_problem(item) for item in payload.get("stretch_experiments", []) or []]
     return BenchmarkSuite(
-        path=path.resolve(),
+        path=suite_path,
         version=int(payload.get("version", 1) or 1),
         name=str(payload.get("name", path.stem)),
         goal=str(payload.get("goal", "")),

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
+
+from agent_graph.evidence_distiller import EVIDENCE_TOOLS, EvidenceDistiller
 
 
 @dataclass
@@ -81,7 +84,7 @@ def _parse_episode_fingerprint(fingerprint: str) -> Tuple[str, Dict[str, Any]]:
 
 
 class ReplayAgentCloudInterface:
-    def __init__(self, dataset_path: str, run_log_path: str = "") -> None:
+    def __init__(self, dataset_path: str, run_log_path: str = "", evidence_view: str = "") -> None:
         self.dataset = ReplayDataset.load(Path(dataset_path))
         self.run_id = str(uuid4())
         self.run_log_path = Path(run_log_path) if run_log_path else Path("results") / "aci" / f"{self.run_id}.jsonl"
@@ -89,6 +92,10 @@ class ReplayAgentCloudInterface:
         self.run_log: List[Dict[str, Any]] = []
         self.submitted_solution: Optional[Dict[str, Any]] = None
         self.jaeger_enabled = True
+        self.evidence_view = (evidence_view or os.environ.get("AGENTSCOPE_EVIDENCE_VIEW", "raw")).strip().lower()
+        if self.evidence_view not in {"raw", "compact", "distilled"}:
+            raise ValueError(f"unsupported evidence_view: {self.evidence_view}")
+        self.distiller = EvidenceDistiller()
         self.namespace = str(self.dataset.metadata.get("namespace", "default"))
         self.prom_url = "replay://prometheus"
         self.jaeger_url = "replay://jaeger"
@@ -208,6 +215,8 @@ class ReplayAgentCloudInterface:
         output = dict(record.get("outputs", {}) or {})
         output.setdefault("call_id", str(uuid4()))
         output.setdefault("timestamp", self._timestamp())
+        if self.evidence_view in {"compact", "distilled"} and method in EVIDENCE_TOOLS:
+            output = self.distiller.distill(method, output)
         self._append_log(method, inputs, output)
         return output
 

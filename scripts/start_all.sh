@@ -10,12 +10,15 @@ TRAFFIC_RPS=4
 TRAFFIC_MODE="${TRAFFIC_MODE:-realistic}"
 BASELINE_DURATION=300
 BASELINE_INTERVAL=15
+READY_TIMEOUT_SECONDS="${READY_TIMEOUT_SECONDS:-300}"
 RUNTIME_DIR=".runtime"
 PORT_FORWARD_DIR="$RUNTIME_DIR/port_forwards"
 PF_FAILED=0
 DISABLE_BUILTIN_LOADGEN=1
 STABLE_LOCAL_MODE=1
 KUBE_CONTEXT=""
+SKIP_PORT_FORWARDS=0
+SCALE_KEY_SERVICES=1
 OBSERVABILITY_DEPLOYMENTS=(
   opentelemetrycollector
   kube-state-metrics
@@ -59,6 +62,8 @@ Options:
   -c <context>     Use this existing kubectl context (example: docker-desktop)
   -g               Keep built-in Online Boutique loadgenerator enabled
   -s               Skip stable local hardening (probe/resource tuning)
+  -p               Skip creating local kubectl port-forwards
+  -1               Keep key services at one replica
   -t               Also start synthetic traffic in background
   -b               Also start baseline collector in background
   -h               Show help
@@ -70,13 +75,15 @@ Examples:
 USAGE
 }
 
-while getopts ":n:m:c:gstbh" opt; do
+while getopts ":n:m:c:gsp1thb" opt; do
   case "$opt" in
     n) NAMESPACE="$OPTARG" ;;
     m) MANIFEST="$OPTARG" ;;
     c) KUBE_CONTEXT="$OPTARG" ;;
     g) DISABLE_BUILTIN_LOADGEN=0 ;;
     s) STABLE_LOCAL_MODE=0 ;;
+    p) SKIP_PORT_FORWARDS=1 ;;
+    1) SCALE_KEY_SERVICES=0 ;;
     t) ENABLE_TRAFFIC=1 ;;
     b) ENABLE_BASELINE=1 ;;
     h)
@@ -284,7 +291,7 @@ scale_key_deployments() {
 
     if kubectl get deployment "$deploy" -n "$NAMESPACE" >/dev/null 2>&1; then
       kubectl scale deployment/"$deploy" -n "$NAMESPACE" --replicas="$replicas" >/dev/null
-      wait_for_deployment_ready "$NAMESPACE" "$deploy" 300
+      wait_for_deployment_ready "$NAMESPACE" "$deploy" "$READY_TIMEOUT_SECONDS"
       echo "  deployment/$deploy scaled to $replicas"
     else
       echo "  deployment/$deploy not found, skipping"
@@ -571,10 +578,14 @@ if [ "$STABLE_LOCAL_MODE" -eq 1 ]; then
   apply_http_frontend_stability_patch
 fi
 
-scale_key_deployments
+if [ "$SCALE_KEY_SERVICES" -eq 1 ]; then
+  scale_key_deployments
+else
+  echo "Keeping key services at one replica."
+fi
 
 echo "Waiting for frontend deployment..."
-wait_for_deployment_ready "$NAMESPACE" "frontend" 300
+wait_for_deployment_ready "$NAMESPACE" "frontend" "$READY_TIMEOUT_SECONDS"
 
 ensure_observability_stack
 
@@ -633,7 +644,7 @@ wait_core_deployments() {
   for deploy in "${CORE_DEPLOYMENTS[@]}"; do
     if kubectl get deployment "$deploy" -n "$NAMESPACE" >/dev/null 2>&1; then
       echo "  waiting on deployment/$deploy..."
-      wait_for_deployment_ready "$NAMESPACE" "$deploy" 300
+      wait_for_deployment_ready "$NAMESPACE" "$deploy" "$READY_TIMEOUT_SECONDS"
       echo "  deployment/$deploy ready"
     else
       echo "  deployment/$deploy not found, skipping"
@@ -653,24 +664,32 @@ if [ "$PF_FAILED" -ne 0 ]; then
 fi
 
 echo "Starting port-forwards..."
-start_pf frontend frontend "8080:80" "http://127.0.0.1:8080/_healthz" "Cookie: shop_session-id=x-readiness-probe"
-start_pf jaeger jaeger "16686:16686" "http://127.0.0.1:16686/api/services"
-start_pf prometheus prometheus "9090:9090" "http://127.0.0.1:9090/-/ready"
+if [ "$SKIP_PORT_FORWARDS" -eq 1 ]; then
+  echo "Skipping port-forwards; expecting endpoints to be exposed externally."
+else
+  start_pf frontend frontend "8080:80" "http://127.0.0.1:8080/_healthz" "Cookie: shop_session-id=x-readiness-probe"
+  start_pf jaeger jaeger "16686:16686" "http://127.0.0.1:16686/api/services"
+  start_pf prometheus prometheus "9090:9090" "http://127.0.0.1:9090/-/ready"
+fi
 
-if [ "$PF_FAILED" -ne 0 ]; then
+if [ "$SKIP_PORT_FORWARDS" -ne 1 ] && [ "$PF_FAILED" -ne 0 ]; then
   echo ""
   echo "One or more long-lived port-forwards failed validation. Check logs in: $PORT_FORWARD_DIR" >&2
   exit 1
 fi
 
-echo "Validating telemetry sources..."
-python3 ./scripts/validate_telemetry.py \
-  --prom-url http://localhost:9090 \
-  --jaeger-url http://localhost:16686 \
-  --namespace "$NAMESPACE" \
-  --require-services "frontend,checkoutservice,productcatalogservice" \
-  --wait-seconds 45 \
-  --poll-seconds 5 >"$RUN_DIR/telemetry_validation.json"
+if [ "$SKIP_PORT_FORWARDS" -eq 1 ]; then
+  echo "Skipping telemetry validation until external endpoints are ready."
+else
+  echo "Validating telemetry sources..."
+  python3 ./scripts/validate_telemetry.py \
+    --prom-url http://localhost:9090 \
+    --jaeger-url http://localhost:16686 \
+    --namespace "$NAMESPACE" \
+    --require-services "frontend,checkoutservice,productcatalogservice" \
+    --wait-seconds 45 \
+    --poll-seconds 5 >"$RUN_DIR/telemetry_validation.json"
+fi
 
 if [ "$ENABLE_TRAFFIC" -eq 1 ]; then
   echo "Starting synthetic traffic in background..."

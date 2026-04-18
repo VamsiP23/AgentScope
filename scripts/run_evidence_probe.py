@@ -360,6 +360,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("experiment_file", help="Path to experiment YAML file")
     p.add_argument("--out-dir", default=str(ROOT / "experiment_runs"), help="Run artifact root")
     p.add_argument("--skip-startup", action="store_true", help="Skip startup even if the experiment enables it")
+    p.add_argument(
+        "--skip-reset",
+        action="store_true",
+        help="Skip reset.before_run even if the experiment enables it",
+    )
+    p.add_argument(
+        "--warm-cluster",
+        action="store_true",
+        help=(
+            "Fast collection mode for an already-healthy cluster: skip startup and "
+            "reset, but still verify the environment and clean up the active fault."
+        ),
+    )
     p.add_argument("--include-dependencies", action="store_true", help="Also collect evidence for the target service's direct dependencies")
     p.add_argument("--lookback-minutes", type=int, default=1, help="Prometheus/Jaeger lookback for evidence collection")
     p.add_argument(
@@ -372,6 +385,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
+    skip_startup = bool(args.skip_startup or args.warm_cluster)
+    skip_reset = bool(args.skip_reset or args.warm_cluster)
 
     require_binary("kubectl")
     require_binary("python3")
@@ -412,6 +427,9 @@ def main() -> int:
         "experiment_file": str(experiment_path),
         "namespace": namespace,
         "mode": "evidence_probe",
+        "warm_cluster": bool(args.warm_cluster),
+        "skip_startup": skip_startup,
+        "skip_reset": skip_reset,
         "steps": {},
     }
 
@@ -422,7 +440,7 @@ def main() -> int:
 
     try:
         startup = config.get("startup", {}) or {}
-        startup_enabled = bool_value(startup.get("enabled"), True) and not args.skip_startup
+        startup_enabled = bool_value(startup.get("enabled"), True) and not skip_startup
         if startup_enabled:
             print_status("phase=startup: running start_all.sh")
             cmd = ["./scripts/start_all.sh", "-n", namespace]
@@ -433,7 +451,14 @@ def main() -> int:
         else:
             print_status("phase=startup: skipped")
 
-        if bool_value(reset_cfg.get("enabled"), False) and bool_value(reset_cfg.get("before_run"), True):
+        if skip_reset:
+            summary["steps"]["reset_before"] = {
+                "skipped": True,
+                "reason": "skip-reset/warm-cluster requested",
+                "finished_at_utc": utc_now(),
+            }
+            print_status("phase=reset: skipped (warm cluster)")
+        elif bool_value(reset_cfg.get("enabled"), False) and bool_value(reset_cfg.get("before_run"), True):
             summary["steps"]["reset_before_check"] = assess_reset_need(namespace)
             if summary["steps"]["reset_before_check"]["needs_reset"]:
                 print_status("phase=reset: restoring cluster baseline")

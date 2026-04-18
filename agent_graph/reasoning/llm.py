@@ -11,8 +11,29 @@ from urllib.request import Request, urlopen
 from agent_graph.schemas import Hypothesis
 
 
+def ensure_default_ca_bundle() -> None:
+    if os.environ.get("SSL_CERT_FILE") or os.environ.get("REQUESTS_CA_BUNDLE"):
+        return
+    try:
+        import certifi  # type: ignore
+    except Exception:
+        return
+    os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+
+
+def env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
 class BaseJSONClient(ABC):
     def __init__(self, model: str, api_key: str, timeout_seconds: int = 30, max_retries: int = 3) -> None:
+        ensure_default_ca_bundle()
         self.model = model
         self.api_key = api_key
         self.timeout_seconds = timeout_seconds
@@ -50,6 +71,13 @@ class BaseJSONClient(ABC):
                     backoff_seconds *= 2.0
                     continue
                 raise RuntimeError(f"Network error from LLM provider: {exc}") from exc
+            except TimeoutError as exc:
+                last_error = exc
+                if attempt < self.max_retries:
+                    time.sleep(backoff_seconds)
+                    backoff_seconds *= 2.0
+                    continue
+                raise RuntimeError(f"Timeout from LLM provider: {exc}") from exc
 
         raise RuntimeError(f"LLM request failed after retries: {last_error}")
 
@@ -59,6 +87,8 @@ class OpenAIJSONClient(BaseJSONClient):
         super().__init__(
             model=model or os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
             api_key=os.environ.get("OPENAI_API_KEY", ""),
+            timeout_seconds=env_int("OPENAI_TIMEOUT_SECONDS", env_int("LLM_TIMEOUT_SECONDS", 45)),
+            max_retries=env_int("OPENAI_MAX_RETRIES", env_int("LLM_MAX_RETRIES", 2)),
         )
 
     def complete_json(self, *, name: str, schema: Dict[str, Any], prompt: Dict[str, Any]) -> Dict[str, Any]:
@@ -117,6 +147,8 @@ class AnthropicJSONClient(BaseJSONClient):
         super().__init__(
             model=model or os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-0"),
             api_key=os.environ.get("ANTHROPIC_API_KEY", ""),
+            timeout_seconds=env_int("ANTHROPIC_TIMEOUT_SECONDS", env_int("LLM_TIMEOUT_SECONDS", 45)),
+            max_retries=env_int("ANTHROPIC_MAX_RETRIES", env_int("LLM_MAX_RETRIES", 2)),
         )
 
     def complete_json(self, *, name: str, schema: Dict[str, Any], prompt: Dict[str, Any]) -> Dict[str, Any]:
@@ -167,6 +199,8 @@ class GeminiJSONClient(BaseJSONClient):
         super().__init__(
             model=model or os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
             api_key=os.environ.get("GEMINI_API_KEY", ""),
+            timeout_seconds=env_int("GEMINI_TIMEOUT_SECONDS", env_int("LLM_TIMEOUT_SECONDS", 60)),
+            max_retries=env_int("GEMINI_MAX_RETRIES", env_int("LLM_MAX_RETRIES", 2)),
         )
 
     def complete_json(self, *, name: str, schema: Dict[str, Any], prompt: Dict[str, Any]) -> Dict[str, Any]:
@@ -255,8 +289,8 @@ class OllamaJSONClient(BaseJSONClient):
         super().__init__(
             model=model or os.environ.get("OLLAMA_MODEL", "qwen2.5:7b"),
             api_key="local",
-            timeout_seconds=int(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "120")),
-            max_retries=int(os.environ.get("OLLAMA_MAX_RETRIES", "1")),
+            timeout_seconds=env_int("OLLAMA_TIMEOUT_SECONDS", 120),
+            max_retries=env_int("OLLAMA_MAX_RETRIES", 1),
         )
         self.base_url = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
 

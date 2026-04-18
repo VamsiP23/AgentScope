@@ -74,6 +74,64 @@ def summarize_output_for_prompt(output: Dict[str, Any]) -> Dict[str, Any]:
     if error_value:
         summary["error"] = truncate(str(error_value), 160)
 
+    service_config_summary = output.get("service_config_summary", {}) or {}
+    service_config = output.get("service_config", {}) or {}
+    deployment_config = output.get("deployment_config", {}) or {}
+    if deployment_config:
+        containers = list(deployment_config.get("containers", []) or [])
+        env = list(deployment_config.get("env", []) or [])
+        summary["deployment_config"] = {
+            "deployment": deployment_config.get("deployment", ""),
+            "replicas": deployment_config.get("replicas", 0),
+            "containers": [
+                {
+                    "name": str(container.get("name", "")),
+                    "image": str(container.get("image", "")),
+                    "ports": container.get("ports", []),
+                    "resources": container.get("resources", {}),
+                    "readinessProbe": container.get("readinessProbe", {}),
+                    "livenessProbe": container.get("livenessProbe", {}),
+                    "startupProbe": container.get("startupProbe", {}),
+                }
+                for container in containers[:4]
+            ],
+            "env": [
+                {
+                    "container": str(item.get("container", "")),
+                    "name": str(item.get("name", "")),
+                    "value": item.get("value", ""),
+                    "value_from": item.get("value_from", {}),
+                    "value_redacted": bool(item.get("value_redacted", False)),
+                }
+                for item in env[:24]
+            ],
+        }
+    if service_config_summary:
+        summary["service_config_summary"] = service_config_summary
+    elif service_config:
+        endpoints = service_config.get("endpoints", {}) or {}
+        selected_pods = list(service_config.get("selected_pods", []) or [])
+        deployment_pods = list(service_config.get("deployment_pods", []) or [])
+        summary["service_config_summary"] = {
+            "selector": service_config.get("selector", {}),
+            "selected_pod_count": len(selected_pods),
+            "deployment_pod_count": len(deployment_pods),
+            "deployment_pod_labels": [
+                {
+                    "name": pod.get("name", ""),
+                    "labels": pod.get("labels", {}),
+                    "ready": bool(pod.get("ready", False)),
+                }
+                for pod in deployment_pods[:5]
+            ],
+            "service_ports": service_config.get("ports", []),
+            "endpoint_counts": {
+                "ready": endpoints.get("ready_addresses", 0),
+                "not_ready": endpoints.get("not_ready_addresses", 0),
+            },
+            "takeaway": "Service/config details are present; compare selector, pod labels, ports, and endpoints before using rollout events",
+        }
+
     recent_events = output.get("recent_events", []) or []
     if recent_events:
         ranked_events = sorted(
@@ -165,6 +223,17 @@ def summarize_output_for_prompt(output: Dict[str, Any]) -> Dict[str, Any]:
             f"pct={float(top.get('avg_pct_of_total', 0.0) or 0.0):.2f}"
         )
 
+    if {"status", "key_facts", "anomalies", "negative_evidence", "observability_gaps"} & set(output.keys()):
+        summary["evidence_view"] = {
+            "status": output.get("status", ""),
+            "summary": output.get("summary", ""),
+            "key_facts": output.get("key_facts", [])[:10],
+            "anomalies": output.get("anomalies", [])[:8],
+            "negative_evidence": output.get("negative_evidence", [])[:6],
+            "observability_gaps": output.get("observability_gaps", [])[:6],
+            "raw_refs": output.get("raw_refs", [])[:4],
+        }
+
     return summary
 
 
@@ -178,16 +247,26 @@ def summarize_output(output: Dict[str, Any]) -> Dict[str, Any]:
         summary["recent_event_count"] = len(output.get("recent_events", []) or [])
     if "pod_phases" in output:
         summary["pod_count"] = len(output.get("pod_phases", []) or [])
+    if {"status", "key_facts", "anomalies", "negative_evidence", "observability_gaps"} & set(output.keys()):
+        summary["evidence_view"] = {
+            "status": output.get("status", ""),
+            "summary": output.get("summary", ""),
+            "key_facts": output.get("key_facts", [])[:10],
+            "anomalies": output.get("anomalies", [])[:8],
+            "negative_evidence": output.get("negative_evidence", [])[:6],
+            "observability_gaps": output.get("observability_gaps", [])[:6],
+            "raw_refs": output.get("raw_refs", [])[:4],
+        }
     return summary
 
 
 def tool_signatures(allowed_tools: List[str]) -> Dict[str, str]:
     signatures = {
-        "get_metrics": "get_metrics(service, lookback_minutes=5) -> {call_id, timestamp, service, metrics:{cpu_usage,cpu_mcores,cpu_request_cores,cpu_limit_cores,cpu_utilization_pct_of_request,cpu_utilization_pct_of_limit,cpu_throttled_seconds_rate,cpu_throttling_ratio,memory_usage,memory_rss_bytes,memory_request_bytes,memory_limit_bytes,memory_utilization_pct_of_request,memory_utilization_pct_of_limit,error_rate,p95_latency_ms,p99_latency_ms,request_rps,error_rps,resource_metrics_available,application_metrics_available,resource_metric_gaps,application_metric_gaps}, error}",
-        "get_traces": "get_traces(service, lookback_minutes=5) -> {call_id, timestamp, entry_point, call_chain, bottleneck_service, bottleneck_pct_of_total, error_spans, deviation_factor, error}",
-        "get_dependency_traces": "get_dependency_traces(service, entry_service='frontend', lookback_minutes=5) -> {call_id, timestamp, service, entry_service, downstream_candidates, bottleneck_service, bottleneck_pct_of_total, trace_count, error}",
-        "get_logs": "get_logs(service, tail_lines=100) -> {call_id, timestamp, pod_name, error_count, error_lines, signal_lines, recent_lines, pods:[{pod_name,error_count,error_lines,signal_lines,recent_lines}], error}",
-        "get_k8s_state": "get_k8s_state(service) -> {call_id, timestamp, desired_replicas, available_replicas, pod_phases, recent_events, rollout_progressing, restart_count, error}",
+        "get_metrics": "get_metrics(service, lookback_minutes=5) -> raw metrics in raw mode, or compact evidence view {status, summary, key_facts, anomalies, negative_evidence, observability_gaps, raw_refs} in compact mode",
+        "get_traces": "get_traces(service, lookback_minutes=5) -> raw trace summary in raw mode, or compact evidence view {status, summary, key_facts, anomalies, negative_evidence, observability_gaps, raw_refs} in compact mode",
+        "get_dependency_traces": "get_dependency_traces(service, entry_service='frontend', lookback_minutes=5) -> raw dependency trace summary in raw mode, or compact evidence view {status, summary, key_facts, anomalies, negative_evidence, observability_gaps, raw_refs} in compact mode",
+        "get_logs": "get_logs(service, tail_lines=100) -> raw log lines in raw mode, or compact evidence view {status, summary, key_facts, anomalies, negative_evidence, observability_gaps, raw_refs} in compact mode",
+        "get_k8s_state": "get_k8s_state(service) -> raw Kubernetes/Service config in raw mode, or compact evidence view {status, summary, key_facts, anomalies, negative_evidence, observability_gaps, raw_refs} in compact mode",
         "restart_pod": "restart_pod(service, pod_name='') -> {call_id, timestamp, service, pod_name, executed, command, result, error}",
         "rollout_restart": "rollout_restart(service) -> {call_id, timestamp, service, executed, command, result, error}",
         "rollout_undo": "rollout_undo(service) -> {call_id, timestamp, service, executed, command, result, error}",

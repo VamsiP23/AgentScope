@@ -20,7 +20,7 @@ Options:
   -d   Total duration in seconds (default: 300)
   -r   Workflow starts per second (default: 4)
   -o   Output root directory (default: traffic_runs)
-  -m   Traffic mode: realistic | checkout-heavy | browse-heavy | cart-heavy (default: realistic)
+  -m   Traffic mode: realistic | checkout-heavy | browse-heavy | product-heavy | cart-heavy (default: realistic)
   -h   Show this help
 USAGE
 }
@@ -67,9 +67,9 @@ case "$MODE" in
   realistic|basic|full-flow) MODE="realistic" ;;
   checkout-heavy|checkout|cpu-stress) MODE="checkout-heavy" ;;
   cart-heavy|cart) MODE="cart-heavy" ;;
-  browse-heavy|browse) MODE="browse-heavy" ;;
+  browse-heavy|browse|product-heavy|product) MODE="browse-heavy" ;;
   *)
-    echo "Mode must be one of: realistic, checkout-heavy, browse-heavy, cart-heavy." >&2
+    echo "Mode must be one of: realistic, checkout-heavy, browse-heavy, product-heavy, cart-heavy." >&2
     exit 1
     ;;
 esac

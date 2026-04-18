@@ -119,6 +119,19 @@ python3 ./scripts/promote_episode.py <run_dir> --copy-supporting
 
 Curated episodes live under [datasets/episodes](/Users/aarnavsawant/Documents/CS6365/AgentScope/datasets/episodes).
 
+For warm native Kubernetes collection, keep the kind cluster running and skip cluster reset/startup between sequential episodes:
+
+```bash
+python3 ./scripts/run_evidence_probe.py \
+  experiments/native_pod_delete_cartservice_baseline.yaml \
+  --warm-cluster \
+  --include-dependencies \
+  --lookback-minutes 3 \
+  --out-dir results/native_episode_collection/kind_bulk_manual
+```
+
+`--warm-cluster` skips `start_all.sh` and `reset.before_run`, but still verifies the environment and reverts the active fault on exit. Use it only after the cluster and observability checks are already healthy.
+
 ## Running Replay Benchmarking
 
 Once curated episodes exist, run replay evaluation across them with:

@@ -1,0 +1,141 @@
+version: 1
+name: agentscope_diagnosis_taxonomy
+description: >
+  Sidecar labels for benchmark analysis. Episode JSON files remain immutable;
+  these labels describe the diagnostic evidence and reasoning each family needs.
+
+categories:
+  availability_rollout:
+    label: "Availability & rollout"
+    description: "Workload health failures involving rollout, readiness, replicas, or pod lifecycle."
+    primary_evidence: ["get_k8s_state", "get_logs"]
+  service_wiring_configuration:
+    label: "Service wiring & configuration"
+    description: "Pods may be healthy, but Service selectors, ports, endpoints, or routing/config are misaligned."
+    primary_evidence: ["get_k8s_state"]
+  resource_performance:
+    label: "Resource & performance"
+    description: "CPU, memory, throttling, OOM, or stress-job pressure explains the incident."
+    primary_evidence: ["get_metrics", "get_k8s_state", "get_logs"]
+  dependency_path_trace_centered:
+    label: "Dependency-path / trace-centered"
+    description: "Diagnosis requires following request/dependency paths or downstream error propagation."
+    primary_evidence: ["get_dependency_traces", "get_logs", "get_k8s_state"]
+
+difficulties:
+  direct_signal: "The key issue is visible once the correct evidence channel is queried."
+  contrast_required: "The diagnosis depends on comparing normal-looking evidence with a mismatched/anomalous channel."
+  causal_path: "The diagnosis depends on localizing a symptom through a service/dependency chain."
+
+families:
+  rollout_failure:
+    diagnosis_category: availability_rollout
+    difficulty: direct_signal
+    primary_tools: ["get_k8s_state", "get_logs"]
+    secondary_tools: ["get_metrics", "get_traces"]
+    trace_required: false
+    notes: "Legacy rollout episodes; workload availability and rollout evidence are decisive."
+
+  cpu_pressure:
+    diagnosis_category: resource_performance
+    difficulty: contrast_required
+    primary_tools: ["get_metrics", "get_k8s_state"]
+    secondary_tools: ["get_logs", "get_traces"]
+    trace_required: false
+    notes: "Legacy CPU pressure episode; metrics are the main diagnostic signal."
+
+  native_bad_image_rollout:
+    diagnosis_category: availability_rollout
+    difficulty: direct_signal
+    primary_tools: ["get_k8s_state", "get_logs"]
+    secondary_tools: ["get_metrics", "get_traces"]
+    trace_required: false
+    notes: "Invalid image rollout should surface through pod/rollout state and image-pull events."
+
+  native_bad_probe_rollout:
+    diagnosis_category: availability_rollout
+    difficulty: direct_signal
+    primary_tools: ["get_k8s_state", "get_logs"]
+    secondary_tools: ["get_metrics"]
+    trace_required: false
+    notes: "Bad readiness probe is primarily a workload health/readiness diagnosis."
+
+  native_scale_zero:
+    diagnosis_category: availability_rollout
+    difficulty: direct_signal
+    primary_tools: ["get_k8s_state"]
+    secondary_tools: ["get_metrics", "get_logs"]
+    trace_required: false
+    notes: "Desired replicas set to zero is direct Kubernetes state evidence."
+
+  native_pod_delete:
+    diagnosis_category: availability_rollout
+    difficulty: direct_signal
+    primary_tools: ["get_k8s_state", "get_logs"]
+    secondary_tools: ["get_metrics"]
+    trace_required: false
+    notes: "Pod lifecycle disturbance; correct behavior is usually verify recovery."
+
+  native_service_port_mismatch:
+    diagnosis_category: service_wiring_configuration
+    difficulty: contrast_required
+    primary_tools: ["get_k8s_state"]
+    secondary_tools: ["get_logs", "get_metrics"]
+    trace_required: false
+    notes: "Pods can be healthy while Service targetPort is not exposed by selected pods."
+
+  native_service_selector_mismatch:
+    diagnosis_category: service_wiring_configuration
+    difficulty: contrast_required
+    primary_tools: ["get_k8s_state"]
+    secondary_tools: ["get_logs", "get_metrics"]
+    trace_required: false
+    notes: "Service selector no longer matches the intended healthy deployment pods."
+
+  native_cpu_limit_throttle:
+    diagnosis_category: resource_performance
+    difficulty: contrast_required
+    primary_tools: ["get_metrics", "get_k8s_state"]
+    secondary_tools: ["get_logs", "get_traces"]
+    trace_required: false
+    notes: "CPU limit/throttling metrics are decisive; workload state provides context."
+
+  native_memory_limit_oom:
+    diagnosis_category: resource_performance
+    difficulty: contrast_required
+    primary_tools: ["get_k8s_state", "get_metrics", "get_logs"]
+    secondary_tools: ["get_traces"]
+    trace_required: false
+    notes: "OOM/restart evidence plus memory limit context are decisive."
+
+  native_cpu_pressure_stress_job:
+    diagnosis_category: resource_performance
+    difficulty: contrast_required
+    primary_tools: ["get_metrics", "get_k8s_state"]
+    secondary_tools: ["get_logs", "get_traces"]
+    trace_required: false
+    notes: "Cluster pressure from an AgentScope CPU stress job; metrics and stress-job context matter."
+
+  native_memory_pressure_stress_job:
+    diagnosis_category: resource_performance
+    difficulty: contrast_required
+    primary_tools: ["get_metrics", "get_k8s_state"]
+    secondary_tools: ["get_logs", "get_traces"]
+    trace_required: false
+    notes: "Cluster pressure from an AgentScope memory stress job; metrics and stress-job context matter."
+
+  native_bad_env:
+    diagnosis_category: dependency_path_trace_centered
+    difficulty: causal_path
+    primary_tools: ["get_logs", "get_dependency_traces"]
+    secondary_tools: ["get_k8s_state", "get_metrics"]
+    trace_required: true
+    notes: "Checkout/email dependency config issue; dependency traces help localize downstream propagation."
+
+  native_dependency_bad_endpoint:
+    diagnosis_category: dependency_path_trace_centered
+    difficulty: causal_path
+    primary_tools: ["get_dependency_traces", "get_logs"]
+    secondary_tools: ["get_k8s_state", "get_metrics"]
+    trace_required: true
+    notes: "Frontend symptom requires following dependency path to localize the bad downstream endpoint."

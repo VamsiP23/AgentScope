@@ -1,0 +1,4778 @@
+{
+  "task_id": "native_cpu_limit_throttle_checkoutservice_003",
+  "family": "native_cpu_limit_throttle",
+  "scenario": "checkoutservice CPU limit is reduced enough to cause throttling under checkout traffic",
+  "split": "dev",
+  "difficulty": "medium",
+  "fault_spec": {
+    "type": "native_cpu_limit_throttle",
+    "target_service": "checkoutservice",
+    "injected_at": "phase_0",
+    "parameters": {
+      "experiment_file": "experiments/native_cpu_limit_throttle_checkoutservice_baseline.yaml",
+      "detector_primary_signal": "service_latency"
+    }
+  },
+  "initial_context": "PagerDuty alert: an incident has been detected affecting checkoutservice. The monitoring pipeline observed latency and resource-related symptoms. Investigate and recommend the most appropriate remediation action.",
+  "phases": [
+    {
+      "phase_id": 0,
+      "label": "initial_degradation",
+      "tool_responses": {
+        "get_k8s_state|service=checkoutservice": {
+          "service": "checkoutservice",
+          "timestamp": "2026-04-17T05:22:25.900335Z",
+          "desired_replicas": 1,
+          "available_replicas": 1,
+          "rollout_progressing": true,
+          "restart_count": 0,
+          "pod_phases": [
+            {
+              "pod_name": "checkoutservice-548d9bc67b-4ccd7",
+              "phase": "Running",
+              "ready": false,
+              "restart_count": 0,
+              "labels": {
+                "app": "checkoutservice",
+                "pod-template-hash": "548d9bc67b"
+              },
+              "container_ports": [
+                {
+                  "container": "server",
+                  "name": "",
+                  "containerPort": 5050,
+                  "protocol": "TCP"
+                }
+              ]
+            },
+            {
+              "pod_name": "checkoutservice-b87cb859c-fk4nr",
+              "phase": "Running",
+              "ready": true,
+              "restart_count": 0,
+              "labels": {
+                "app": "checkoutservice",
+                "pod-template-hash": "b87cb859c"
+              },
+              "container_ports": [
+                {
+                  "container": "server",
+                  "name": "",
+                  "containerPort": 5050,
+                  "protocol": "TCP"
+                }
+              ]
+            }
+          ],
+          "service_config_summary": {
+            "service": "checkoutservice",
+            "exists": true,
+            "selector": {
+              "app": "checkoutservice"
+            },
+            "selected_pod_count": 2,
+            "deployment_pod_count": 2,
+            "deployment_pod_labels": [
+              {
+                "name": "checkoutservice-548d9bc67b-4ccd7",
+                "labels": {
+                  "app": "checkoutservice",
+                  "pod-template-hash": "548d9bc67b"
+                },
+                "ready": false
+              },
+              {
+                "name": "checkoutservice-b87cb859c-fk4nr",
+                "labels": {
+                  "app": "checkoutservice",
+                  "pod-template-hash": "b87cb859c"
+                },
+                "ready": true
+              }
+            ],
+            "service_ports": [
+              {
+                "name": "grpc",
+                "port": 5050,
+                "targetPort": 5050,
+                "protocol": "TCP"
+              }
+            ],
+            "container_ports": [
+              {
+                "container": "server",
+                "name": "",
+                "containerPort": 5050,
+                "protocol": "TCP"
+              }
+            ],
+            "endpoint_counts": {
+              "effective_ready": 1,
+              "effective_not_ready": 1,
+              "raw_endpoints_ready": 1,
+              "raw_endpoints_not_ready": 1,
+              "endpoint_slice_ready": 1,
+              "endpoint_slice_not_ready": 1
+            },
+            "service_port_alignment": {
+              "aligned": true,
+              "mismatches": []
+            },
+            "anomalies": [],
+            "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+          },
+          "recent_events": [
+            {
+              "reason": "Scheduled",
+              "message": "Successfully assigned default/checkoutservice-548d9bc67b-4ccd7 to agentscope-collection-worker",
+              "type": "Normal",
+              "object": "checkoutservice-548d9bc67b-4ccd7",
+              "kind": "Pod",
+              "stale": false
+            },
+            {
+              "reason": "SuccessfulCreate",
+              "message": "Created pod: checkoutservice-548d9bc67b-4ccd7",
+              "type": "Normal",
+              "object": "checkoutservice-548d9bc67b",
+              "kind": "ReplicaSet",
+              "stale": false
+            },
+            {
+              "reason": "ScalingReplicaSet",
+              "message": "Scaled up replica set checkoutservice-548d9bc67b from 0 to 1",
+              "type": "Normal",
+              "object": "checkoutservice",
+              "kind": "Deployment",
+              "stale": false
+            },
+            {
+              "reason": "Pulled",
+              "message": "Container image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/checkoutservice:v0.10.4\" already present on machine and can be accessed by the pod",
+              "type": "Normal",
+              "object": "checkoutservice-548d9bc67b-4ccd7",
+              "kind": "Pod",
+              "stale": false
+            },
+            {
+              "reason": "Created",
+              "message": "Container created",
+              "type": "Normal",
+              "object": "checkoutservice-548d9bc67b-4ccd7",
+              "kind": "Pod",
+              "stale": false
+            },
+            {
+              "reason": "Started",
+              "message": "Container started",
+              "type": "Normal",
+              "object": "checkoutservice-548d9bc67b-4ccd7",
+              "kind": "Pod",
+              "stale": false
+            }
+          ],
+          "deployment_selector": {
+            "app": "checkoutservice"
+          },
+          "deployment_config": {
+            "deployment": "checkoutservice",
+            "replicas": 1,
+            "containers": [
+              {
+                "name": "server",
+                "image": "us-central1-docker.pkg.dev/google-samples/microservices-demo/checkoutservice:v0.10.4",
+                "ports": [
+                  {
+                    "name": "",
+                    "containerPort": 5050,
+                    "protocol": "TCP"
+                  }
+                ],
+                "env": [
+                  {
+                    "container": "server",
+                    "name": "PORT",
+                    "value": "5050",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "PRODUCT_CATALOG_SERVICE_ADDR",
+                    "value": "productcatalogservice:3550",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "SHIPPING_SERVICE_ADDR",
+                    "value": "shippingservice:50051",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "PAYMENT_SERVICE_ADDR",
+                    "value": "paymentservice:50051",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "EMAIL_SERVICE_ADDR",
+                    "value": "emailservice:5000",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "CURRENCY_SERVICE_ADDR",
+                    "value": "currencyservice:7000",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "CART_SERVICE_ADDR",
+                    "value": "cartservice:7070",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "ENABLE_TRACING",
+                    "value": "1",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "ENABLE_STATS",
+                    "value": "1",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "COLLECTOR_SERVICE_ADDR",
+                    "value": "opentelemetrycollector:4317",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "OTEL_SERVICE_NAME",
+                    "value": "checkoutservice",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "OTEL_RESOURCE_ATTRIBUTES",
+                    "value": "service.name=checkoutservice,deployment.environment=kind",
+                    "value_redacted": false
+                  }
+                ],
+                "envFrom": [],
+                "resources": {
+                  "limits": {
+                    "cpu": "20m",
+                    "memory": "256Mi"
+                  },
+                  "requests": {
+                    "cpu": "5m",
+                    "memory": "64Mi"
+                  }
+                },
+                "readinessProbe": {
+                  "initialDelaySeconds": 25,
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 10,
+                  "successThreshold": 1,
+                  "failureThreshold": 12,
+                  "grpc": {
+                    "port": 5050,
+                    "service": ""
+                  }
+                },
+                "livenessProbe": {
+                  "initialDelaySeconds": 45,
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 10,
+                  "successThreshold": 1,
+                  "failureThreshold": 12,
+                  "grpc": {
+                    "port": 5050,
+                    "service": ""
+                  }
+                },
+                "startupProbe": {}
+              }
+            ],
+            "env": [
+              {
+                "container": "server",
+                "name": "PORT",
+                "value": "5050",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "PRODUCT_CATALOG_SERVICE_ADDR",
+                "value": "productcatalogservice:3550",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "SHIPPING_SERVICE_ADDR",
+                "value": "shippingservice:50051",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "PAYMENT_SERVICE_ADDR",
+                "value": "paymentservice:50051",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "EMAIL_SERVICE_ADDR",
+                "value": "emailservice:5000",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "CURRENCY_SERVICE_ADDR",
+                "value": "currencyservice:7000",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "CART_SERVICE_ADDR",
+                "value": "cartservice:7070",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "ENABLE_TRACING",
+                "value": "1",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "ENABLE_STATS",
+                "value": "1",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "COLLECTOR_SERVICE_ADDR",
+                "value": "opentelemetrycollector:4317",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "OTEL_SERVICE_NAME",
+                "value": "checkoutservice",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "OTEL_RESOURCE_ATTRIBUTES",
+                "value": "service.name=checkoutservice,deployment.environment=kind",
+                "value_redacted": false
+              }
+            ]
+          },
+          "service_config": {
+            "selector": {
+              "app": "checkoutservice"
+            },
+            "ports": [
+              {
+                "name": "grpc",
+                "port": 5050,
+                "targetPort": 5050,
+                "protocol": "TCP"
+              }
+            ],
+            "selected_pods": [
+              {
+                "name": "checkoutservice-548d9bc67b-4ccd7",
+                "labels": {
+                  "app": "checkoutservice",
+                  "pod-template-hash": "548d9bc67b"
+                },
+                "phase": "Running",
+                "ready": false,
+                "pod_ip": "10.244.1.43",
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 5050,
+                    "protocol": "TCP"
+                  }
+                ]
+              },
+              {
+                "name": "checkoutservice-b87cb859c-fk4nr",
+                "labels": {
+                  "app": "checkoutservice",
+                  "pod-template-hash": "b87cb859c"
+                },
+                "phase": "Running",
+                "ready": true,
+                "pod_ip": "10.244.1.34",
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 5050,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "deployment_pods": [
+              {
+                "name": "checkoutservice-548d9bc67b-4ccd7",
+                "labels": {
+                  "app": "checkoutservice",
+                  "pod-template-hash": "548d9bc67b"
+                },
+                "phase": "Running",
+                "ready": false,
+                "pod_ip": "10.244.1.43",
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 5050,
+                    "protocol": "TCP"
+                  }
+                ]
+              },
+              {
+                "name": "checkoutservice-b87cb859c-fk4nr",
+                "labels": {
+                  "app": "checkoutservice",
+                  "pod-template-hash": "b87cb859c"
+                },
+                "phase": "Running",
+                "ready": true,
+                "pod_ip": "10.244.1.34",
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 5050,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "endpoints": {
+              "ready_addresses": 1,
+              "not_ready_addresses": 1,
+              "subsets": [
+                {
+                  "ports": [
+                    {
+                      "name": "grpc",
+                      "port": 5050,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "ready_addresses": [
+                    {
+                      "ip": "10.244.1.34",
+                      "target_ref": "checkoutservice-b87cb859c-fk4nr"
+                    }
+                  ],
+                  "not_ready_addresses": [
+                    {
+                      "ip": "10.244.1.43",
+                      "target_ref": "checkoutservice-548d9bc67b-4ccd7"
+                    }
+                  ]
+                }
+              ],
+              "endpoint_slices": [
+                {
+                  "name": "checkoutservice-8zc7z",
+                  "ports": [
+                    {
+                      "name": "grpc",
+                      "port": 5050,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "endpoints": [
+                    {
+                      "addresses": [
+                        "10.244.1.34"
+                      ],
+                      "ready": true,
+                      "serving": true,
+                      "terminating": false,
+                      "target_ref": "checkoutservice-b87cb859c-fk4nr"
+                    },
+                    {
+                      "addresses": [
+                        "10.244.1.43"
+                      ],
+                      "ready": false,
+                      "serving": false,
+                      "terminating": false,
+                      "target_ref": "checkoutservice-548d9bc67b-4ccd7"
+                    }
+                  ]
+                }
+              ],
+              "endpoints_error": null,
+              "endpoint_slices_error": null
+            },
+            "error": null
+          },
+          "anomalies": [],
+          "raw_output": {
+            "service": "checkoutservice",
+            "desired_replicas": 1,
+            "available_replicas": 1,
+            "pod_phases": [
+              {
+                "pod_name": "checkoutservice-548d9bc67b-4ccd7",
+                "phase": "Running",
+                "ready": false,
+                "restart_count": 0,
+                "labels": {
+                  "app": "checkoutservice",
+                  "pod-template-hash": "548d9bc67b"
+                },
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 5050,
+                    "protocol": "TCP"
+                  }
+                ]
+              },
+              {
+                "pod_name": "checkoutservice-b87cb859c-fk4nr",
+                "phase": "Running",
+                "ready": true,
+                "restart_count": 0,
+                "labels": {
+                  "app": "checkoutservice",
+                  "pod-template-hash": "b87cb859c"
+                },
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 5050,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "service_config_summary": {
+              "service": "checkoutservice",
+              "exists": true,
+              "selector": {
+                "app": "checkoutservice"
+              },
+              "selected_pod_count": 2,
+              "deployment_pod_count": 2,
+              "deployment_pod_labels": [
+                {
+                  "name": "checkoutservice-548d9bc67b-4ccd7",
+                  "labels": {
+                    "app": "checkoutservice",
+                    "pod-template-hash": "548d9bc67b"
+                  },
+                  "ready": false
+                },
+                {
+                  "name": "checkoutservice-b87cb859c-fk4nr",
+                  "labels": {
+                    "app": "checkoutservice",
+                    "pod-template-hash": "b87cb859c"
+                  },
+                  "ready": true
+                }
+              ],
+              "service_ports": [
+                {
+                  "name": "grpc",
+                  "port": 5050,
+                  "targetPort": 5050,
+                  "protocol": "TCP"
+                }
+              ],
+              "container_ports": [
+                {
+                  "container": "server",
+                  "name": "",
+                  "containerPort": 5050,
+                  "protocol": "TCP"
+                }
+              ],
+              "endpoint_counts": {
+                "effective_ready": 1,
+                "effective_not_ready": 1,
+                "raw_endpoints_ready": 1,
+                "raw_endpoints_not_ready": 1,
+                "endpoint_slice_ready": 1,
+                "endpoint_slice_not_ready": 1
+              },
+              "service_port_alignment": {
+                "aligned": true,
+                "mismatches": []
+              },
+              "anomalies": [],
+              "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+            },
+            "recent_events": [
+              {
+                "reason": "Scheduled",
+                "message": "Successfully assigned default/checkoutservice-548d9bc67b-4ccd7 to agentscope-collection-worker",
+                "type": "Normal",
+                "object": "checkoutservice-548d9bc67b-4ccd7",
+                "kind": "Pod",
+                "stale": false
+              },
+              {
+                "reason": "SuccessfulCreate",
+                "message": "Created pod: checkoutservice-548d9bc67b-4ccd7",
+                "type": "Normal",
+                "object": "checkoutservice-548d9bc67b",
+                "kind": "ReplicaSet",
+                "stale": false
+              },
+              {
+                "reason": "ScalingReplicaSet",
+                "message": "Scaled up replica set checkoutservice-548d9bc67b from 0 to 1",
+                "type": "Normal",
+                "object": "checkoutservice",
+                "kind": "Deployment",
+                "stale": false
+              },
+              {
+                "reason": "Pulled",
+                "message": "Container image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/checkoutservice:v0.10.4\" already present on machine and can be accessed by the pod",
+                "type": "Normal",
+                "object": "checkoutservice-548d9bc67b-4ccd7",
+                "kind": "Pod",
+                "stale": false
+              },
+              {
+                "reason": "Created",
+                "message": "Container created",
+                "type": "Normal",
+                "object": "checkoutservice-548d9bc67b-4ccd7",
+                "kind": "Pod",
+                "stale": false
+              },
+              {
+                "reason": "Started",
+                "message": "Container started",
+                "type": "Normal",
+                "object": "checkoutservice-548d9bc67b-4ccd7",
+                "kind": "Pod",
+                "stale": false
+              }
+            ],
+            "rollout_progressing": true,
+            "restart_count": 0,
+            "deployment_selector": {
+              "app": "checkoutservice"
+            },
+            "deployment_config": {
+              "deployment": "checkoutservice",
+              "replicas": 1,
+              "containers": [
+                {
+                  "name": "server",
+                  "image": "us-central1-docker.pkg.dev/google-samples/microservices-demo/checkoutservice:v0.10.4",
+                  "ports": [
+                    {
+                      "name": "",
+                      "containerPort": 5050,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "env": [
+                    {
+                      "container": "server",
+                      "name": "PORT",
+                      "value": "5050",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "PRODUCT_CATALOG_SERVICE_ADDR",
+                      "value": "productcatalogservice:3550",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "SHIPPING_SERVICE_ADDR",
+                      "value": "shippingservice:50051",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "PAYMENT_SERVICE_ADDR",
+                      "value": "paymentservice:50051",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "EMAIL_SERVICE_ADDR",
+                      "value": "emailservice:5000",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "CURRENCY_SERVICE_ADDR",
+                      "value": "currencyservice:7000",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "CART_SERVICE_ADDR",
+                      "value": "cartservice:7070",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "ENABLE_TRACING",
+                      "value": "1",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "ENABLE_STATS",
+                      "value": "1",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "COLLECTOR_SERVICE_ADDR",
+                      "value": "opentelemetrycollector:4317",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "OTEL_SERVICE_NAME",
+                      "value": "checkoutservice",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "OTEL_RESOURCE_ATTRIBUTES",
+                      "value": "service.name=checkoutservice,deployment.environment=kind",
+                      "value_redacted": false
+                    }
+                  ],
+                  "envFrom": [],
+                  "resources": {
+                    "limits": {
+                      "cpu": "20m",
+                      "memory": "256Mi"
+                    },
+                    "requests": {
+                      "cpu": "5m",
+                      "memory": "64Mi"
+                    }
+                  },
+                  "readinessProbe": {
+                    "initialDelaySeconds": 25,
+                    "periodSeconds": 10,
+                    "timeoutSeconds": 10,
+                    "successThreshold": 1,
+                    "failureThreshold": 12,
+                    "grpc": {
+                      "port": 5050,
+                      "service": ""
+                    }
+                  },
+                  "livenessProbe": {
+                    "initialDelaySeconds": 45,
+                    "periodSeconds": 10,
+                    "timeoutSeconds": 10,
+                    "successThreshold": 1,
+                    "failureThreshold": 12,
+                    "grpc": {
+                      "port": 5050,
+                      "service": ""
+                    }
+                  },
+                  "startupProbe": {}
+                }
+              ],
+              "env": [
+                {
+                  "container": "server",
+                  "name": "PORT",
+                  "value": "5050",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "PRODUCT_CATALOG_SERVICE_ADDR",
+                  "value": "productcatalogservice:3550",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "SHIPPING_SERVICE_ADDR",
+                  "value": "shippingservice:50051",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "PAYMENT_SERVICE_ADDR",
+                  "value": "paymentservice:50051",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "EMAIL_SERVICE_ADDR",
+                  "value": "emailservice:5000",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "CURRENCY_SERVICE_ADDR",
+                  "value": "currencyservice:7000",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "CART_SERVICE_ADDR",
+                  "value": "cartservice:7070",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "ENABLE_TRACING",
+                  "value": "1",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "ENABLE_STATS",
+                  "value": "1",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "COLLECTOR_SERVICE_ADDR",
+                  "value": "opentelemetrycollector:4317",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "OTEL_SERVICE_NAME",
+                  "value": "checkoutservice",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "OTEL_RESOURCE_ATTRIBUTES",
+                  "value": "service.name=checkoutservice,deployment.environment=kind",
+                  "value_redacted": false
+                }
+              ]
+            },
+            "service_config": {
+              "service": "checkoutservice",
+              "exists": true,
+              "selector": {
+                "app": "checkoutservice"
+              },
+              "ports": [
+                {
+                  "name": "grpc",
+                  "port": 5050,
+                  "targetPort": 5050,
+                  "protocol": "TCP"
+                }
+              ],
+              "selected_pods": [
+                {
+                  "name": "checkoutservice-548d9bc67b-4ccd7",
+                  "labels": {
+                    "app": "checkoutservice",
+                    "pod-template-hash": "548d9bc67b"
+                  },
+                  "phase": "Running",
+                  "ready": false,
+                  "pod_ip": "10.244.1.43",
+                  "container_ports": [
+                    {
+                      "container": "server",
+                      "name": "",
+                      "containerPort": 5050,
+                      "protocol": "TCP"
+                    }
+                  ]
+                },
+                {
+                  "name": "checkoutservice-b87cb859c-fk4nr",
+                  "labels": {
+                    "app": "checkoutservice",
+                    "pod-template-hash": "b87cb859c"
+                  },
+                  "phase": "Running",
+                  "ready": true,
+                  "pod_ip": "10.244.1.34",
+                  "container_ports": [
+                    {
+                      "container": "server",
+                      "name": "",
+                      "containerPort": 5050,
+                      "protocol": "TCP"
+                    }
+                  ]
+                }
+              ],
+              "deployment_pods": [
+                {
+                  "name": "checkoutservice-548d9bc67b-4ccd7",
+                  "labels": {
+                    "app": "checkoutservice",
+                    "pod-template-hash": "548d9bc67b"
+                  },
+                  "phase": "Running",
+                  "ready": false,
+                  "pod_ip": "10.244.1.43",
+                  "container_ports": [
+                    {
+                      "container": "server",
+                      "name": "",
+                      "containerPort": 5050,
+                      "protocol": "TCP"
+                    }
+                  ]
+                },
+                {
+                  "name": "checkoutservice-b87cb859c-fk4nr",
+                  "labels": {
+                    "app": "checkoutservice",
+                    "pod-template-hash": "b87cb859c"
+                  },
+                  "phase": "Running",
+                  "ready": true,
+                  "pod_ip": "10.244.1.34",
+                  "container_ports": [
+                    {
+                      "container": "server",
+                      "name": "",
+                      "containerPort": 5050,
+                      "protocol": "TCP"
+                    }
+                  ]
+                }
+              ],
+              "endpoints": {
+                "ready_addresses": 1,
+                "not_ready_addresses": 1,
+                "subsets": [
+                  {
+                    "ports": [
+                      {
+                        "name": "grpc",
+                        "port": 5050,
+                        "protocol": "TCP"
+                      }
+                    ],
+                    "ready_addresses": [
+                      {
+                        "ip": "10.244.1.34",
+                        "target_ref": "checkoutservice-b87cb859c-fk4nr"
+                      }
+                    ],
+                    "not_ready_addresses": [
+                      {
+                        "ip": "10.244.1.43",
+                        "target_ref": "checkoutservice-548d9bc67b-4ccd7"
+                      }
+                    ]
+                  }
+                ],
+                "endpoint_slices": [
+                  {
+                    "name": "checkoutservice-8zc7z",
+                    "ports": [
+                      {
+                        "name": "grpc",
+                        "port": 5050,
+                        "protocol": "TCP"
+                      }
+                    ],
+                    "endpoints": [
+                      {
+                        "addresses": [
+                          "10.244.1.34"
+                        ],
+                        "ready": true,
+                        "serving": true,
+                        "terminating": false,
+                        "target_ref": "checkoutservice-b87cb859c-fk4nr"
+                      },
+                      {
+                        "addresses": [
+                          "10.244.1.43"
+                        ],
+                        "ready": false,
+                        "serving": false,
+                        "terminating": false,
+                        "target_ref": "checkoutservice-548d9bc67b-4ccd7"
+                      }
+                    ]
+                  }
+                ],
+                "endpoints_error": null,
+                "endpoint_slices_error": null
+              },
+              "summary": {
+                "service": "checkoutservice",
+                "exists": true,
+                "selector": {
+                  "app": "checkoutservice"
+                },
+                "selected_pod_count": 2,
+                "deployment_pod_count": 2,
+                "deployment_pod_labels": [
+                  {
+                    "name": "checkoutservice-548d9bc67b-4ccd7",
+                    "labels": {
+                      "app": "checkoutservice",
+                      "pod-template-hash": "548d9bc67b"
+                    },
+                    "ready": false
+                  },
+                  {
+                    "name": "checkoutservice-b87cb859c-fk4nr",
+                    "labels": {
+                      "app": "checkoutservice",
+                      "pod-template-hash": "b87cb859c"
+                    },
+                    "ready": true
+                  }
+                ],
+                "service_ports": [
+                  {
+                    "name": "grpc",
+                    "port": 5050,
+                    "targetPort": 5050,
+                    "protocol": "TCP"
+                  }
+                ],
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 5050,
+                    "protocol": "TCP"
+                  }
+                ],
+                "endpoint_counts": {
+                  "effective_ready": 1,
+                  "effective_not_ready": 1,
+                  "raw_endpoints_ready": 1,
+                  "raw_endpoints_not_ready": 1,
+                  "endpoint_slice_ready": 1,
+                  "endpoint_slice_not_ready": 1
+                },
+                "service_port_alignment": {
+                  "aligned": true,
+                  "mismatches": []
+                },
+                "anomalies": [],
+                "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+              },
+              "error": null
+            },
+            "error": null,
+            "call_id": "4c31e4d7-1cbc-41e2-9c16-da91d57676a4",
+            "timestamp": "2026-04-17T05:22:25.900335Z"
+          }
+        },
+        "get_metrics|service=checkoutservice": {
+          "service": "checkoutservice",
+          "timestamp": "2026-04-17T05:22:26.992944Z",
+          "metrics": {
+            "error_rate_pct": 0.0,
+            "latency_p95_ms": 193.8741721854297,
+            "latency_p99_ms": 576.562499999989,
+            "request_rps": 9.186347257485515,
+            "cpu_usage_cores": 0.024417311989962442,
+            "cpu_limit_pct": 3.938276127413297,
+            "cpu_throttle_pct": 19.246,
+            "memory_limit_pct": 14.353179931640625
+          },
+          "anomalies": [
+            "cpu_throttling_elevated"
+          ],
+          "baseline_deltas": {},
+          "raw_output": {
+            "service": "checkoutservice",
+            "metrics": {
+              "cpu_usage": 0.024417311989962442,
+              "cpu_mcores": 24.417311989962442,
+              "cpu_request_cores": 0.255,
+              "cpu_limit_cores": 0.62,
+              "cpu_utilization_pct_of_request": 9.575416466651939,
+              "cpu_utilization_pct_of_limit": 3.938276127413297,
+              "cpu_headroom_cores_to_limit": 0.5955826880100376,
+              "cpu_throttled_seconds_rate": 0.06935533665175811,
+              "cpu_throttled_periods_rate": 0.6600672228635182,
+              "cpu_periods_rate": 3.429613246704703,
+              "cpu_throttling_ratio": 0.1924611247340308,
+              "memory_usage": 77058048.0,
+              "memory_rss_bytes": 51646464.0,
+              "error_rate": 0.0,
+              "p95_latency_ms": 193.8741721854297,
+              "p99_latency_ms": 576.562499999989,
+              "request_rps": 9.186347257485515,
+              "error_rps": 0.0,
+              "memory_mib": 73.48828125,
+              "memory_rss_mib": 49.25390625,
+              "memory_request_bytes": 201326592.0,
+              "memory_limit_bytes": 536870912.0,
+              "memory_request_mib": 192.0,
+              "memory_limit_mib": 512.0,
+              "memory_utilization_pct_of_request": 38.275146484375,
+              "memory_utilization_pct_of_limit": 14.353179931640625,
+              "memory_headroom_bytes_to_limit": 459812864.0,
+              "resource_metrics_available": true,
+              "application_metrics_available": true,
+              "resource_metric_gaps": [],
+              "application_metric_gaps": []
+            },
+            "error": null,
+            "call_id": "129066de-3f2f-4087-a0e6-044978d42742",
+            "timestamp": "2026-04-17T05:22:26.992944Z"
+          }
+        },
+        "get_logs|service=checkoutservice": {
+          "service": "checkoutservice",
+          "timestamp": "2026-04-17T05:22:27.098736Z",
+          "lines": [],
+          "dominant_signal": "none",
+          "raw_output": {
+            "service": "checkoutservice",
+            "pod_name": "checkoutservice-548d9bc67b-4ccd7",
+            "error_count": 0,
+            "error_lines": [],
+            "signal_lines": [],
+            "recent_lines": [],
+            "pods": [
+              {
+                "error_count": 0,
+                "error_lines": [],
+                "signal_lines": [],
+                "recent_lines": [],
+                "pod_name": "checkoutservice-548d9bc67b-4ccd7"
+              },
+              {
+                "error_count": 0,
+                "error_lines": [],
+                "signal_lines": [],
+                "recent_lines": [
+                  "{\"message\":\"order confirmation email sent to \\\"someone@example.com\\\"\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:22:27.109575085Z\"}",
+                  "{\"message\":\"order confirmation email sent to \\\"someone@example.com\\\"\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:22:27.11187246Z\"}",
+                  "{\"message\":\"order confirmation email sent to \\\"someone@example.com\\\"\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:22:27.115075418Z\"}",
+                  "{\"message\":\"order confirmation email sent to \\\"someone@example.com\\\"\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:22:27.116987626Z\"}",
+                  "{\"message\":\"order confirmation email sent to \\\"someone@example.com\\\"\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:22:27.123580168Z\"}",
+                  "{\"message\":\"order confirmation email sent to \\\"someone@example.com\\\"\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:22:27.123985251Z\"}",
+                  "{\"message\":\"[PlaceOrder] user_id=\\\"544b7533-5ae7-435f-bb8d-c2369dc90792\\\" user_currency=\\\"USD\\\"\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:22:27.61151071Z\"}",
+                  "{\"message\":\"[PlaceOrder] user_id=\\\"1b71ebd5-26b0-4287-aa52-531fc1efb440\\\" user_currency=\\\"USD\\\"\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:22:27.642729793Z\"}"
+                ],
+                "pod_name": "checkoutservice-b87cb859c-fk4nr"
+              }
+            ],
+            "error": null,
+            "call_id": "4effb7ec-e587-4236-8c55-367d8e6a60c7",
+            "timestamp": "2026-04-17T05:22:27.098736Z"
+          }
+        },
+        "get_traces|service=checkoutservice": {
+          "service": "checkoutservice",
+          "timestamp": "2026-04-17T05:22:45.448344Z",
+          "trace_id": "34ca04dbee9c5d449a9f10163af73b96",
+          "critical_path": [
+            {
+              "service": "frontend",
+              "duration_ms": 88.718,
+              "status": "OK",
+              "operation": "frontend",
+              "peer_service": ""
+            },
+            {
+              "service": "frontend",
+              "duration_ms": 63.167,
+              "status": "OK",
+              "operation": "hipstershop.CheckoutService/PlaceOrder",
+              "peer_service": "hipstershop.CheckoutService"
+            },
+            {
+              "service": "checkoutservice",
+              "duration_ms": 60.942,
+              "status": "OK",
+              "operation": "hipstershop.CheckoutService/PlaceOrder",
+              "peer_service": "hipstershop.CheckoutService"
+            },
+            {
+              "service": "checkoutservice",
+              "duration_ms": 2.577,
+              "status": "OK",
+              "operation": "hipstershop.CartService/GetCart",
+              "peer_service": "hipstershop.CartService"
+            },
+            {
+              "service": "checkoutservice",
+              "duration_ms": 0.922,
+              "status": "OK",
+              "operation": "hipstershop.ProductCatalogService/GetProduct",
+              "peer_service": "hipstershop.ProductCatalogService"
+            },
+            {
+              "service": "productcatalogservice",
+              "duration_ms": 0.018,
+              "status": "OK",
+              "operation": "hipstershop.ProductCatalogService/GetProduct",
+              "peer_service": "hipstershop.ProductCatalogService"
+            },
+            {
+              "service": "checkoutservice",
+              "duration_ms": 1.463,
+              "status": "OK",
+              "operation": "hipstershop.ShippingService/GetQuote",
+              "peer_service": "hipstershop.ShippingService"
+            },
+            {
+              "service": "checkoutservice",
+              "duration_ms": 10.325,
+              "status": "OK",
+              "operation": "hipstershop.PaymentService/Charge",
+              "peer_service": "hipstershop.PaymentService"
+            }
+          ],
+          "bottleneck": "frontend",
+          "error_attribution": "dominant latency attributed to frontend",
+          "trace_quality": "good",
+          "raw_output": {
+            "service": "checkoutservice",
+            "entry_point": "productcatalogservice",
+            "trace_count": 20,
+            "call_chain": [
+              {
+                "span_id": "ae705487767ca30e",
+                "service": "frontend",
+                "operation": "frontend",
+                "duration_ms": 88.718,
+                "pct_of_total": 1.0,
+                "error": false,
+                "error_message": "200"
+              },
+              {
+                "span_id": "3995b865e2afdcfd",
+                "service": "frontend",
+                "operation": "hipstershop.CheckoutService/PlaceOrder",
+                "duration_ms": 63.167,
+                "pct_of_total": 0.7119975653193263,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.CheckoutService"
+              },
+              {
+                "span_id": "1f24b8a1aca2c67c",
+                "service": "checkoutservice",
+                "operation": "hipstershop.CheckoutService/PlaceOrder",
+                "duration_ms": 60.942,
+                "pct_of_total": 0.686918100047341,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.CheckoutService"
+              },
+              {
+                "span_id": "dccb0756d535e063",
+                "service": "checkoutservice",
+                "operation": "hipstershop.CartService/GetCart",
+                "duration_ms": 2.577,
+                "pct_of_total": 0.029047093036362406,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.CartService"
+              },
+              {
+                "span_id": "c64a9215d83ca1fe",
+                "service": "checkoutservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.922,
+                "pct_of_total": 0.01039247954191934,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "e3ae86876c68ed57",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.018,
+                "pct_of_total": 0.0002028900561329155,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "78f3fab0a62ee59b",
+                "service": "checkoutservice",
+                "operation": "hipstershop.ShippingService/GetQuote",
+                "duration_ms": 1.463,
+                "pct_of_total": 0.016490452895691968,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ShippingService"
+              },
+              {
+                "span_id": "e1de4715443d84ae",
+                "service": "checkoutservice",
+                "operation": "hipstershop.PaymentService/Charge",
+                "duration_ms": 10.325,
+                "pct_of_total": 0.11637999053179737,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.PaymentService"
+              },
+              {
+                "span_id": "002d3ef92f1d9755",
+                "service": "paymentservice",
+                "operation": "grpc.hipstershop.PaymentService/Charge",
+                "duration_ms": 0.136,
+                "pct_of_total": 0.0015329470907820286,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.PaymentService"
+              },
+              {
+                "span_id": "f367098dc1ec546f",
+                "service": "checkoutservice",
+                "operation": "hipstershop.ShippingService/ShipOrder",
+                "duration_ms": 5.72,
+                "pct_of_total": 0.06447395117112649,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ShippingService"
+              },
+              {
+                "span_id": "43151b251b514008",
+                "service": "checkoutservice",
+                "operation": "hipstershop.CartService/EmptyCart",
+                "duration_ms": 1.776,
+                "pct_of_total": 0.020018485538447664,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.CartService"
+              },
+              {
+                "span_id": "2c401de17a65eb47",
+                "service": "checkoutservice",
+                "operation": "hipstershop.EmailService/SendOrderConfirmation",
+                "duration_ms": 8.406,
+                "pct_of_total": 0.09474965621407155,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.EmailService"
+              },
+              {
+                "span_id": "dca6531d497efb2b",
+                "service": "emailservice",
+                "operation": "/hipstershop.EmailService/SendOrderConfirmation",
+                "duration_ms": 0.098,
+                "pct_of_total": 0.0011046236389458735,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.EmailService"
+              },
+              {
+                "span_id": "9412cad20b121bb5",
+                "service": "frontend",
+                "operation": "hipstershop.RecommendationService/ListRecommendations",
+                "duration_ms": 15.328,
+                "pct_of_total": 0.17277215446696273,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.RecommendationService"
+              },
+              {
+                "span_id": "598ccd867a39de1b",
+                "service": "recommendationservice",
+                "operation": "/hipstershop.RecommendationService/ListRecommendations",
+                "duration_ms": 6.224,
+                "pct_of_total": 0.07015487274284812,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.RecommendationService"
+              },
+              {
+                "span_id": "8fc07cf7baafac79",
+                "service": "recommendationservice",
+                "operation": "/hipstershop.ProductCatalogService/ListProducts",
+                "duration_ms": 5.586,
+                "pct_of_total": 0.06296354741991479,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "f8d27620595eeca2",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/ListProducts",
+                "duration_ms": 0.043,
+                "pct_of_total": 0.0004846818007619648,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "c138833fed7e1d28",
+                "service": "frontend",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.808,
+                "pct_of_total": 0.009107509186410874,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "0648ecb0a79a7def",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.016,
+                "pct_of_total": 0.00018034671656259158,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "43aad5e02cb4d97a",
+                "service": "frontend",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.415,
+                "pct_of_total": 0.004677742960842219,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "554830c5d5822dd6",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.005,
+                "pct_of_total": 5.635834892580987e-05,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "e7228e0e1ee6fac6",
+                "service": "frontend",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 2.543,
+                "pct_of_total": 0.0286638562636669,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "fbc47f2303e7a4e1",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.013,
+                "pct_of_total": 0.00014653170720710566,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "c2d68c5d9cf69af8",
+                "service": "frontend",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 1.212,
+                "pct_of_total": 0.01366126377961631,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "1b7caaa09b518564",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.017,
+                "pct_of_total": 0.00019161838634775357,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "2bdd3fd2311558e5",
+                "service": "frontend",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.977,
+                "pct_of_total": 0.011012421380103247,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "fe5e31afb1c35587",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.008,
+                "pct_of_total": 9.017335828129579e-05,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "5d3443d442dda263",
+                "service": "frontend",
+                "operation": "hipstershop.CurrencyService/GetSupportedCurrencies",
+                "duration_ms": 2.544,
+                "pct_of_total": 0.02867512793345206,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.CurrencyService"
+              },
+              {
+                "span_id": "1e64a401e7f4cac9",
+                "service": "currencyservice",
+                "operation": "grpc.hipstershop.CurrencyService/GetSupportedCurrencies",
+                "duration_ms": 0.185,
+                "pct_of_total": 0.002085258910254965,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.CurrencyService"
+              }
+            ],
+            "bottleneck_service": "frontend",
+            "bottleneck_pct_of_total": 0.21963032372113528,
+            "error_spans": [],
+            "deviation_factor": 0.022291744735475124,
+            "baseline_p99_ms": 790.791,
+            "slowest_trace_id": "34ca04dbee9c5d449a9f10163af73b96",
+            "trace_quality": "good",
+            "observability_error": false,
+            "observability_status": "",
+            "error": null,
+            "call_id": "1177eaba-d607-4bb6-887d-2fd99301b5e2",
+            "timestamp": "2026-04-17T05:22:45.448344Z"
+          }
+        },
+        "get_traces|service=frontend": {
+          "service": "frontend",
+          "timestamp": "2026-04-17T05:23:02.510822Z",
+          "trace_id": "0a7874f2165d35fdbc54e68ae78204c0",
+          "critical_path": [
+            {
+              "service": "frontend",
+              "duration_ms": 979.503,
+              "status": "OK",
+              "operation": "hipstershop.CheckoutService/PlaceOrder",
+              "peer_service": "hipstershop.CheckoutService"
+            },
+            {
+              "service": "checkoutservice",
+              "duration_ms": 951.261,
+              "status": "OK",
+              "operation": "hipstershop.CheckoutService/PlaceOrder",
+              "peer_service": "hipstershop.CheckoutService"
+            },
+            {
+              "service": "checkoutservice",
+              "duration_ms": 542.635,
+              "status": "OK",
+              "operation": "hipstershop.CartService/GetCart",
+              "peer_service": "hipstershop.CartService"
+            },
+            {
+              "service": "checkoutservice",
+              "duration_ms": 5.787,
+              "status": "OK",
+              "operation": "hipstershop.ProductCatalogService/GetProduct",
+              "peer_service": "hipstershop.ProductCatalogService"
+            },
+            {
+              "service": "productcatalogservice",
+              "duration_ms": 0.005,
+              "status": "OK",
+              "operation": "hipstershop.ProductCatalogService/GetProduct",
+              "peer_service": "hipstershop.ProductCatalogService"
+            },
+            {
+              "service": "checkoutservice",
+              "duration_ms": 12.115,
+              "status": "OK",
+              "operation": "hipstershop.ShippingService/GetQuote",
+              "peer_service": "hipstershop.ShippingService"
+            },
+            {
+              "service": "checkoutservice",
+              "duration_ms": 131.05,
+              "status": "OK",
+              "operation": "hipstershop.PaymentService/Charge",
+              "peer_service": "hipstershop.PaymentService"
+            },
+            {
+              "service": "paymentservice",
+              "duration_ms": 0.323,
+              "status": "OK",
+              "operation": "grpc.hipstershop.PaymentService/Charge",
+              "peer_service": "hipstershop.PaymentService"
+            }
+          ],
+          "bottleneck": "checkoutservice",
+          "error_attribution": "dominant latency attributed to checkoutservice",
+          "trace_quality": "good",
+          "raw_output": {
+            "service": "frontend",
+            "entry_point": "paymentservice",
+            "trace_count": 19,
+            "call_chain": [
+              {
+                "span_id": "41d7ed2cae35bb1c",
+                "service": "frontend",
+                "operation": "hipstershop.CheckoutService/PlaceOrder",
+                "duration_ms": 979.503,
+                "pct_of_total": 1.0,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.CheckoutService"
+              },
+              {
+                "span_id": "b1cfae346d7bbc94",
+                "service": "checkoutservice",
+                "operation": "hipstershop.CheckoutService/PlaceOrder",
+                "duration_ms": 951.261,
+                "pct_of_total": 0.9711670102082381,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.CheckoutService"
+              },
+              {
+                "span_id": "1b9589545126ca6a",
+                "service": "checkoutservice",
+                "operation": "hipstershop.CartService/GetCart",
+                "duration_ms": 542.635,
+                "pct_of_total": 0.5539901358137749,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.CartService"
+              },
+              {
+                "span_id": "eb0b5e6a36f5f2a4",
+                "service": "checkoutservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 5.787,
+                "pct_of_total": 0.005908098290663734,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "ddd06617968ae9f2",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.005,
+                "pct_of_total": 5.10462959276286e-06,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "12f29a3b21128730",
+                "service": "checkoutservice",
+                "operation": "hipstershop.ShippingService/GetQuote",
+                "duration_ms": 12.115,
+                "pct_of_total": 0.01236851750326441,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ShippingService"
+              },
+              {
+                "span_id": "b90adf7171c78dbf",
+                "service": "checkoutservice",
+                "operation": "hipstershop.PaymentService/Charge",
+                "duration_ms": 131.05,
+                "pct_of_total": 0.13379234162631456,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.PaymentService"
+              },
+              {
+                "span_id": "969c88ec664e23e0",
+                "service": "paymentservice",
+                "operation": "grpc.hipstershop.PaymentService/Charge",
+                "duration_ms": 0.323,
+                "pct_of_total": 0.0003297590716924808,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.PaymentService"
+              },
+              {
+                "span_id": "986ef79e2ed99dc2",
+                "service": "checkoutservice",
+                "operation": "hipstershop.ShippingService/ShipOrder",
+                "duration_ms": 3.108,
+                "pct_of_total": 0.003173037754861394,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ShippingService"
+              },
+              {
+                "span_id": "18af3e44d0e1b16f",
+                "service": "checkoutservice",
+                "operation": "hipstershop.CartService/EmptyCart",
+                "duration_ms": 22.293,
+                "pct_of_total": 0.022759501502292487,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.CartService"
+              },
+              {
+                "span_id": "f99ae7dcb6ec7f57",
+                "service": "checkoutservice",
+                "operation": "hipstershop.EmailService/SendOrderConfirmation",
+                "duration_ms": 57.979,
+                "pct_of_total": 0.05919226383175957,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.EmailService"
+              },
+              {
+                "span_id": "d8688917c0c62bbb",
+                "service": "frontend",
+                "operation": "hipstershop.RecommendationService/ListRecommendations",
+                "duration_ms": 75.238,
+                "pct_of_total": 0.07681242426005841,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.RecommendationService"
+              },
+              {
+                "span_id": "fed3db63ee2b5457",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/ListProducts",
+                "duration_ms": 0.026,
+                "pct_of_total": 2.654407388236687e-05,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "fc1434ffb392013b",
+                "service": "frontend",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 1.826,
+                "pct_of_total": 0.0018642107272769965,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "35834f9fa50e8add",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.004,
+                "pct_of_total": 4.083703674210289e-06,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "191f6aa00a301d34",
+                "service": "frontend",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 1.175,
+                "pct_of_total": 0.0011995879542992722,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "0e49cd7e648595c5",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.014,
+                "pct_of_total": 1.4292962859736008e-05,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "879226804e0025f5",
+                "service": "frontend",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 1.175,
+                "pct_of_total": 0.0011995879542992722,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "de65e02d6e17a0b0",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.003,
+                "pct_of_total": 3.062777755657716e-06,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "92224b3f4af80d90",
+                "service": "frontend",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.457,
+                "pct_of_total": 0.00046656314477852546,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "9e7c9cb963cf92d1",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.004,
+                "pct_of_total": 4.083703674210289e-06,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "f7a1d4c64541b5f2",
+                "service": "frontend",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 1.079,
+                "pct_of_total": 0.0011015790661182251,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "de8850b5aaf9b45c",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.002,
+                "pct_of_total": 2.0418518371051443e-06,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              }
+            ],
+            "bottleneck_service": "checkoutservice",
+            "bottleneck_pct_of_total": 0.22422791625067987,
+            "error_spans": [],
+            "deviation_factor": 0.21587899261952823,
+            "baseline_p99_ms": 973.515,
+            "slowest_trace_id": "0a7874f2165d35fdbc54e68ae78204c0",
+            "trace_quality": "good",
+            "observability_error": false,
+            "observability_status": "",
+            "error": null,
+            "call_id": "dd93b731-7741-4c4a-8270-7db6502a42a1",
+            "timestamp": "2026-04-17T05:23:02.510822Z"
+          }
+        },
+        "get_dependency_traces|service=checkoutservice|entry_service=frontend": {
+          "service": "checkoutservice",
+          "timestamp": "2026-04-17T05:23:27.253209Z",
+          "entry_service": "frontend",
+          "downstream_candidates": [
+            {
+              "service": "cartservice",
+              "count": 4,
+              "avg_duration_ms": 9.89075,
+              "avg_pct_of_total": 0.035727882874047455
+            },
+            {
+              "service": "shippingservice",
+              "count": 4,
+              "avg_duration_ms": 8.19425,
+              "avg_pct_of_total": 0.031068779959251388
+            },
+            {
+              "service": "productcatalogservice",
+              "count": 4,
+              "avg_duration_ms": 4.998749999999999,
+              "avg_pct_of_total": 0.017501341489508788
+            }
+          ],
+          "bottleneck": "cartservice",
+          "summary": "frontend traces flowing through checkoutservice most often bottleneck on cartservice at 3.6% of total latency",
+          "trace_quality": "good",
+          "raw_output": {
+            "service": "checkoutservice",
+            "entry_service": "frontend",
+            "trace_count": 4,
+            "focus_trace_count": 4,
+            "raw_trace_count": 20,
+            "application_trace_count": 20,
+            "call_chain": [
+              {
+                "service": "checkoutservice",
+                "downstream_service": "cartservice",
+                "operation": "hipstershop.CartService/GetCart",
+                "duration_ms": 21.124,
+                "pct_of_total": 0.07059995254121729,
+                "error": false,
+                "error_message": "0"
+              },
+              {
+                "service": "checkoutservice",
+                "downstream_service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 14.687,
+                "pct_of_total": 0.049086418432723836,
+                "error": false,
+                "error_message": "0"
+              },
+              {
+                "service": "checkoutservice",
+                "downstream_service": "shippingservice",
+                "operation": "hipstershop.ShippingService/GetQuote",
+                "duration_ms": 8.324,
+                "pct_of_total": 0.027820204741199235,
+                "error": false,
+                "error_message": "0"
+              }
+            ],
+            "downstream_candidates": [
+              {
+                "service": "cartservice",
+                "count": 4,
+                "avg_duration_ms": 9.89075,
+                "avg_pct_of_total": 0.035727882874047455
+              },
+              {
+                "service": "shippingservice",
+                "count": 4,
+                "avg_duration_ms": 8.19425,
+                "avg_pct_of_total": 0.031068779959251388
+              },
+              {
+                "service": "productcatalogservice",
+                "count": 4,
+                "avg_duration_ms": 4.998749999999999,
+                "avg_pct_of_total": 0.017501341489508788
+              }
+            ],
+            "bottleneck_service": "cartservice",
+            "bottleneck_pct_of_total": 0.035727882874047455,
+            "error_spans": [],
+            "trace_quality": "good",
+            "observability_error": false,
+            "observability_status": "",
+            "summary": "frontend traces flowing through checkoutservice most often bottleneck on cartservice at 3.6% of total latency",
+            "error": null,
+            "call_id": "bce6a1eb-8441-4fff-aa49-78db57189bbe",
+            "timestamp": "2026-04-17T05:23:27.253209Z"
+          }
+        },
+        "get_k8s_state|service=frontend": {
+          "service": "frontend",
+          "timestamp": "2026-04-17T05:23:41.382718Z",
+          "desired_replicas": 1,
+          "available_replicas": 1,
+          "rollout_progressing": false,
+          "restart_count": 0,
+          "pod_phases": [
+            {
+              "pod_name": "frontend-d5f45cf8-426gc",
+              "phase": "Running",
+              "ready": true,
+              "restart_count": 0,
+              "labels": {
+                "app": "frontend",
+                "pod-template-hash": "d5f45cf8"
+              },
+              "container_ports": [
+                {
+                  "container": "server",
+                  "name": "",
+                  "containerPort": 8080,
+                  "protocol": "TCP"
+                }
+              ]
+            }
+          ],
+          "service_config_summary": {
+            "service": "frontend",
+            "exists": true,
+            "selector": {
+              "app": "frontend"
+            },
+            "selected_pod_count": 1,
+            "deployment_pod_count": 1,
+            "deployment_pod_labels": [
+              {
+                "name": "frontend-d5f45cf8-426gc",
+                "labels": {
+                  "app": "frontend",
+                  "pod-template-hash": "d5f45cf8"
+                },
+                "ready": true
+              }
+            ],
+            "service_ports": [
+              {
+                "name": "http",
+                "port": 80,
+                "targetPort": 8080,
+                "protocol": "TCP"
+              }
+            ],
+            "container_ports": [
+              {
+                "container": "server",
+                "name": "",
+                "containerPort": 8080,
+                "protocol": "TCP"
+              }
+            ],
+            "endpoint_counts": {
+              "effective_ready": 1,
+              "effective_not_ready": 0,
+              "raw_endpoints_ready": 1,
+              "raw_endpoints_not_ready": 0,
+              "endpoint_slice_ready": 1,
+              "endpoint_slice_not_ready": 0
+            },
+            "service_port_alignment": {
+              "aligned": true,
+              "mismatches": []
+            },
+            "anomalies": [],
+            "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+          },
+          "recent_events": [],
+          "deployment_selector": {
+            "app": "frontend"
+          },
+          "deployment_config": {
+            "deployment": "frontend",
+            "replicas": 1,
+            "containers": [
+              {
+                "name": "server",
+                "image": "us-central1-docker.pkg.dev/google-samples/microservices-demo/frontend:v0.10.4",
+                "ports": [
+                  {
+                    "name": "",
+                    "containerPort": 8080,
+                    "protocol": "TCP"
+                  }
+                ],
+                "env": [
+                  {
+                    "container": "server",
+                    "name": "PORT",
+                    "value": "8080",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "PRODUCT_CATALOG_SERVICE_ADDR",
+                    "value": "productcatalogservice:3550",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "CURRENCY_SERVICE_ADDR",
+                    "value": "currencyservice:7000",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "CART_SERVICE_ADDR",
+                    "value": "cartservice:7070",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "RECOMMENDATION_SERVICE_ADDR",
+                    "value": "recommendationservice:8080",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "SHIPPING_SERVICE_ADDR",
+                    "value": "shippingservice:50051",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "CHECKOUT_SERVICE_ADDR",
+                    "value": "checkoutservice:5050",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "AD_SERVICE_ADDR",
+                    "value": "adservice:9555",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "SHOPPING_ASSISTANT_SERVICE_ADDR",
+                    "value": "shoppingassistantservice:80",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "ENABLE_PROFILER",
+                    "value": "0",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "ENABLE_TRACING",
+                    "value": "1",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "ENABLE_STATS",
+                    "value": "1",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "COLLECTOR_SERVICE_ADDR",
+                    "value": "opentelemetrycollector:4317",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "OTEL_SERVICE_NAME",
+                    "value": "frontend",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "OTEL_RESOURCE_ATTRIBUTES",
+                    "value": "service.name=frontend,deployment.environment=kind",
+                    "value_redacted": false
+                  }
+                ],
+                "envFrom": [],
+                "resources": {
+                  "limits": {
+                    "cpu": "600m",
+                    "memory": "256Mi"
+                  },
+                  "requests": {
+                    "cpu": "250m",
+                    "memory": "128Mi"
+                  }
+                },
+                "readinessProbe": {
+                  "initialDelaySeconds": 25,
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 10,
+                  "successThreshold": 1,
+                  "failureThreshold": 12,
+                  "httpGet": {
+                    "path": "/_healthz",
+                    "port": 8080,
+                    "scheme": "HTTP"
+                  }
+                },
+                "livenessProbe": {
+                  "initialDelaySeconds": 45,
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 10,
+                  "successThreshold": 1,
+                  "failureThreshold": 12,
+                  "httpGet": {
+                    "path": "/_healthz",
+                    "port": 8080,
+                    "scheme": "HTTP"
+                  }
+                },
+                "startupProbe": {}
+              }
+            ],
+            "env": [
+              {
+                "container": "server",
+                "name": "PORT",
+                "value": "8080",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "PRODUCT_CATALOG_SERVICE_ADDR",
+                "value": "productcatalogservice:3550",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "CURRENCY_SERVICE_ADDR",
+                "value": "currencyservice:7000",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "CART_SERVICE_ADDR",
+                "value": "cartservice:7070",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "RECOMMENDATION_SERVICE_ADDR",
+                "value": "recommendationservice:8080",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "SHIPPING_SERVICE_ADDR",
+                "value": "shippingservice:50051",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "CHECKOUT_SERVICE_ADDR",
+                "value": "checkoutservice:5050",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "AD_SERVICE_ADDR",
+                "value": "adservice:9555",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "SHOPPING_ASSISTANT_SERVICE_ADDR",
+                "value": "shoppingassistantservice:80",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "ENABLE_PROFILER",
+                "value": "0",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "ENABLE_TRACING",
+                "value": "1",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "ENABLE_STATS",
+                "value": "1",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "COLLECTOR_SERVICE_ADDR",
+                "value": "opentelemetrycollector:4317",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "OTEL_SERVICE_NAME",
+                "value": "frontend",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "OTEL_RESOURCE_ATTRIBUTES",
+                "value": "service.name=frontend,deployment.environment=kind",
+                "value_redacted": false
+              }
+            ]
+          },
+          "service_config": {
+            "selector": {
+              "app": "frontend"
+            },
+            "ports": [
+              {
+                "name": "http",
+                "port": 80,
+                "targetPort": 8080,
+                "protocol": "TCP"
+              }
+            ],
+            "selected_pods": [
+              {
+                "name": "frontend-d5f45cf8-426gc",
+                "labels": {
+                  "app": "frontend",
+                  "pod-template-hash": "d5f45cf8"
+                },
+                "phase": "Running",
+                "ready": true,
+                "pod_ip": "10.244.1.42",
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 8080,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "deployment_pods": [
+              {
+                "name": "frontend-d5f45cf8-426gc",
+                "labels": {
+                  "app": "frontend",
+                  "pod-template-hash": "d5f45cf8"
+                },
+                "phase": "Running",
+                "ready": true,
+                "pod_ip": "10.244.1.42",
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 8080,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "endpoints": {
+              "ready_addresses": 1,
+              "not_ready_addresses": 0,
+              "subsets": [
+                {
+                  "ports": [
+                    {
+                      "name": "http",
+                      "port": 8080,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "ready_addresses": [
+                    {
+                      "ip": "10.244.1.42",
+                      "target_ref": "frontend-d5f45cf8-426gc"
+                    }
+                  ],
+                  "not_ready_addresses": []
+                }
+              ],
+              "endpoint_slices": [
+                {
+                  "name": "frontend-hbhsc",
+                  "ports": [
+                    {
+                      "name": "http",
+                      "port": 8080,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "endpoints": [
+                    {
+                      "addresses": [
+                        "10.244.1.42"
+                      ],
+                      "ready": true,
+                      "serving": true,
+                      "terminating": false,
+                      "target_ref": "frontend-d5f45cf8-426gc"
+                    }
+                  ]
+                }
+              ],
+              "endpoints_error": null,
+              "endpoint_slices_error": null
+            },
+            "error": null
+          },
+          "anomalies": [],
+          "raw_output": {
+            "service": "frontend",
+            "desired_replicas": 1,
+            "available_replicas": 1,
+            "pod_phases": [
+              {
+                "pod_name": "frontend-d5f45cf8-426gc",
+                "phase": "Running",
+                "ready": true,
+                "restart_count": 0,
+                "labels": {
+                  "app": "frontend",
+                  "pod-template-hash": "d5f45cf8"
+                },
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 8080,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "service_config_summary": {
+              "service": "frontend",
+              "exists": true,
+              "selector": {
+                "app": "frontend"
+              },
+              "selected_pod_count": 1,
+              "deployment_pod_count": 1,
+              "deployment_pod_labels": [
+                {
+                  "name": "frontend-d5f45cf8-426gc",
+                  "labels": {
+                    "app": "frontend",
+                    "pod-template-hash": "d5f45cf8"
+                  },
+                  "ready": true
+                }
+              ],
+              "service_ports": [
+                {
+                  "name": "http",
+                  "port": 80,
+                  "targetPort": 8080,
+                  "protocol": "TCP"
+                }
+              ],
+              "container_ports": [
+                {
+                  "container": "server",
+                  "name": "",
+                  "containerPort": 8080,
+                  "protocol": "TCP"
+                }
+              ],
+              "endpoint_counts": {
+                "effective_ready": 1,
+                "effective_not_ready": 0,
+                "raw_endpoints_ready": 1,
+                "raw_endpoints_not_ready": 0,
+                "endpoint_slice_ready": 1,
+                "endpoint_slice_not_ready": 0
+              },
+              "service_port_alignment": {
+                "aligned": true,
+                "mismatches": []
+              },
+              "anomalies": [],
+              "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+            },
+            "recent_events": [],
+            "rollout_progressing": false,
+            "restart_count": 0,
+            "deployment_selector": {
+              "app": "frontend"
+            },
+            "deployment_config": {
+              "deployment": "frontend",
+              "replicas": 1,
+              "containers": [
+                {
+                  "name": "server",
+                  "image": "us-central1-docker.pkg.dev/google-samples/microservices-demo/frontend:v0.10.4",
+                  "ports": [
+                    {
+                      "name": "",
+                      "containerPort": 8080,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "env": [
+                    {
+                      "container": "server",
+                      "name": "PORT",
+                      "value": "8080",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "PRODUCT_CATALOG_SERVICE_ADDR",
+                      "value": "productcatalogservice:3550",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "CURRENCY_SERVICE_ADDR",
+                      "value": "currencyservice:7000",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "CART_SERVICE_ADDR",
+                      "value": "cartservice:7070",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "RECOMMENDATION_SERVICE_ADDR",
+                      "value": "recommendationservice:8080",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "SHIPPING_SERVICE_ADDR",
+                      "value": "shippingservice:50051",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "CHECKOUT_SERVICE_ADDR",
+                      "value": "checkoutservice:5050",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "AD_SERVICE_ADDR",
+                      "value": "adservice:9555",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "SHOPPING_ASSISTANT_SERVICE_ADDR",
+                      "value": "shoppingassistantservice:80",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "ENABLE_PROFILER",
+                      "value": "0",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "ENABLE_TRACING",
+                      "value": "1",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "ENABLE_STATS",
+                      "value": "1",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "COLLECTOR_SERVICE_ADDR",
+                      "value": "opentelemetrycollector:4317",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "OTEL_SERVICE_NAME",
+                      "value": "frontend",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "OTEL_RESOURCE_ATTRIBUTES",
+                      "value": "service.name=frontend,deployment.environment=kind",
+                      "value_redacted": false
+                    }
+                  ],
+                  "envFrom": [],
+                  "resources": {
+                    "limits": {
+                      "cpu": "600m",
+                      "memory": "256Mi"
+                    },
+                    "requests": {
+                      "cpu": "250m",
+                      "memory": "128Mi"
+                    }
+                  },
+                  "readinessProbe": {
+                    "initialDelaySeconds": 25,
+                    "periodSeconds": 10,
+                    "timeoutSeconds": 10,
+                    "successThreshold": 1,
+                    "failureThreshold": 12,
+                    "httpGet": {
+                      "path": "/_healthz",
+                      "port": 8080,
+                      "scheme": "HTTP"
+                    }
+                  },
+                  "livenessProbe": {
+                    "initialDelaySeconds": 45,
+                    "periodSeconds": 10,
+                    "timeoutSeconds": 10,
+                    "successThreshold": 1,
+                    "failureThreshold": 12,
+                    "httpGet": {
+                      "path": "/_healthz",
+                      "port": 8080,
+                      "scheme": "HTTP"
+                    }
+                  },
+                  "startupProbe": {}
+                }
+              ],
+              "env": [
+                {
+                  "container": "server",
+                  "name": "PORT",
+                  "value": "8080",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "PRODUCT_CATALOG_SERVICE_ADDR",
+                  "value": "productcatalogservice:3550",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "CURRENCY_SERVICE_ADDR",
+                  "value": "currencyservice:7000",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "CART_SERVICE_ADDR",
+                  "value": "cartservice:7070",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "RECOMMENDATION_SERVICE_ADDR",
+                  "value": "recommendationservice:8080",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "SHIPPING_SERVICE_ADDR",
+                  "value": "shippingservice:50051",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "CHECKOUT_SERVICE_ADDR",
+                  "value": "checkoutservice:5050",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "AD_SERVICE_ADDR",
+                  "value": "adservice:9555",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "SHOPPING_ASSISTANT_SERVICE_ADDR",
+                  "value": "shoppingassistantservice:80",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "ENABLE_PROFILER",
+                  "value": "0",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "ENABLE_TRACING",
+                  "value": "1",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "ENABLE_STATS",
+                  "value": "1",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "COLLECTOR_SERVICE_ADDR",
+                  "value": "opentelemetrycollector:4317",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "OTEL_SERVICE_NAME",
+                  "value": "frontend",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "OTEL_RESOURCE_ATTRIBUTES",
+                  "value": "service.name=frontend,deployment.environment=kind",
+                  "value_redacted": false
+                }
+              ]
+            },
+            "service_config": {
+              "service": "frontend",
+              "exists": true,
+              "selector": {
+                "app": "frontend"
+              },
+              "ports": [
+                {
+                  "name": "http",
+                  "port": 80,
+                  "targetPort": 8080,
+                  "protocol": "TCP"
+                }
+              ],
+              "selected_pods": [
+                {
+                  "name": "frontend-d5f45cf8-426gc",
+                  "labels": {
+                    "app": "frontend",
+                    "pod-template-hash": "d5f45cf8"
+                  },
+                  "phase": "Running",
+                  "ready": true,
+                  "pod_ip": "10.244.1.42",
+                  "container_ports": [
+                    {
+                      "container": "server",
+                      "name": "",
+                      "containerPort": 8080,
+                      "protocol": "TCP"
+                    }
+                  ]
+                }
+              ],
+              "deployment_pods": [
+                {
+                  "name": "frontend-d5f45cf8-426gc",
+                  "labels": {
+                    "app": "frontend",
+                    "pod-template-hash": "d5f45cf8"
+                  },
+                  "phase": "Running",
+                  "ready": true,
+                  "pod_ip": "10.244.1.42",
+                  "container_ports": [
+                    {
+                      "container": "server",
+                      "name": "",
+                      "containerPort": 8080,
+                      "protocol": "TCP"
+                    }
+                  ]
+                }
+              ],
+              "endpoints": {
+                "ready_addresses": 1,
+                "not_ready_addresses": 0,
+                "subsets": [
+                  {
+                    "ports": [
+                      {
+                        "name": "http",
+                        "port": 8080,
+                        "protocol": "TCP"
+                      }
+                    ],
+                    "ready_addresses": [
+                      {
+                        "ip": "10.244.1.42",
+                        "target_ref": "frontend-d5f45cf8-426gc"
+                      }
+                    ],
+                    "not_ready_addresses": []
+                  }
+                ],
+                "endpoint_slices": [
+                  {
+                    "name": "frontend-hbhsc",
+                    "ports": [
+                      {
+                        "name": "http",
+                        "port": 8080,
+                        "protocol": "TCP"
+                      }
+                    ],
+                    "endpoints": [
+                      {
+                        "addresses": [
+                          "10.244.1.42"
+                        ],
+                        "ready": true,
+                        "serving": true,
+                        "terminating": false,
+                        "target_ref": "frontend-d5f45cf8-426gc"
+                      }
+                    ]
+                  }
+                ],
+                "endpoints_error": null,
+                "endpoint_slices_error": null
+              },
+              "summary": {
+                "service": "frontend",
+                "exists": true,
+                "selector": {
+                  "app": "frontend"
+                },
+                "selected_pod_count": 1,
+                "deployment_pod_count": 1,
+                "deployment_pod_labels": [
+                  {
+                    "name": "frontend-d5f45cf8-426gc",
+                    "labels": {
+                      "app": "frontend",
+                      "pod-template-hash": "d5f45cf8"
+                    },
+                    "ready": true
+                  }
+                ],
+                "service_ports": [
+                  {
+                    "name": "http",
+                    "port": 80,
+                    "targetPort": 8080,
+                    "protocol": "TCP"
+                  }
+                ],
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 8080,
+                    "protocol": "TCP"
+                  }
+                ],
+                "endpoint_counts": {
+                  "effective_ready": 1,
+                  "effective_not_ready": 0,
+                  "raw_endpoints_ready": 1,
+                  "raw_endpoints_not_ready": 0,
+                  "endpoint_slice_ready": 1,
+                  "endpoint_slice_not_ready": 0
+                },
+                "service_port_alignment": {
+                  "aligned": true,
+                  "mismatches": []
+                },
+                "anomalies": [],
+                "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+              },
+              "error": null
+            },
+            "error": null,
+            "call_id": "9ce3641c-1e40-4317-8494-baff37281f2a",
+            "timestamp": "2026-04-17T05:23:41.382718Z"
+          }
+        },
+        "get_metrics|service=frontend": {
+          "service": "frontend",
+          "timestamp": "2026-04-17T05:23:42.794346Z",
+          "metrics": {
+            "error_rate_pct": 0.035,
+            "latency_p95_ms": 370.46568627450927,
+            "latency_p99_ms": 941.2380952380951,
+            "request_rps": 67.24022210018914,
+            "cpu_usage_cores": 0.1800777812998834,
+            "cpu_limit_pct": 30.012963549980565,
+            "cpu_throttle_pct": 7.494,
+            "memory_limit_pct": 27.34527587890625
+          },
+          "anomalies": [
+            "latency_elevated"
+          ],
+          "baseline_deltas": {},
+          "raw_output": {
+            "service": "frontend",
+            "metrics": {
+              "cpu_usage": 0.1800777812998834,
+              "cpu_mcores": 180.07778129988338,
+              "cpu_request_cores": 0.25,
+              "cpu_limit_cores": 0.6,
+              "cpu_utilization_pct_of_request": 72.03111251995335,
+              "cpu_utilization_pct_of_limit": 30.012963549980565,
+              "cpu_headroom_cores_to_limit": 0.4199222187001166,
+              "cpu_throttled_seconds_rate": 0.03444047633057069,
+              "cpu_throttled_periods_rate": 0.5996319290946024,
+              "cpu_periods_rate": 8.0012071874015,
+              "cpu_throttling_ratio": 0.0749426824040712,
+              "memory_usage": 73404416.0,
+              "memory_rss_bytes": 54538240.0,
+              "error_rate": 0.00035289372857430935,
+              "p95_latency_ms": 370.46568627450927,
+              "p99_latency_ms": 941.2380952380951,
+              "request_rps": 67.24022210018914,
+              "error_rps": 0.023728652687100425,
+              "memory_mib": 70.00390625,
+              "memory_rss_mib": 52.01171875,
+              "memory_request_bytes": 134217728.0,
+              "memory_limit_bytes": 268435456.0,
+              "memory_request_mib": 128.0,
+              "memory_limit_mib": 256.0,
+              "memory_utilization_pct_of_request": 54.6905517578125,
+              "memory_utilization_pct_of_limit": 27.34527587890625,
+              "memory_headroom_bytes_to_limit": 195031040.0,
+              "resource_metrics_available": true,
+              "application_metrics_available": true,
+              "resource_metric_gaps": [],
+              "application_metric_gaps": []
+            },
+            "error": null,
+            "call_id": "d028dbf1-641a-41d7-8694-df5f1067b974",
+            "timestamp": "2026-04-17T05:23:42.794346Z"
+          }
+        },
+        "get_logs|service=frontend": {
+          "service": "frontend",
+          "timestamp": "2026-04-17T05:23:42.911751Z",
+          "lines": [
+            {
+              "level": "ERROR",
+              "msg": "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"83bff196-0921-4127-9142-29527ddaadc6\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"63a39dc4-0ee5-47ac-9d28-a5ac881686ac\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:42.996243259Z\"}",
+              "signal_class": "application_error"
+            },
+            {
+              "level": "ERROR",
+              "msg": "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"df7faa11-d77f-4add-a277-f268304a37c0\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"997253a6-5917-4a82-afa9-2dd8bff6141a\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:42.996623342Z\"}",
+              "signal_class": "application_error"
+            },
+            {
+              "level": "ERROR",
+              "msg": "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"c9be138e-7bd6-4013-ab91-f3080c3e9384\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"a75e2263-0299-4f05-bc06-065137573c4d\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.007973217Z\"}",
+              "signal_class": "application_error"
+            },
+            {
+              "level": "ERROR",
+              "msg": "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"960badc3-183f-431f-a60c-c381877b53f3\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"86da6529-4a4c-493b-865f-e887d840470b\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.00807355Z\"}",
+              "signal_class": "application_error"
+            },
+            {
+              "level": "ERROR",
+              "msg": "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"e7625a2d-9cbf-407e-a430-8c5be91dd1cd\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"89564410-3434-4fc1-a28d-519ca800c202\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.010884842Z\"}",
+              "signal_class": "application_error"
+            },
+            {
+              "level": "ERROR",
+              "msg": "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"17fecd62-3532-4da1-86f1-9f833c32608f\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"51c6558a-d53d-4285-875d-04ca534e377b\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.012014092Z\"}",
+              "signal_class": "application_error"
+            },
+            {
+              "level": "ERROR",
+              "msg": "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"ab66d65c-59eb-4db4-b042-dd0b31ad6f3a\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"a99453a1-c786-462e-9773-1c1983db04e1\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.0120473Z\"}",
+              "signal_class": "application_error"
+            },
+            {
+              "level": "ERROR",
+              "msg": "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"f9076821-8d98-46ac-be0c-ee9b7d7ee58c\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"206bb584-0dad-4f11-a9cb-2c03fee1197a\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.012452175Z\"}",
+              "signal_class": "application_error"
+            }
+          ],
+          "dominant_signal": "application_error",
+          "raw_output": {
+            "service": "frontend",
+            "pod_name": "frontend-d5f45cf8-426gc",
+            "error_count": 8,
+            "error_lines": [
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"83bff196-0921-4127-9142-29527ddaadc6\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"63a39dc4-0ee5-47ac-9d28-a5ac881686ac\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:42.996243259Z\"}",
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"df7faa11-d77f-4add-a277-f268304a37c0\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"997253a6-5917-4a82-afa9-2dd8bff6141a\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:42.996623342Z\"}",
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"c9be138e-7bd6-4013-ab91-f3080c3e9384\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"a75e2263-0299-4f05-bc06-065137573c4d\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.007973217Z\"}",
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"960badc3-183f-431f-a60c-c381877b53f3\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"86da6529-4a4c-493b-865f-e887d840470b\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.00807355Z\"}",
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"e7625a2d-9cbf-407e-a430-8c5be91dd1cd\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"89564410-3434-4fc1-a28d-519ca800c202\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.010884842Z\"}",
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"17fecd62-3532-4da1-86f1-9f833c32608f\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"51c6558a-d53d-4285-875d-04ca534e377b\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.012014092Z\"}",
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"ab66d65c-59eb-4db4-b042-dd0b31ad6f3a\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"a99453a1-c786-462e-9773-1c1983db04e1\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.0120473Z\"}",
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"f9076821-8d98-46ac-be0c-ee9b7d7ee58c\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"206bb584-0dad-4f11-a9cb-2c03fee1197a\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.012452175Z\"}"
+            ],
+            "signal_lines": [
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"83bff196-0921-4127-9142-29527ddaadc6\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"63a39dc4-0ee5-47ac-9d28-a5ac881686ac\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:42.996243259Z\"}",
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"df7faa11-d77f-4add-a277-f268304a37c0\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"997253a6-5917-4a82-afa9-2dd8bff6141a\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:42.996623342Z\"}",
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"c9be138e-7bd6-4013-ab91-f3080c3e9384\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"a75e2263-0299-4f05-bc06-065137573c4d\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.007973217Z\"}",
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"960badc3-183f-431f-a60c-c381877b53f3\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"86da6529-4a4c-493b-865f-e887d840470b\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.00807355Z\"}",
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"e7625a2d-9cbf-407e-a430-8c5be91dd1cd\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"89564410-3434-4fc1-a28d-519ca800c202\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.010884842Z\"}",
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"17fecd62-3532-4da1-86f1-9f833c32608f\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"51c6558a-d53d-4285-875d-04ca534e377b\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.012014092Z\"}",
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"ab66d65c-59eb-4db4-b042-dd0b31ad6f3a\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"a99453a1-c786-462e-9773-1c1983db04e1\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.0120473Z\"}",
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"f9076821-8d98-46ac-be0c-ee9b7d7ee58c\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"206bb584-0dad-4f11-a9cb-2c03fee1197a\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.012452175Z\"}"
+            ],
+            "recent_lines": [
+              "{\"http.req.id\":\"17bdd847-13ce-4c38-ac49-aa0ef024dcbb\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart/checkout\",\"message\":\"request started\",\"session\":\"51c6558a-d53d-4285-875d-04ca534e377b\",\"severity\":\"debug\",\"timestamp\":\"2026-04-17T05:23:43.411833217Z\"}",
+              "{\"http.req.id\":\"17bdd847-13ce-4c38-ac49-aa0ef024dcbb\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart/checkout\",\"message\":\"placing order\",\"session\":\"51c6558a-d53d-4285-875d-04ca534e377b\",\"severity\":\"debug\",\"timestamp\":\"2026-04-17T05:23:43.411863009Z\"}",
+              "{\"http.req.id\":\"c708f8a4-9bd6-474c-a3bc-a09c870806c3\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart/checkout\",\"message\":\"request started\",\"session\":\"a99453a1-c786-462e-9773-1c1983db04e1\",\"severity\":\"debug\",\"timestamp\":\"2026-04-17T05:23:43.412073551Z\"}",
+              "{\"http.req.id\":\"c708f8a4-9bd6-474c-a3bc-a09c870806c3\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart/checkout\",\"message\":\"placing order\",\"session\":\"a99453a1-c786-462e-9773-1c1983db04e1\",\"severity\":\"debug\",\"timestamp\":\"2026-04-17T05:23:43.412123551Z\"}",
+              "{\"http.req.id\":\"d7b7c92e-95bf-4acb-b7b6-53737ae0329c\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart/checkout\",\"message\":\"request started\",\"session\":\"206bb584-0dad-4f11-a9cb-2c03fee1197a\",\"severity\":\"debug\",\"timestamp\":\"2026-04-17T05:23:43.413925884Z\"}",
+              "{\"http.req.id\":\"d7b7c92e-95bf-4acb-b7b6-53737ae0329c\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart/checkout\",\"message\":\"placing order\",\"session\":\"206bb584-0dad-4f11-a9cb-2c03fee1197a\",\"severity\":\"debug\",\"timestamp\":\"2026-04-17T05:23:43.413949967Z\"}",
+              "{\"http.req.id\":\"ceff92a2-6cd6-457a-855d-5cd4dd4720eb\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart/checkout\",\"message\":\"request started\",\"session\":\"86da6529-4a4c-493b-865f-e887d840470b\",\"severity\":\"debug\",\"timestamp\":\"2026-04-17T05:23:43.415849884Z\"}",
+              "{\"http.req.id\":\"ceff92a2-6cd6-457a-855d-5cd4dd4720eb\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart/checkout\",\"message\":\"placing order\",\"session\":\"86da6529-4a4c-493b-865f-e887d840470b\",\"severity\":\"debug\",\"timestamp\":\"2026-04-17T05:23:43.415933342Z\"}"
+            ],
+            "pods": [
+              {
+                "error_count": 8,
+                "error_lines": [
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"83bff196-0921-4127-9142-29527ddaadc6\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"63a39dc4-0ee5-47ac-9d28-a5ac881686ac\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:42.996243259Z\"}",
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"df7faa11-d77f-4add-a277-f268304a37c0\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"997253a6-5917-4a82-afa9-2dd8bff6141a\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:42.996623342Z\"}",
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"c9be138e-7bd6-4013-ab91-f3080c3e9384\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"a75e2263-0299-4f05-bc06-065137573c4d\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.007973217Z\"}",
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"960badc3-183f-431f-a60c-c381877b53f3\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"86da6529-4a4c-493b-865f-e887d840470b\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.00807355Z\"}",
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"e7625a2d-9cbf-407e-a430-8c5be91dd1cd\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"89564410-3434-4fc1-a28d-519ca800c202\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.010884842Z\"}",
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"17fecd62-3532-4da1-86f1-9f833c32608f\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"51c6558a-d53d-4285-875d-04ca534e377b\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.012014092Z\"}",
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"ab66d65c-59eb-4db4-b042-dd0b31ad6f3a\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"a99453a1-c786-462e-9773-1c1983db04e1\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.0120473Z\"}",
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"f9076821-8d98-46ac-be0c-ee9b7d7ee58c\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"206bb584-0dad-4f11-a9cb-2c03fee1197a\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.012452175Z\"}"
+                ],
+                "signal_lines": [
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"83bff196-0921-4127-9142-29527ddaadc6\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"63a39dc4-0ee5-47ac-9d28-a5ac881686ac\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:42.996243259Z\"}",
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"df7faa11-d77f-4add-a277-f268304a37c0\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"997253a6-5917-4a82-afa9-2dd8bff6141a\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:42.996623342Z\"}",
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"c9be138e-7bd6-4013-ab91-f3080c3e9384\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"a75e2263-0299-4f05-bc06-065137573c4d\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.007973217Z\"}",
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"960badc3-183f-431f-a60c-c381877b53f3\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"86da6529-4a4c-493b-865f-e887d840470b\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.00807355Z\"}",
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"e7625a2d-9cbf-407e-a430-8c5be91dd1cd\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"89564410-3434-4fc1-a28d-519ca800c202\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.010884842Z\"}",
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"17fecd62-3532-4da1-86f1-9f833c32608f\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"51c6558a-d53d-4285-875d-04ca534e377b\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.012014092Z\"}",
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"ab66d65c-59eb-4db4-b042-dd0b31ad6f3a\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"a99453a1-c786-462e-9773-1c1983db04e1\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.0120473Z\"}",
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"f9076821-8d98-46ac-be0c-ee9b7d7ee58c\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"206bb584-0dad-4f11-a9cb-2c03fee1197a\",\"severity\":\"error\",\"timestamp\":\"2026-04-17T05:23:43.012452175Z\"}"
+                ],
+                "recent_lines": [
+                  "{\"http.req.id\":\"17bdd847-13ce-4c38-ac49-aa0ef024dcbb\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart/checkout\",\"message\":\"request started\",\"session\":\"51c6558a-d53d-4285-875d-04ca534e377b\",\"severity\":\"debug\",\"timestamp\":\"2026-04-17T05:23:43.411833217Z\"}",
+                  "{\"http.req.id\":\"17bdd847-13ce-4c38-ac49-aa0ef024dcbb\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart/checkout\",\"message\":\"placing order\",\"session\":\"51c6558a-d53d-4285-875d-04ca534e377b\",\"severity\":\"debug\",\"timestamp\":\"2026-04-17T05:23:43.411863009Z\"}",
+                  "{\"http.req.id\":\"c708f8a4-9bd6-474c-a3bc-a09c870806c3\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart/checkout\",\"message\":\"request started\",\"session\":\"a99453a1-c786-462e-9773-1c1983db04e1\",\"severity\":\"debug\",\"timestamp\":\"2026-04-17T05:23:43.412073551Z\"}",
+                  "{\"http.req.id\":\"c708f8a4-9bd6-474c-a3bc-a09c870806c3\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart/checkout\",\"message\":\"placing order\",\"session\":\"a99453a1-c786-462e-9773-1c1983db04e1\",\"severity\":\"debug\",\"timestamp\":\"2026-04-17T05:23:43.412123551Z\"}",
+                  "{\"http.req.id\":\"d7b7c92e-95bf-4acb-b7b6-53737ae0329c\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart/checkout\",\"message\":\"request started\",\"session\":\"206bb584-0dad-4f11-a9cb-2c03fee1197a\",\"severity\":\"debug\",\"timestamp\":\"2026-04-17T05:23:43.413925884Z\"}",
+                  "{\"http.req.id\":\"d7b7c92e-95bf-4acb-b7b6-53737ae0329c\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart/checkout\",\"message\":\"placing order\",\"session\":\"206bb584-0dad-4f11-a9cb-2c03fee1197a\",\"severity\":\"debug\",\"timestamp\":\"2026-04-17T05:23:43.413949967Z\"}",
+                  "{\"http.req.id\":\"ceff92a2-6cd6-457a-855d-5cd4dd4720eb\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart/checkout\",\"message\":\"request started\",\"session\":\"86da6529-4a4c-493b-865f-e887d840470b\",\"severity\":\"debug\",\"timestamp\":\"2026-04-17T05:23:43.415849884Z\"}",
+                  "{\"http.req.id\":\"ceff92a2-6cd6-457a-855d-5cd4dd4720eb\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart/checkout\",\"message\":\"placing order\",\"session\":\"86da6529-4a4c-493b-865f-e887d840470b\",\"severity\":\"debug\",\"timestamp\":\"2026-04-17T05:23:43.415933342Z\"}"
+                ],
+                "pod_name": "frontend-d5f45cf8-426gc"
+              }
+            ],
+            "error": null,
+            "call_id": "c87e362c-0e67-4299-8988-52a498cd0ebf",
+            "timestamp": "2026-04-17T05:23:42.911751Z"
+          }
+        },
+        "get_k8s_state|service=cartservice": {
+          "service": "cartservice",
+          "timestamp": "2026-04-17T05:23:43.561787Z",
+          "desired_replicas": 1,
+          "available_replicas": 1,
+          "rollout_progressing": false,
+          "restart_count": 0,
+          "pod_phases": [
+            {
+              "pod_name": "cartservice-6d57458d89-6gmg6",
+              "phase": "Running",
+              "ready": true,
+              "restart_count": 0,
+              "labels": {
+                "app": "cartservice",
+                "pod-template-hash": "6d57458d89"
+              },
+              "container_ports": [
+                {
+                  "container": "server",
+                  "name": "",
+                  "containerPort": 7070,
+                  "protocol": "TCP"
+                }
+              ]
+            }
+          ],
+          "service_config_summary": {
+            "service": "cartservice",
+            "exists": true,
+            "selector": {
+              "app": "cartservice"
+            },
+            "selected_pod_count": 1,
+            "deployment_pod_count": 1,
+            "deployment_pod_labels": [
+              {
+                "name": "cartservice-6d57458d89-6gmg6",
+                "labels": {
+                  "app": "cartservice",
+                  "pod-template-hash": "6d57458d89"
+                },
+                "ready": true
+              }
+            ],
+            "service_ports": [
+              {
+                "name": "grpc",
+                "port": 7070,
+                "targetPort": 7070,
+                "protocol": "TCP"
+              }
+            ],
+            "container_ports": [
+              {
+                "container": "server",
+                "name": "",
+                "containerPort": 7070,
+                "protocol": "TCP"
+              }
+            ],
+            "endpoint_counts": {
+              "effective_ready": 1,
+              "effective_not_ready": 0,
+              "raw_endpoints_ready": 1,
+              "raw_endpoints_not_ready": 0,
+              "endpoint_slice_ready": 1,
+              "endpoint_slice_not_ready": 0
+            },
+            "service_port_alignment": {
+              "aligned": true,
+              "mismatches": []
+            },
+            "anomalies": [],
+            "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+          },
+          "recent_events": [],
+          "deployment_selector": {
+            "app": "cartservice"
+          },
+          "deployment_config": {
+            "deployment": "cartservice",
+            "replicas": 1,
+            "containers": [
+              {
+                "name": "server",
+                "image": "us-central1-docker.pkg.dev/google-samples/microservices-demo/cartservice:v0.10.4",
+                "ports": [
+                  {
+                    "name": "",
+                    "containerPort": 7070,
+                    "protocol": "TCP"
+                  }
+                ],
+                "env": [
+                  {
+                    "container": "server",
+                    "name": "REDIS_ADDR",
+                    "value": "redis-cart:6379",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "ENABLE_TRACING",
+                    "value": "1",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "ENABLE_STATS",
+                    "value": "1",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "COLLECTOR_SERVICE_ADDR",
+                    "value": "opentelemetrycollector:4317",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "OTEL_SERVICE_NAME",
+                    "value": "cartservice",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "OTEL_RESOURCE_ATTRIBUTES",
+                    "value": "service.name=cartservice,deployment.environment=kind",
+                    "value_redacted": false
+                  }
+                ],
+                "envFrom": [],
+                "resources": {
+                  "limits": {
+                    "cpu": "1",
+                    "memory": "512Mi"
+                  },
+                  "requests": {
+                    "cpu": "250m",
+                    "memory": "128Mi"
+                  }
+                },
+                "readinessProbe": {
+                  "initialDelaySeconds": 35,
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 10,
+                  "successThreshold": 1,
+                  "failureThreshold": 12,
+                  "grpc": {
+                    "port": 7070,
+                    "service": ""
+                  }
+                },
+                "livenessProbe": {
+                  "initialDelaySeconds": 60,
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 10,
+                  "successThreshold": 1,
+                  "failureThreshold": 12,
+                  "grpc": {
+                    "port": 7070,
+                    "service": ""
+                  }
+                },
+                "startupProbe": {}
+              }
+            ],
+            "env": [
+              {
+                "container": "server",
+                "name": "REDIS_ADDR",
+                "value": "redis-cart:6379",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "ENABLE_TRACING",
+                "value": "1",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "ENABLE_STATS",
+                "value": "1",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "COLLECTOR_SERVICE_ADDR",
+                "value": "opentelemetrycollector:4317",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "OTEL_SERVICE_NAME",
+                "value": "cartservice",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "OTEL_RESOURCE_ATTRIBUTES",
+                "value": "service.name=cartservice,deployment.environment=kind",
+                "value_redacted": false
+              }
+            ]
+          },
+          "service_config": {
+            "selector": {
+              "app": "cartservice"
+            },
+            "ports": [
+              {
+                "name": "grpc",
+                "port": 7070,
+                "targetPort": 7070,
+                "protocol": "TCP"
+              }
+            ],
+            "selected_pods": [
+              {
+                "name": "cartservice-6d57458d89-6gmg6",
+                "labels": {
+                  "app": "cartservice",
+                  "pod-template-hash": "6d57458d89"
+                },
+                "phase": "Running",
+                "ready": true,
+                "pod_ip": "10.244.1.36",
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 7070,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "deployment_pods": [
+              {
+                "name": "cartservice-6d57458d89-6gmg6",
+                "labels": {
+                  "app": "cartservice",
+                  "pod-template-hash": "6d57458d89"
+                },
+                "phase": "Running",
+                "ready": true,
+                "pod_ip": "10.244.1.36",
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 7070,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "endpoints": {
+              "ready_addresses": 1,
+              "not_ready_addresses": 0,
+              "subsets": [
+                {
+                  "ports": [
+                    {
+                      "name": "grpc",
+                      "port": 7070,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "ready_addresses": [
+                    {
+                      "ip": "10.244.1.36",
+                      "target_ref": "cartservice-6d57458d89-6gmg6"
+                    }
+                  ],
+                  "not_ready_addresses": []
+                }
+              ],
+              "endpoint_slices": [
+                {
+                  "name": "cartservice-5sj4m",
+                  "ports": [
+                    {
+                      "name": "grpc",
+                      "port": 7070,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "endpoints": [
+                    {
+                      "addresses": [
+                        "10.244.1.36"
+                      ],
+                      "ready": true,
+                      "serving": true,
+                      "terminating": false,
+                      "target_ref": "cartservice-6d57458d89-6gmg6"
+                    }
+                  ]
+                }
+              ],
+              "endpoints_error": null,
+              "endpoint_slices_error": null
+            },
+            "error": null
+          },
+          "anomalies": [],
+          "raw_output": {
+            "service": "cartservice",
+            "desired_replicas": 1,
+            "available_replicas": 1,
+            "pod_phases": [
+              {
+                "pod_name": "cartservice-6d57458d89-6gmg6",
+                "phase": "Running",
+                "ready": true,
+                "restart_count": 0,
+                "labels": {
+                  "app": "cartservice",
+                  "pod-template-hash": "6d57458d89"
+                },
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 7070,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "service_config_summary": {
+              "service": "cartservice",
+              "exists": true,
+              "selector": {
+                "app": "cartservice"
+              },
+              "selected_pod_count": 1,
+              "deployment_pod_count": 1,
+              "deployment_pod_labels": [
+                {
+                  "name": "cartservice-6d57458d89-6gmg6",
+                  "labels": {
+                    "app": "cartservice",
+                    "pod-template-hash": "6d57458d89"
+                  },
+                  "ready": true
+                }
+              ],
+              "service_ports": [
+                {
+                  "name": "grpc",
+                  "port": 7070,
+                  "targetPort": 7070,
+                  "protocol": "TCP"
+                }
+              ],
+              "container_ports": [
+                {
+                  "container": "server",
+                  "name": "",
+                  "containerPort": 7070,
+                  "protocol": "TCP"
+                }
+              ],
+              "endpoint_counts": {
+                "effective_ready": 1,
+                "effective_not_ready": 0,
+                "raw_endpoints_ready": 1,
+                "raw_endpoints_not_ready": 0,
+                "endpoint_slice_ready": 1,
+                "endpoint_slice_not_ready": 0
+              },
+              "service_port_alignment": {
+                "aligned": true,
+                "mismatches": []
+              },
+              "anomalies": [],
+              "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+            },
+            "recent_events": [],
+            "rollout_progressing": false,
+            "restart_count": 0,
+            "deployment_selector": {
+              "app": "cartservice"
+            },
+            "deployment_config": {
+              "deployment": "cartservice",
+              "replicas": 1,
+              "containers": [
+                {
+                  "name": "server",
+                  "image": "us-central1-docker.pkg.dev/google-samples/microservices-demo/cartservice:v0.10.4",
+                  "ports": [
+                    {
+                      "name": "",
+                      "containerPort": 7070,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "env": [
+                    {
+                      "container": "server",
+                      "name": "REDIS_ADDR",
+                      "value": "redis-cart:6379",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "ENABLE_TRACING",
+                      "value": "1",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "ENABLE_STATS",
+                      "value": "1",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "COLLECTOR_SERVICE_ADDR",
+                      "value": "opentelemetrycollector:4317",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "OTEL_SERVICE_NAME",
+                      "value": "cartservice",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "OTEL_RESOURCE_ATTRIBUTES",
+                      "value": "service.name=cartservice,deployment.environment=kind",
+                      "value_redacted": false
+                    }
+                  ],
+                  "envFrom": [],
+                  "resources": {
+                    "limits": {
+                      "cpu": "1",
+                      "memory": "512Mi"
+                    },
+                    "requests": {
+                      "cpu": "250m",
+                      "memory": "128Mi"
+                    }
+                  },
+                  "readinessProbe": {
+                    "initialDelaySeconds": 35,
+                    "periodSeconds": 10,
+                    "timeoutSeconds": 10,
+                    "successThreshold": 1,
+                    "failureThreshold": 12,
+                    "grpc": {
+                      "port": 7070,
+                      "service": ""
+                    }
+                  },
+                  "livenessProbe": {
+                    "initialDelaySeconds": 60,
+                    "periodSeconds": 10,
+                    "timeoutSeconds": 10,
+                    "successThreshold": 1,
+                    "failureThreshold": 12,
+                    "grpc": {
+                      "port": 7070,
+                      "service": ""
+                    }
+                  },
+                  "startupProbe": {}
+                }
+              ],
+              "env": [
+                {
+                  "container": "server",
+                  "name": "REDIS_ADDR",
+                  "value": "redis-cart:6379",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "ENABLE_TRACING",
+                  "value": "1",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "ENABLE_STATS",
+                  "value": "1",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "COLLECTOR_SERVICE_ADDR",
+                  "value": "opentelemetrycollector:4317",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "OTEL_SERVICE_NAME",
+                  "value": "cartservice",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "OTEL_RESOURCE_ATTRIBUTES",
+                  "value": "service.name=cartservice,deployment.environment=kind",
+                  "value_redacted": false
+                }
+              ]
+            },
+            "service_config": {
+              "service": "cartservice",
+              "exists": true,
+              "selector": {
+                "app": "cartservice"
+              },
+              "ports": [
+                {
+                  "name": "grpc",
+                  "port": 7070,
+                  "targetPort": 7070,
+                  "protocol": "TCP"
+                }
+              ],
+              "selected_pods": [
+                {
+                  "name": "cartservice-6d57458d89-6gmg6",
+                  "labels": {
+                    "app": "cartservice",
+                    "pod-template-hash": "6d57458d89"
+                  },
+                  "phase": "Running",
+                  "ready": true,
+                  "pod_ip": "10.244.1.36",
+                  "container_ports": [
+                    {
+                      "container": "server",
+                      "name": "",
+                      "containerPort": 7070,
+                      "protocol": "TCP"
+                    }
+                  ]
+                }
+              ],
+              "deployment_pods": [
+                {
+                  "name": "cartservice-6d57458d89-6gmg6",
+                  "labels": {
+                    "app": "cartservice",
+                    "pod-template-hash": "6d57458d89"
+                  },
+                  "phase": "Running",
+                  "ready": true,
+                  "pod_ip": "10.244.1.36",
+                  "container_ports": [
+                    {
+                      "container": "server",
+                      "name": "",
+                      "containerPort": 7070,
+                      "protocol": "TCP"
+                    }
+                  ]
+                }
+              ],
+              "endpoints": {
+                "ready_addresses": 1,
+                "not_ready_addresses": 0,
+                "subsets": [
+                  {
+                    "ports": [
+                      {
+                        "name": "grpc",
+                        "port": 7070,
+                        "protocol": "TCP"
+                      }
+                    ],
+                    "ready_addresses": [
+                      {
+                        "ip": "10.244.1.36",
+                        "target_ref": "cartservice-6d57458d89-6gmg6"
+                      }
+                    ],
+                    "not_ready_addresses": []
+                  }
+                ],
+                "endpoint_slices": [
+                  {
+                    "name": "cartservice-5sj4m",
+                    "ports": [
+                      {
+                        "name": "grpc",
+                        "port": 7070,
+                        "protocol": "TCP"
+                      }
+                    ],
+                    "endpoints": [
+                      {
+                        "addresses": [
+                          "10.244.1.36"
+                        ],
+                        "ready": true,
+                        "serving": true,
+                        "terminating": false,
+                        "target_ref": "cartservice-6d57458d89-6gmg6"
+                      }
+                    ]
+                  }
+                ],
+                "endpoints_error": null,
+                "endpoint_slices_error": null
+              },
+              "summary": {
+                "service": "cartservice",
+                "exists": true,
+                "selector": {
+                  "app": "cartservice"
+                },
+                "selected_pod_count": 1,
+                "deployment_pod_count": 1,
+                "deployment_pod_labels": [
+                  {
+                    "name": "cartservice-6d57458d89-6gmg6",
+                    "labels": {
+                      "app": "cartservice",
+                      "pod-template-hash": "6d57458d89"
+                    },
+                    "ready": true
+                  }
+                ],
+                "service_ports": [
+                  {
+                    "name": "grpc",
+                    "port": 7070,
+                    "targetPort": 7070,
+                    "protocol": "TCP"
+                  }
+                ],
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 7070,
+                    "protocol": "TCP"
+                  }
+                ],
+                "endpoint_counts": {
+                  "effective_ready": 1,
+                  "effective_not_ready": 0,
+                  "raw_endpoints_ready": 1,
+                  "raw_endpoints_not_ready": 0,
+                  "endpoint_slice_ready": 1,
+                  "endpoint_slice_not_ready": 0
+                },
+                "service_port_alignment": {
+                  "aligned": true,
+                  "mismatches": []
+                },
+                "anomalies": [],
+                "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+              },
+              "error": null
+            },
+            "error": null,
+            "call_id": "e030c674-7fc6-4844-9f0f-8c6e83ea3f56",
+            "timestamp": "2026-04-17T05:23:43.561787Z"
+          }
+        },
+        "get_metrics|service=cartservice": {
+          "service": "cartservice",
+          "timestamp": "2026-04-17T05:23:44.942793Z",
+          "metrics": {
+            "error_rate_pct": 0.0,
+            "latency_p95_ms": 0.0,
+            "latency_p99_ms": 0.0,
+            "request_rps": 0.0,
+            "cpu_usage_cores": 0.07242060978813804,
+            "cpu_limit_pct": 7.242060978813804,
+            "cpu_throttle_pct": 0.118,
+            "memory_limit_pct": 59.72137451171875
+          },
+          "anomalies": [],
+          "baseline_deltas": {},
+          "raw_output": {
+            "service": "cartservice",
+            "metrics": {
+              "cpu_usage": 0.07242060978813804,
+              "cpu_mcores": 72.42060978813804,
+              "cpu_request_cores": 0.25,
+              "cpu_limit_cores": 1.0,
+              "cpu_utilization_pct_of_request": 28.968243915255215,
+              "cpu_utilization_pct_of_limit": 7.242060978813804,
+              "cpu_headroom_cores_to_limit": 0.927579390211862,
+              "cpu_throttled_seconds_rate": 0.00029297420433092354,
+              "cpu_throttled_periods_rate": 0.010650972215986067,
+              "cpu_periods_rate": 9.039815048986044,
+              "cpu_throttling_ratio": 0.0011782289967515141,
+              "memory_usage": 320626688.0,
+              "memory_rss_bytes": 310001664.0,
+              "error_rate": null,
+              "p95_latency_ms": 0.0,
+              "p99_latency_ms": 0.0,
+              "request_rps": null,
+              "error_rps": 0.0,
+              "memory_mib": 305.7734375,
+              "memory_rss_mib": 295.640625,
+              "memory_request_bytes": 134217728.0,
+              "memory_limit_bytes": 536870912.0,
+              "memory_request_mib": 128.0,
+              "memory_limit_mib": 512.0,
+              "memory_utilization_pct_of_request": 238.885498046875,
+              "memory_utilization_pct_of_limit": 59.72137451171875,
+              "memory_headroom_bytes_to_limit": 216244224.0,
+              "resource_metrics_available": true,
+              "application_metrics_available": false,
+              "resource_metric_gaps": [],
+              "application_metric_gaps": [
+                "request_rps"
+              ]
+            },
+            "error": null,
+            "call_id": "e9bc3dcb-60e0-43e9-b98a-7d6b119c6a2e",
+            "timestamp": "2026-04-17T05:23:44.942793Z"
+          }
+        },
+        "get_logs|service=cartservice": {
+          "service": "cartservice",
+          "timestamp": "2026-04-17T05:23:45.078469Z",
+          "lines": [
+            {
+              "level": "INFO",
+              "msg": "GetCartAsync called with userId=5fd7ea25-0c7c-43a6-aceb-417eada34739",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "GetCartAsync called with userId=e3f6dc95-da18-44bb-8851-8dc43e9b01f2",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "GetCartAsync called with userId=7cafde65-c958-4677-80f1-036d95626b53",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "GetCartAsync called with userId=e890e75a-e3ad-4dfb-8795-6eb2e279e14f",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "GetCartAsync called with userId=25ae1ae0-2b14-4918-8bc3-cb8d66077d67",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "GetCartAsync called with userId=7f0e0213-8a5a-4065-b606-34bf6f4235a1",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "GetCartAsync called with userId=2554106d-62c1-4f98-b315-eb425f01ef3f",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "EmptyCartAsync called with userId=2554106d-62c1-4f98-b315-eb425f01ef3f",
+              "signal_class": "informational"
+            }
+          ],
+          "dominant_signal": "informational",
+          "raw_output": {
+            "service": "cartservice",
+            "pod_name": "cartservice-6d57458d89-6gmg6",
+            "error_count": 0,
+            "error_lines": [],
+            "signal_lines": [],
+            "recent_lines": [
+              "GetCartAsync called with userId=5fd7ea25-0c7c-43a6-aceb-417eada34739",
+              "GetCartAsync called with userId=e3f6dc95-da18-44bb-8851-8dc43e9b01f2",
+              "GetCartAsync called with userId=7cafde65-c958-4677-80f1-036d95626b53",
+              "GetCartAsync called with userId=e890e75a-e3ad-4dfb-8795-6eb2e279e14f",
+              "GetCartAsync called with userId=25ae1ae0-2b14-4918-8bc3-cb8d66077d67",
+              "GetCartAsync called with userId=7f0e0213-8a5a-4065-b606-34bf6f4235a1",
+              "GetCartAsync called with userId=2554106d-62c1-4f98-b315-eb425f01ef3f",
+              "EmptyCartAsync called with userId=2554106d-62c1-4f98-b315-eb425f01ef3f"
+            ],
+            "pods": [
+              {
+                "error_count": 0,
+                "error_lines": [],
+                "signal_lines": [],
+                "recent_lines": [
+                  "GetCartAsync called with userId=5fd7ea25-0c7c-43a6-aceb-417eada34739",
+                  "GetCartAsync called with userId=e3f6dc95-da18-44bb-8851-8dc43e9b01f2",
+                  "GetCartAsync called with userId=7cafde65-c958-4677-80f1-036d95626b53",
+                  "GetCartAsync called with userId=e890e75a-e3ad-4dfb-8795-6eb2e279e14f",
+                  "GetCartAsync called with userId=25ae1ae0-2b14-4918-8bc3-cb8d66077d67",
+                  "GetCartAsync called with userId=7f0e0213-8a5a-4065-b606-34bf6f4235a1",
+                  "GetCartAsync called with userId=2554106d-62c1-4f98-b315-eb425f01ef3f",
+                  "EmptyCartAsync called with userId=2554106d-62c1-4f98-b315-eb425f01ef3f"
+                ],
+                "pod_name": "cartservice-6d57458d89-6gmg6"
+              }
+            ],
+            "error": null,
+            "call_id": "14d0946d-8c49-4b9a-8824-0c07c21f931e",
+            "timestamp": "2026-04-17T05:23:45.078469Z"
+          }
+        },
+        "get_k8s_state|service=shippingservice": {
+          "service": "shippingservice",
+          "timestamp": "2026-04-17T05:23:45.341409Z",
+          "desired_replicas": 1,
+          "available_replicas": 1,
+          "rollout_progressing": false,
+          "restart_count": 0,
+          "pod_phases": [
+            {
+              "pod_name": "shippingservice-884845df5-fzlbm",
+              "phase": "Running",
+              "ready": true,
+              "restart_count": 0,
+              "labels": {
+                "app": "shippingservice",
+                "pod-template-hash": "884845df5"
+              },
+              "container_ports": [
+                {
+                  "container": "server",
+                  "name": "",
+                  "containerPort": 50051,
+                  "protocol": "TCP"
+                }
+              ]
+            }
+          ],
+          "service_config_summary": {
+            "service": "shippingservice",
+            "exists": true,
+            "selector": {
+              "app": "shippingservice"
+            },
+            "selected_pod_count": 1,
+            "deployment_pod_count": 1,
+            "deployment_pod_labels": [
+              {
+                "name": "shippingservice-884845df5-fzlbm",
+                "labels": {
+                  "app": "shippingservice",
+                  "pod-template-hash": "884845df5"
+                },
+                "ready": true
+              }
+            ],
+            "service_ports": [
+              {
+                "name": "grpc",
+                "port": 50051,
+                "targetPort": 50051,
+                "protocol": "TCP"
+              }
+            ],
+            "container_ports": [
+              {
+                "container": "server",
+                "name": "",
+                "containerPort": 50051,
+                "protocol": "TCP"
+              }
+            ],
+            "endpoint_counts": {
+              "effective_ready": 1,
+              "effective_not_ready": 0,
+              "raw_endpoints_ready": 1,
+              "raw_endpoints_not_ready": 0,
+              "endpoint_slice_ready": 1,
+              "endpoint_slice_not_ready": 0
+            },
+            "service_port_alignment": {
+              "aligned": true,
+              "mismatches": []
+            },
+            "anomalies": [],
+            "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+          },
+          "recent_events": [],
+          "deployment_selector": {
+            "app": "shippingservice"
+          },
+          "deployment_config": {
+            "deployment": "shippingservice",
+            "replicas": 1,
+            "containers": [
+              {
+                "name": "server",
+                "image": "us-central1-docker.pkg.dev/google-samples/microservices-demo/shippingservice:v0.10.4",
+                "ports": [
+                  {
+                    "name": "",
+                    "containerPort": 50051,
+                    "protocol": "TCP"
+                  }
+                ],
+                "env": [
+                  {
+                    "container": "server",
+                    "name": "PORT",
+                    "value": "50051",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "DISABLE_PROFILER",
+                    "value": "1",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "ENABLE_TRACING",
+                    "value": "1",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "ENABLE_STATS",
+                    "value": "1",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "COLLECTOR_SERVICE_ADDR",
+                    "value": "opentelemetrycollector:4317",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "OTEL_SERVICE_NAME",
+                    "value": "shippingservice",
+                    "value_redacted": false
+                  },
+                  {
+                    "container": "server",
+                    "name": "OTEL_RESOURCE_ATTRIBUTES",
+                    "value": "service.name=shippingservice,deployment.environment=kind",
+                    "value_redacted": false
+                  }
+                ],
+                "envFrom": [],
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "memory": "256Mi"
+                  },
+                  "requests": {
+                    "cpu": "200m",
+                    "memory": "128Mi"
+                  }
+                },
+                "readinessProbe": {
+                  "initialDelaySeconds": 25,
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 10,
+                  "successThreshold": 1,
+                  "failureThreshold": 12,
+                  "grpc": {
+                    "port": 50051,
+                    "service": ""
+                  }
+                },
+                "livenessProbe": {
+                  "initialDelaySeconds": 45,
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 10,
+                  "successThreshold": 1,
+                  "failureThreshold": 12,
+                  "grpc": {
+                    "port": 50051,
+                    "service": ""
+                  }
+                },
+                "startupProbe": {}
+              }
+            ],
+            "env": [
+              {
+                "container": "server",
+                "name": "PORT",
+                "value": "50051",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "DISABLE_PROFILER",
+                "value": "1",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "ENABLE_TRACING",
+                "value": "1",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "ENABLE_STATS",
+                "value": "1",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "COLLECTOR_SERVICE_ADDR",
+                "value": "opentelemetrycollector:4317",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "OTEL_SERVICE_NAME",
+                "value": "shippingservice",
+                "value_redacted": false
+              },
+              {
+                "container": "server",
+                "name": "OTEL_RESOURCE_ATTRIBUTES",
+                "value": "service.name=shippingservice,deployment.environment=kind",
+                "value_redacted": false
+              }
+            ]
+          },
+          "service_config": {
+            "selector": {
+              "app": "shippingservice"
+            },
+            "ports": [
+              {
+                "name": "grpc",
+                "port": 50051,
+                "targetPort": 50051,
+                "protocol": "TCP"
+              }
+            ],
+            "selected_pods": [
+              {
+                "name": "shippingservice-884845df5-fzlbm",
+                "labels": {
+                  "app": "shippingservice",
+                  "pod-template-hash": "884845df5"
+                },
+                "phase": "Running",
+                "ready": true,
+                "pod_ip": "10.244.1.5",
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 50051,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "deployment_pods": [
+              {
+                "name": "shippingservice-884845df5-fzlbm",
+                "labels": {
+                  "app": "shippingservice",
+                  "pod-template-hash": "884845df5"
+                },
+                "phase": "Running",
+                "ready": true,
+                "pod_ip": "10.244.1.5",
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 50051,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "endpoints": {
+              "ready_addresses": 1,
+              "not_ready_addresses": 0,
+              "subsets": [
+                {
+                  "ports": [
+                    {
+                      "name": "grpc",
+                      "port": 50051,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "ready_addresses": [
+                    {
+                      "ip": "10.244.1.5",
+                      "target_ref": "shippingservice-884845df5-fzlbm"
+                    }
+                  ],
+                  "not_ready_addresses": []
+                }
+              ],
+              "endpoint_slices": [
+                {
+                  "name": "shippingservice-m8j2j",
+                  "ports": [
+                    {
+                      "name": "grpc",
+                      "port": 50051,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "endpoints": [
+                    {
+                      "addresses": [
+                        "10.244.1.5"
+                      ],
+                      "ready": true,
+                      "serving": true,
+                      "terminating": false,
+                      "target_ref": "shippingservice-884845df5-fzlbm"
+                    }
+                  ]
+                }
+              ],
+              "endpoints_error": null,
+              "endpoint_slices_error": null
+            },
+            "error": null
+          },
+          "anomalies": [],
+          "raw_output": {
+            "service": "shippingservice",
+            "desired_replicas": 1,
+            "available_replicas": 1,
+            "pod_phases": [
+              {
+                "pod_name": "shippingservice-884845df5-fzlbm",
+                "phase": "Running",
+                "ready": true,
+                "restart_count": 0,
+                "labels": {
+                  "app": "shippingservice",
+                  "pod-template-hash": "884845df5"
+                },
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 50051,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "service_config_summary": {
+              "service": "shippingservice",
+              "exists": true,
+              "selector": {
+                "app": "shippingservice"
+              },
+              "selected_pod_count": 1,
+              "deployment_pod_count": 1,
+              "deployment_pod_labels": [
+                {
+                  "name": "shippingservice-884845df5-fzlbm",
+                  "labels": {
+                    "app": "shippingservice",
+                    "pod-template-hash": "884845df5"
+                  },
+                  "ready": true
+                }
+              ],
+              "service_ports": [
+                {
+                  "name": "grpc",
+                  "port": 50051,
+                  "targetPort": 50051,
+                  "protocol": "TCP"
+                }
+              ],
+              "container_ports": [
+                {
+                  "container": "server",
+                  "name": "",
+                  "containerPort": 50051,
+                  "protocol": "TCP"
+                }
+              ],
+              "endpoint_counts": {
+                "effective_ready": 1,
+                "effective_not_ready": 0,
+                "raw_endpoints_ready": 1,
+                "raw_endpoints_not_ready": 0,
+                "endpoint_slice_ready": 1,
+                "endpoint_slice_not_ready": 0
+              },
+              "service_port_alignment": {
+                "aligned": true,
+                "mismatches": []
+              },
+              "anomalies": [],
+              "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+            },
+            "recent_events": [],
+            "rollout_progressing": false,
+            "restart_count": 0,
+            "deployment_selector": {
+              "app": "shippingservice"
+            },
+            "deployment_config": {
+              "deployment": "shippingservice",
+              "replicas": 1,
+              "containers": [
+                {
+                  "name": "server",
+                  "image": "us-central1-docker.pkg.dev/google-samples/microservices-demo/shippingservice:v0.10.4",
+                  "ports": [
+                    {
+                      "name": "",
+                      "containerPort": 50051,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "env": [
+                    {
+                      "container": "server",
+                      "name": "PORT",
+                      "value": "50051",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "DISABLE_PROFILER",
+                      "value": "1",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "ENABLE_TRACING",
+                      "value": "1",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "ENABLE_STATS",
+                      "value": "1",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "COLLECTOR_SERVICE_ADDR",
+                      "value": "opentelemetrycollector:4317",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "OTEL_SERVICE_NAME",
+                      "value": "shippingservice",
+                      "value_redacted": false
+                    },
+                    {
+                      "container": "server",
+                      "name": "OTEL_RESOURCE_ATTRIBUTES",
+                      "value": "service.name=shippingservice,deployment.environment=kind",
+                      "value_redacted": false
+                    }
+                  ],
+                  "envFrom": [],
+                  "resources": {
+                    "limits": {
+                      "cpu": "500m",
+                      "memory": "256Mi"
+                    },
+                    "requests": {
+                      "cpu": "200m",
+                      "memory": "128Mi"
+                    }
+                  },
+                  "readinessProbe": {
+                    "initialDelaySeconds": 25,
+                    "periodSeconds": 10,
+                    "timeoutSeconds": 10,
+                    "successThreshold": 1,
+                    "failureThreshold": 12,
+                    "grpc": {
+                      "port": 50051,
+                      "service": ""
+                    }
+                  },
+                  "livenessProbe": {
+                    "initialDelaySeconds": 45,
+                    "periodSeconds": 10,
+                    "timeoutSeconds": 10,
+                    "successThreshold": 1,
+                    "failureThreshold": 12,
+                    "grpc": {
+                      "port": 50051,
+                      "service": ""
+                    }
+                  },
+                  "startupProbe": {}
+                }
+              ],
+              "env": [
+                {
+                  "container": "server",
+                  "name": "PORT",
+                  "value": "50051",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "DISABLE_PROFILER",
+                  "value": "1",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "ENABLE_TRACING",
+                  "value": "1",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "ENABLE_STATS",
+                  "value": "1",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "COLLECTOR_SERVICE_ADDR",
+                  "value": "opentelemetrycollector:4317",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "OTEL_SERVICE_NAME",
+                  "value": "shippingservice",
+                  "value_redacted": false
+                },
+                {
+                  "container": "server",
+                  "name": "OTEL_RESOURCE_ATTRIBUTES",
+                  "value": "service.name=shippingservice,deployment.environment=kind",
+                  "value_redacted": false
+                }
+              ]
+            },
+            "service_config": {
+              "service": "shippingservice",
+              "exists": true,
+              "selector": {
+                "app": "shippingservice"
+              },
+              "ports": [
+                {
+                  "name": "grpc",
+                  "port": 50051,
+                  "targetPort": 50051,
+                  "protocol": "TCP"
+                }
+              ],
+              "selected_pods": [
+                {
+                  "name": "shippingservice-884845df5-fzlbm",
+                  "labels": {
+                    "app": "shippingservice",
+                    "pod-template-hash": "884845df5"
+                  },
+                  "phase": "Running",
+                  "ready": true,
+                  "pod_ip": "10.244.1.5",
+                  "container_ports": [
+                    {
+                      "container": "server",
+                      "name": "",
+                      "containerPort": 50051,
+                      "protocol": "TCP"
+                    }
+                  ]
+                }
+              ],
+              "deployment_pods": [
+                {
+                  "name": "shippingservice-884845df5-fzlbm",
+                  "labels": {
+                    "app": "shippingservice",
+                    "pod-template-hash": "884845df5"
+                  },
+                  "phase": "Running",
+                  "ready": true,
+                  "pod_ip": "10.244.1.5",
+                  "container_ports": [
+                    {
+                      "container": "server",
+                      "name": "",
+                      "containerPort": 50051,
+                      "protocol": "TCP"
+                    }
+                  ]
+                }
+              ],
+              "endpoints": {
+                "ready_addresses": 1,
+                "not_ready_addresses": 0,
+                "subsets": [
+                  {
+                    "ports": [
+                      {
+                        "name": "grpc",
+                        "port": 50051,
+                        "protocol": "TCP"
+                      }
+                    ],
+                    "ready_addresses": [
+                      {
+                        "ip": "10.244.1.5",
+                        "target_ref": "shippingservice-884845df5-fzlbm"
+                      }
+                    ],
+                    "not_ready_addresses": []
+                  }
+                ],
+                "endpoint_slices": [
+                  {
+                    "name": "shippingservice-m8j2j",
+                    "ports": [
+                      {
+                        "name": "grpc",
+                        "port": 50051,
+                        "protocol": "TCP"
+                      }
+                    ],
+                    "endpoints": [
+                      {
+                        "addresses": [
+                          "10.244.1.5"
+                        ],
+                        "ready": true,
+                        "serving": true,
+                        "terminating": false,
+                        "target_ref": "shippingservice-884845df5-fzlbm"
+                      }
+                    ]
+                  }
+                ],
+                "endpoints_error": null,
+                "endpoint_slices_error": null
+              },
+              "summary": {
+                "service": "shippingservice",
+                "exists": true,
+                "selector": {
+                  "app": "shippingservice"
+                },
+                "selected_pod_count": 1,
+                "deployment_pod_count": 1,
+                "deployment_pod_labels": [
+                  {
+                    "name": "shippingservice-884845df5-fzlbm",
+                    "labels": {
+                      "app": "shippingservice",
+                      "pod-template-hash": "884845df5"
+                    },
+                    "ready": true
+                  }
+                ],
+                "service_ports": [
+                  {
+                    "name": "grpc",
+                    "port": 50051,
+                    "targetPort": 50051,
+                    "protocol": "TCP"
+                  }
+                ],
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 50051,
+                    "protocol": "TCP"
+                  }
+                ],
+                "endpoint_counts": {
+                  "effective_ready": 1,
+                  "effective_not_ready": 0,
+                  "raw_endpoints_ready": 1,
+                  "raw_endpoints_not_ready": 0,
+                  "endpoint_slice_ready": 1,
+                  "endpoint_slice_not_ready": 0
+                },
+                "service_port_alignment": {
+                  "aligned": true,
+                  "mismatches": []
+                },
+                "anomalies": [],
+                "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+              },
+              "error": null
+            },
+            "error": null,
+            "call_id": "ce7209d0-4d49-4ffb-a050-25955851d248",
+            "timestamp": "2026-04-17T05:23:45.341409Z"
+          }
+        },
+        "get_metrics|service=shippingservice": {
+          "service": "shippingservice",
+          "timestamp": "2026-04-17T05:23:46.220323Z",
+          "metrics": {
+            "error_rate_pct": 0.0,
+            "latency_p95_ms": 0.0,
+            "latency_p99_ms": 0.0,
+            "request_rps": 0.0,
+            "cpu_usage_cores": 0.024518442328553706,
+            "cpu_limit_pct": 4.903688465710741,
+            "cpu_throttle_pct": 0.307,
+            "memory_limit_pct": 17.28057861328125
+          },
+          "anomalies": [],
+          "baseline_deltas": {},
+          "raw_output": {
+            "service": "shippingservice",
+            "metrics": {
+              "cpu_usage": 0.024518442328553706,
+              "cpu_mcores": 24.518442328553707,
+              "cpu_request_cores": 0.2,
+              "cpu_limit_cores": 0.5,
+              "cpu_utilization_pct_of_request": 12.259221164276852,
+              "cpu_utilization_pct_of_limit": 4.903688465710741,
+              "cpu_headroom_cores_to_limit": 0.4754815576714463,
+              "cpu_throttled_seconds_rate": 0.0006397255933975074,
+              "cpu_throttled_periods_rate": 0.01447226481954774,
+              "cpu_periods_rate": 4.720957002678772,
+              "cpu_throttling_ratio": 0.003065536248547883,
+              "memory_usage": 46387200.0,
+              "memory_rss_bytes": 41402368.0,
+              "error_rate": null,
+              "p95_latency_ms": 0.0,
+              "p99_latency_ms": 0.0,
+              "request_rps": null,
+              "error_rps": 0.0,
+              "memory_mib": 44.23828125,
+              "memory_rss_mib": 39.484375,
+              "memory_request_bytes": 134217728.0,
+              "memory_limit_bytes": 268435456.0,
+              "memory_request_mib": 128.0,
+              "memory_limit_mib": 256.0,
+              "memory_utilization_pct_of_request": 34.5611572265625,
+              "memory_utilization_pct_of_limit": 17.28057861328125,
+              "memory_headroom_bytes_to_limit": 222048256.0,
+              "resource_metrics_available": true,
+              "application_metrics_available": false,
+              "resource_metric_gaps": [],
+              "application_metric_gaps": [
+                "request_rps"
+              ]
+            },
+            "error": null,
+            "call_id": "17fa5fb2-15d1-4131-83fd-1e36d4bc2553",
+            "timestamp": "2026-04-17T05:23:46.220323Z"
+          }
+        },
+        "get_logs|service=shippingservice": {
+          "service": "shippingservice",
+          "timestamp": "2026-04-17T05:23:46.282942Z",
+          "lines": [
+            {
+              "level": "INFO",
+              "msg": "{\"message\":\"[ShipOrder] completed request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.828163552Z\"}",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "{\"message\":\"[ShipOrder] completed request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.828083885Z\"}",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "{\"message\":\"[ShipOrder] received request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.833667427Z\"}",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "{\"message\":\"[ShipOrder] completed request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.834613052Z\"}",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "{\"message\":\"[ShipOrder] received request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.835145843Z\"}",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "{\"message\":\"[ShipOrder] completed request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.835202593Z\"}",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "{\"message\":\"[ShipOrder] received request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.836132843Z\"}",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "{\"message\":\"[ShipOrder] completed request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.83624751Z\"}",
+              "signal_class": "informational"
+            }
+          ],
+          "dominant_signal": "informational",
+          "raw_output": {
+            "service": "shippingservice",
+            "pod_name": "shippingservice-884845df5-fzlbm",
+            "error_count": 0,
+            "error_lines": [],
+            "signal_lines": [],
+            "recent_lines": [
+              "{\"message\":\"[ShipOrder] completed request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.828163552Z\"}",
+              "{\"message\":\"[ShipOrder] completed request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.828083885Z\"}",
+              "{\"message\":\"[ShipOrder] received request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.833667427Z\"}",
+              "{\"message\":\"[ShipOrder] completed request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.834613052Z\"}",
+              "{\"message\":\"[ShipOrder] received request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.835145843Z\"}",
+              "{\"message\":\"[ShipOrder] completed request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.835202593Z\"}",
+              "{\"message\":\"[ShipOrder] received request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.836132843Z\"}",
+              "{\"message\":\"[ShipOrder] completed request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.83624751Z\"}"
+            ],
+            "pods": [
+              {
+                "error_count": 0,
+                "error_lines": [],
+                "signal_lines": [],
+                "recent_lines": [
+                  "{\"message\":\"[ShipOrder] completed request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.828163552Z\"}",
+                  "{\"message\":\"[ShipOrder] completed request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.828083885Z\"}",
+                  "{\"message\":\"[ShipOrder] received request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.833667427Z\"}",
+                  "{\"message\":\"[ShipOrder] completed request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.834613052Z\"}",
+                  "{\"message\":\"[ShipOrder] received request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.835145843Z\"}",
+                  "{\"message\":\"[ShipOrder] completed request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.835202593Z\"}",
+                  "{\"message\":\"[ShipOrder] received request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.836132843Z\"}",
+                  "{\"message\":\"[ShipOrder] completed request\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:23:45.83624751Z\"}"
+                ],
+                "pod_name": "shippingservice-884845df5-fzlbm"
+              }
+            ],
+            "error": null,
+            "call_id": "2d73821c-8543-41d8-bac8-452158402fb1",
+            "timestamp": "2026-04-17T05:23:46.282942Z"
+          }
+        }
+      },
+      "observability": {
+        "metrics_quality": "rich",
+        "logs_quality": "rich",
+        "traces_quality": "rich",
+        "summary_counts": {
+          "rich": 13,
+          "weak": 2,
+          "missing": 0
+        }
+      },
+      "transitions": [
+        {
+          "trigger_type": "tool",
+          "trigger_value": "wait_and_monitor",
+          "target_phase": 0,
+          "label": "static_replay",
+          "threshold": 0
+        }
+      ]
+    }
+  ],
+  "ground_truth": {
+    "root_cause": "checkoutservice CPU limit throttling",
+    "root_cause_service": "checkoutservice",
+    "fault_class": "native_cpu_limit_throttle",
+    "correct_actions": [
+      {
+        "canonical": "patch_resources:checkoutservice",
+        "tool_equivalents": [
+          "patch_resources(checkoutservice, cpu)"
+        ]
+      }
+    ],
+    "acceptable_actions": [
+      {
+        "canonical": "patch_resources:checkoutservice",
+        "tool_equivalents": [
+          "patch_resources(checkoutservice, cpu)"
+        ]
+      }
+    ],
+    "incorrect_actions": [
+      {
+        "canonical": "restart_pod:checkoutservice",
+        "tool_equivalents": [
+          "restart_pod(checkoutservice)"
+        ]
+      },
+      {
+        "canonical": "rollout_restart:checkoutservice",
+        "tool_equivalents": [
+          "rollout_restart(checkoutservice)"
+        ]
+      }
+    ]
+  },
+  "telemetry_contract": {
+    "required_present": [
+      "get_k8s_state(checkoutservice)",
+      "get_metrics(checkoutservice)",
+      "get_logs(checkoutservice)"
+    ],
+    "required_nonzero": []
+  },
+  "scoring": {
+    "max_steps": 12,
+    "diagnosis_weight": 0.5,
+    "action_correctness_weight": 0.3,
+    "step_economy_weight": 0.2,
+    "step_economy_baseline": 6
+  },
+  "provenance": {
+    "source_run_dir": "results/native_episode_collection/bulk_remaining_medium_20260417T052133Z/20260417T052133Z_native_cpu_limit_throttle_checkoutservice_baseline_evidence",
+    "captured_from_live_run": true,
+    "capture_timestamp_utc": "2026-04-17T05:24:51Z"
+  }
+}

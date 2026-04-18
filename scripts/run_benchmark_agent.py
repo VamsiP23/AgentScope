@@ -53,6 +53,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out-file", default="")
     p.add_argument("--benchmark-suite", default="")
     p.add_argument("--problem-id", default="")
+    p.add_argument("--evidence-view", default="raw", choices=["raw", "compact", "distilled"])
     return p
 
 
@@ -105,7 +106,11 @@ def main() -> int:
     if args.backend == "replay":
         if not args.replay_dataset:
             raise RuntimeError("--replay-dataset is required when --backend=replay")
-        aci = ReplayAgentCloudInterface(args.replay_dataset, run_log_path=str(aci_log_path))
+        aci = ReplayAgentCloudInterface(
+            args.replay_dataset,
+            run_log_path=str(aci_log_path),
+            evidence_view=args.evidence_view,
+        )
         initial_context = dict(aci.dataset.initial_context)
         seeded_detection = {}
     else:
@@ -116,6 +121,7 @@ def main() -> int:
             run_log_path=str(aci_log_path),
             jaeger_enabled=bool(args.jaeger_enabled),
             dry_run=bool(args.dry_run),
+            evidence_view=args.evidence_view,
         )
         seeded_detection = read_json(Path(args.seed_detection_file)) if args.seed_detection_file else {}
         initial_context = summarize_seeded_detection(seeded_detection)
@@ -158,6 +164,7 @@ def main() -> int:
         "diagnosis_only": args.backend == "replay",
         "replay_dataset": args.replay_dataset,
         "problem": problem,
+        "evidence_view": args.evidence_view,
         "seeded_detection": seeded_detection,
         "guardrail_events": result.get("guardrail_events", getattr(agent, "guardrail_events", [])),
         "steps": result.get("steps", []),

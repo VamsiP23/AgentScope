@@ -19,6 +19,7 @@ class RunEvaluation:
     model: str
     incident_detected: bool
     diagnosis_correct: bool
+    diagnosis_family_correct: bool
     action_correct: bool
     tool_calls_to_solution: int
     time_to_diagnosis_seconds: Optional[float]
@@ -30,6 +31,8 @@ class RunEvaluation:
     submitted_action: str = ""
     submitted_fault_class: str = ""
     expected_fault_class: str = ""
+    submitted_fault_family: str = ""
+    expected_fault_family: str = ""
     submitted_affected_service: str = ""
     expected_affected_service: str = ""
     submitted_action_type: str = ""
@@ -44,6 +47,9 @@ class RunEvaluation:
             "model": self.model,
             "incident_detected": self.incident_detected,
             "diagnosis_correct": self.diagnosis_correct,
+            "diagnosis_family_correct": self.diagnosis_family_correct,
+            "submitted_fault_family": self.submitted_fault_family,
+            "expected_fault_family": self.expected_fault_family,
             "action_correct": self.action_correct,
             "tool_calls_to_solution": self.tool_calls_to_solution,
             "time_to_diagnosis_seconds": self.time_to_diagnosis_seconds,
@@ -79,6 +85,8 @@ def evaluate_agent_run(problem: ProblemSpec, agent_report: Dict[str, Any]) -> Ru
     expected_fault_class = _expected_fault_class(problem)
     expected_affected_service = problem.target_service
     expected_action_types = _expected_action_types(problem)
+    submitted_fault_family = _fault_family(submitted_fault_class)
+    expected_fault_family = _fault_family(expected_fault_class)
 
     structured_diagnosis_present = bool(submitted_fault_class or submitted_affected_service)
     if structured_diagnosis_present:
@@ -91,6 +99,11 @@ def evaluate_agent_run(problem: ProblemSpec, agent_report: Dict[str, Any]) -> Ru
             submitted_root_cause,
             problem.ground_truth.acceptable_root_causes,
         )
+    diagnosis_family_correct = (
+        bool(submitted_fault_family)
+        and submitted_fault_family == expected_fault_family
+        and _normalize_service(submitted_affected_service) == _normalize_service(expected_affected_service)
+    )
 
     if submitted_action_type:
         action_correct = _normalize_label(submitted_action_type) in {
@@ -134,6 +147,9 @@ def evaluate_agent_run(problem: ProblemSpec, agent_report: Dict[str, Any]) -> Ru
         model=model,
         incident_detected=incident_detected,
         diagnosis_correct=diagnosis_correct,
+        diagnosis_family_correct=diagnosis_family_correct,
+        submitted_fault_family=submitted_fault_family,
+        expected_fault_family=expected_fault_family,
         action_correct=action_correct,
         tool_calls_to_solution=tool_calls_to_solution,
         time_to_diagnosis_seconds=time_to_diagnosis_seconds,
@@ -164,7 +180,12 @@ def _normalize_text(value: str) -> str:
 
 
 def _normalize_label(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "_", value.strip().lower()).strip("_")
+    normalized = re.sub(r"[^a-z0-9]+", "_", value.strip().lower()).strip("_")
+    aliases = {
+        "native_bad_image": "native_bad_image_rollout",
+        "native_bad_probe": "native_bad_probe_rollout",
+    }
+    return aliases.get(normalized, normalized)
 
 
 def _normalize_service(value: str) -> str:
@@ -173,6 +194,13 @@ def _normalize_service(value: str) -> str:
         normalized = normalized[len("deployment_") :]
     if normalized.startswith("service_"):
         normalized = normalized[len("service_") :]
+    return normalized
+
+
+def _fault_family(value: str) -> str:
+    normalized = _normalize_label(value)
+    if normalized in {"native_bad_env", "native_dependency_bad_endpoint"}:
+        return "dependency_configuration_regression"
     return normalized
 
 
@@ -202,6 +230,8 @@ def _action_type_from_text(value: str) -> str:
         return "patch_resources"
     if "scale_deployment" in label or text.startswith("scale deployment") or text.startswith("kubectl scale"):
         return "scale_deployment"
+    if "delete_stress_job" in label or ("delete" in text and "stress job" in text):
+        return "delete_stress_job"
     if "rollout_undo" in label or "rollout undo" in text:
         return "rollout_undo"
     if "rollout_restart" in label or "rollout restart" in text:

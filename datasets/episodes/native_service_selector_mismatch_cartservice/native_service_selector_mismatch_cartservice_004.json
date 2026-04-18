@@ -1,0 +1,1229 @@
+{
+  "task_id": "native_service_selector_mismatch_cartservice_004",
+  "family": "native_service_selector_mismatch",
+  "scenario": "cartservice Service selector is changed so it no longer matches healthy cartservice pods",
+  "split": "dev",
+  "difficulty": "easy",
+  "fault_spec": {
+    "type": "native_service_selector_mismatch",
+    "target_service": "cartservice",
+    "injected_at": "phase_0",
+    "parameters": {
+      "experiment_file": "experiments/native_service_selector_mismatch_cartservice_baseline.yaml",
+      "detector_primary_signal": "service_endpoints"
+    }
+  },
+  "initial_context": "PagerDuty alert: an incident has been detected affecting cartservice. The monitoring pipeline observed availability symptoms. Investigate and recommend the most appropriate remediation action.",
+  "phases": [
+    {
+      "phase_id": 0,
+      "label": "initial_degradation",
+      "tool_responses": {
+        "get_k8s_state|service=cartservice": {
+          "service": "cartservice",
+          "timestamp": "2026-04-16T18:30:30.614205Z",
+          "desired_replicas": 1,
+          "available_replicas": 1,
+          "rollout_progressing": false,
+          "restart_count": 0,
+          "pod_phases": [
+            {
+              "pod_name": "cartservice-6d57458d89-mpw4z",
+              "phase": "Running",
+              "ready": true,
+              "restart_count": 0,
+              "labels": {
+                "app": "cartservice",
+                "pod-template-hash": "6d57458d89"
+              },
+              "container_ports": [
+                {
+                  "container": "server",
+                  "name": "",
+                  "containerPort": 7070,
+                  "protocol": "TCP"
+                }
+              ]
+            }
+          ],
+          "service_config_summary": {
+            "service": "cartservice",
+            "exists": true,
+            "selector": {
+              "app": "cartservice-missing"
+            },
+            "selected_pod_count": 0,
+            "deployment_pod_count": 1,
+            "deployment_pod_labels": [
+              {
+                "name": "cartservice-6d57458d89-mpw4z",
+                "labels": {
+                  "app": "cartservice",
+                  "pod-template-hash": "6d57458d89"
+                },
+                "ready": true
+              }
+            ],
+            "service_ports": [
+              {
+                "name": "grpc",
+                "port": 7070,
+                "targetPort": 7070,
+                "protocol": "TCP"
+              }
+            ],
+            "container_ports": [
+              {
+                "container": "server",
+                "name": "",
+                "containerPort": 7070,
+                "protocol": "TCP"
+              }
+            ],
+            "endpoint_counts": {
+              "effective_ready": 0,
+              "effective_not_ready": 0,
+              "raw_endpoints_ready": 0,
+              "raw_endpoints_not_ready": 0,
+              "endpoint_slice_ready": 0,
+              "endpoint_slice_not_ready": 0
+            },
+            "service_port_alignment": {
+              "aligned": true,
+              "mismatches": []
+            },
+            "anomalies": [
+              "service_selector_matches_no_pods",
+              "service_has_no_effective_ready_endpoints"
+            ],
+            "takeaway": "Service selector {'app': 'cartservice-missing'} selects 0 pods while deployment pods exist with labels [{'app': 'cartservice', 'pod-template-hash': '6d57458d89'}]"
+          },
+          "recent_events": [
+            {
+              "reason": "SuccessfulDelete",
+              "message": "Deleted pod: cartservice-79f8594558-f4kbj",
+              "type": "Normal",
+              "object": "cartservice-79f8594558",
+              "kind": "ReplicaSet",
+              "stale": false
+            },
+            {
+              "reason": "Killing",
+              "message": "Stopping container server",
+              "type": "Normal",
+              "object": "cartservice-79f8594558-f4kbj",
+              "kind": "Pod",
+              "stale": false
+            },
+            {
+              "reason": "SuccessfulCreate",
+              "message": "Created pod: cartservice-79f8594558-44f6f",
+              "type": "Normal",
+              "object": "cartservice-79f8594558",
+              "kind": "ReplicaSet",
+              "stale": false
+            },
+            {
+              "reason": "Pulled",
+              "message": "Container image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/cartservice:v0.10.4\" already present on machine and can be accessed by the pod",
+              "type": "Normal",
+              "object": "cartservice-79f8594558-44f6f",
+              "kind": "Pod",
+              "stale": false
+            },
+            {
+              "reason": "Created",
+              "message": "Container created",
+              "type": "Normal",
+              "object": "cartservice-79f8594558-44f6f",
+              "kind": "Pod",
+              "stale": false
+            },
+            {
+              "reason": "Started",
+              "message": "Container started",
+              "type": "Normal",
+              "object": "cartservice-79f8594558-44f6f",
+              "kind": "Pod",
+              "stale": false
+            }
+          ],
+          "deployment_selector": {
+            "app": "cartservice"
+          },
+          "service_config": {
+            "selector": {
+              "app": "cartservice-missing"
+            },
+            "ports": [
+              {
+                "name": "grpc",
+                "port": 7070,
+                "targetPort": 7070,
+                "protocol": "TCP"
+              }
+            ],
+            "selected_pods": [],
+            "deployment_pods": [
+              {
+                "name": "cartservice-6d57458d89-mpw4z",
+                "labels": {
+                  "app": "cartservice",
+                  "pod-template-hash": "6d57458d89"
+                },
+                "phase": "Running",
+                "ready": true,
+                "pod_ip": "10.244.1.6",
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 7070,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "endpoints": {
+              "ready_addresses": 0,
+              "not_ready_addresses": 0,
+              "subsets": [],
+              "endpoint_slices": [
+                {
+                  "name": "cartservice-5sj4m",
+                  "ports": [],
+                  "endpoints": []
+                }
+              ],
+              "endpoints_error": null,
+              "endpoint_slices_error": null
+            },
+            "error": null
+          },
+          "anomalies": [
+            "service_has_no_ready_endpoints",
+            "service_selector_matches_no_pods",
+            "service_has_no_effective_ready_endpoints"
+          ],
+          "raw_output": {
+            "service": "cartservice",
+            "desired_replicas": 1,
+            "available_replicas": 1,
+            "pod_phases": [
+              {
+                "pod_name": "cartservice-6d57458d89-mpw4z",
+                "phase": "Running",
+                "ready": true,
+                "restart_count": 0,
+                "labels": {
+                  "app": "cartservice",
+                  "pod-template-hash": "6d57458d89"
+                },
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 7070,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "service_config_summary": {
+              "service": "cartservice",
+              "exists": true,
+              "selector": {
+                "app": "cartservice-missing"
+              },
+              "selected_pod_count": 0,
+              "deployment_pod_count": 1,
+              "deployment_pod_labels": [
+                {
+                  "name": "cartservice-6d57458d89-mpw4z",
+                  "labels": {
+                    "app": "cartservice",
+                    "pod-template-hash": "6d57458d89"
+                  },
+                  "ready": true
+                }
+              ],
+              "service_ports": [
+                {
+                  "name": "grpc",
+                  "port": 7070,
+                  "targetPort": 7070,
+                  "protocol": "TCP"
+                }
+              ],
+              "container_ports": [
+                {
+                  "container": "server",
+                  "name": "",
+                  "containerPort": 7070,
+                  "protocol": "TCP"
+                }
+              ],
+              "endpoint_counts": {
+                "effective_ready": 0,
+                "effective_not_ready": 0,
+                "raw_endpoints_ready": 0,
+                "raw_endpoints_not_ready": 0,
+                "endpoint_slice_ready": 0,
+                "endpoint_slice_not_ready": 0
+              },
+              "service_port_alignment": {
+                "aligned": true,
+                "mismatches": []
+              },
+              "anomalies": [
+                "service_selector_matches_no_pods",
+                "service_has_no_effective_ready_endpoints"
+              ],
+              "takeaway": "Service selector {'app': 'cartservice-missing'} selects 0 pods while deployment pods exist with labels [{'app': 'cartservice', 'pod-template-hash': '6d57458d89'}]"
+            },
+            "recent_events": [
+              {
+                "reason": "SuccessfulDelete",
+                "message": "Deleted pod: cartservice-79f8594558-f4kbj",
+                "type": "Normal",
+                "object": "cartservice-79f8594558",
+                "kind": "ReplicaSet",
+                "stale": false
+              },
+              {
+                "reason": "Killing",
+                "message": "Stopping container server",
+                "type": "Normal",
+                "object": "cartservice-79f8594558-f4kbj",
+                "kind": "Pod",
+                "stale": false
+              },
+              {
+                "reason": "SuccessfulCreate",
+                "message": "Created pod: cartservice-79f8594558-44f6f",
+                "type": "Normal",
+                "object": "cartservice-79f8594558",
+                "kind": "ReplicaSet",
+                "stale": false
+              },
+              {
+                "reason": "Pulled",
+                "message": "Container image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/cartservice:v0.10.4\" already present on machine and can be accessed by the pod",
+                "type": "Normal",
+                "object": "cartservice-79f8594558-44f6f",
+                "kind": "Pod",
+                "stale": false
+              },
+              {
+                "reason": "Created",
+                "message": "Container created",
+                "type": "Normal",
+                "object": "cartservice-79f8594558-44f6f",
+                "kind": "Pod",
+                "stale": false
+              },
+              {
+                "reason": "Started",
+                "message": "Container started",
+                "type": "Normal",
+                "object": "cartservice-79f8594558-44f6f",
+                "kind": "Pod",
+                "stale": false
+              }
+            ],
+            "rollout_progressing": false,
+            "restart_count": 0,
+            "deployment_selector": {
+              "app": "cartservice"
+            },
+            "service_config": {
+              "service": "cartservice",
+              "exists": true,
+              "selector": {
+                "app": "cartservice-missing"
+              },
+              "ports": [
+                {
+                  "name": "grpc",
+                  "port": 7070,
+                  "targetPort": 7070,
+                  "protocol": "TCP"
+                }
+              ],
+              "selected_pods": [],
+              "deployment_pods": [
+                {
+                  "name": "cartservice-6d57458d89-mpw4z",
+                  "labels": {
+                    "app": "cartservice",
+                    "pod-template-hash": "6d57458d89"
+                  },
+                  "phase": "Running",
+                  "ready": true,
+                  "pod_ip": "10.244.1.6",
+                  "container_ports": [
+                    {
+                      "container": "server",
+                      "name": "",
+                      "containerPort": 7070,
+                      "protocol": "TCP"
+                    }
+                  ]
+                }
+              ],
+              "endpoints": {
+                "ready_addresses": 0,
+                "not_ready_addresses": 0,
+                "subsets": [],
+                "endpoint_slices": [
+                  {
+                    "name": "cartservice-5sj4m",
+                    "ports": [],
+                    "endpoints": []
+                  }
+                ],
+                "endpoints_error": null,
+                "endpoint_slices_error": null
+              },
+              "summary": {
+                "service": "cartservice",
+                "exists": true,
+                "selector": {
+                  "app": "cartservice-missing"
+                },
+                "selected_pod_count": 0,
+                "deployment_pod_count": 1,
+                "deployment_pod_labels": [
+                  {
+                    "name": "cartservice-6d57458d89-mpw4z",
+                    "labels": {
+                      "app": "cartservice",
+                      "pod-template-hash": "6d57458d89"
+                    },
+                    "ready": true
+                  }
+                ],
+                "service_ports": [
+                  {
+                    "name": "grpc",
+                    "port": 7070,
+                    "targetPort": 7070,
+                    "protocol": "TCP"
+                  }
+                ],
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 7070,
+                    "protocol": "TCP"
+                  }
+                ],
+                "endpoint_counts": {
+                  "effective_ready": 0,
+                  "effective_not_ready": 0,
+                  "raw_endpoints_ready": 0,
+                  "raw_endpoints_not_ready": 0,
+                  "endpoint_slice_ready": 0,
+                  "endpoint_slice_not_ready": 0
+                },
+                "service_port_alignment": {
+                  "aligned": true,
+                  "mismatches": []
+                },
+                "anomalies": [
+                  "service_selector_matches_no_pods",
+                  "service_has_no_effective_ready_endpoints"
+                ],
+                "takeaway": "Service selector {'app': 'cartservice-missing'} selects 0 pods while deployment pods exist with labels [{'app': 'cartservice', 'pod-template-hash': '6d57458d89'}]"
+              },
+              "error": null
+            },
+            "error": null,
+            "call_id": "1ee5603d-1764-4022-aca4-6e57d40f9cd1",
+            "timestamp": "2026-04-16T18:30:30.614205Z"
+          }
+        },
+        "get_metrics|service=cartservice": {
+          "service": "cartservice",
+          "timestamp": "2026-04-16T18:30:31.112546Z",
+          "metrics": {
+            "error_rate_pct": 0.0,
+            "latency_p95_ms": 0.0,
+            "latency_p99_ms": 0.0,
+            "request_rps": 0.0,
+            "cpu_usage_cores": 0.06105045318483378,
+            "cpu_limit_pct": 6.105045318483378,
+            "cpu_throttle_pct": 0.0,
+            "memory_limit_pct": 62.8875732421875
+          },
+          "anomalies": [],
+          "baseline_deltas": {},
+          "raw_output": {
+            "service": "cartservice",
+            "metrics": {
+              "cpu_usage": 0.06105045318483378,
+              "cpu_mcores": 61.05045318483378,
+              "cpu_request_cores": 0.25,
+              "cpu_limit_cores": 1.0,
+              "cpu_utilization_pct_of_request": 24.420181273933512,
+              "cpu_utilization_pct_of_limit": 6.105045318483378,
+              "cpu_headroom_cores_to_limit": 0.9389495468151662,
+              "cpu_throttled_seconds_rate": 0.0,
+              "cpu_throttled_periods_rate": 0.0,
+              "cpu_periods_rate": 12.109892876000277,
+              "cpu_throttling_ratio": 0.0,
+              "memory_usage": 337625088.0,
+              "memory_rss_bytes": 323887104.0,
+              "error_rate": null,
+              "p95_latency_ms": 0.0,
+              "p99_latency_ms": 0.0,
+              "request_rps": null,
+              "error_rps": 0.0,
+              "memory_mib": 321.984375,
+              "memory_rss_mib": 308.8828125,
+              "memory_request_bytes": 134217728.0,
+              "memory_limit_bytes": 536870912.0,
+              "memory_request_mib": 128.0,
+              "memory_limit_mib": 512.0,
+              "memory_utilization_pct_of_request": 251.55029296875,
+              "memory_utilization_pct_of_limit": 62.8875732421875,
+              "memory_headroom_bytes_to_limit": 199245824.0,
+              "resource_metrics_available": true,
+              "application_metrics_available": false,
+              "resource_metric_gaps": [],
+              "application_metric_gaps": [
+                "request_rps"
+              ]
+            },
+            "error": null,
+            "call_id": "fa0bab5f-da37-4044-ab03-b352fa0383f8",
+            "timestamp": "2026-04-16T18:30:31.112546Z"
+          }
+        },
+        "get_logs|service=cartservice": {
+          "service": "cartservice",
+          "timestamp": "2026-04-16T18:30:31.142611Z",
+          "lines": [
+            {
+              "level": "INFO",
+              "msg": "GetCartAsync called with userId=145ebd9c-2132-4704-a03f-54dce195b80e",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "GetCartAsync called with userId=590b7570-f15e-45cd-9452-e3b5e6b7c8f4",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "GetCartAsync called with userId=12508404-eab4-4004-ab8d-f3cea40653b5",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "GetCartAsync called with userId=145ebd9c-2132-4704-a03f-54dce195b80e",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "AddItemAsync called with userId=12508404-eab4-4004-ab8d-f3cea40653b5, productId=LS4PSXUNUM, quantity=4",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "GetCartAsync called with userId=590b7570-f15e-45cd-9452-e3b5e6b7c8f4",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "EmptyCartAsync called with userId=590b7570-f15e-45cd-9452-e3b5e6b7c8f4",
+              "signal_class": "informational"
+            },
+            {
+              "level": "INFO",
+              "msg": "GetCartAsync called with userId=12508404-eab4-4004-ab8d-f3cea40653b5",
+              "signal_class": "informational"
+            }
+          ],
+          "dominant_signal": "informational",
+          "raw_output": {
+            "service": "cartservice",
+            "pod_name": "cartservice-6d57458d89-mpw4z",
+            "error_count": 0,
+            "error_lines": [],
+            "signal_lines": [],
+            "recent_lines": [
+              "GetCartAsync called with userId=145ebd9c-2132-4704-a03f-54dce195b80e",
+              "GetCartAsync called with userId=590b7570-f15e-45cd-9452-e3b5e6b7c8f4",
+              "GetCartAsync called with userId=12508404-eab4-4004-ab8d-f3cea40653b5",
+              "GetCartAsync called with userId=145ebd9c-2132-4704-a03f-54dce195b80e",
+              "AddItemAsync called with userId=12508404-eab4-4004-ab8d-f3cea40653b5, productId=LS4PSXUNUM, quantity=4",
+              "GetCartAsync called with userId=590b7570-f15e-45cd-9452-e3b5e6b7c8f4",
+              "EmptyCartAsync called with userId=590b7570-f15e-45cd-9452-e3b5e6b7c8f4",
+              "GetCartAsync called with userId=12508404-eab4-4004-ab8d-f3cea40653b5"
+            ],
+            "pods": [
+              {
+                "error_count": 0,
+                "error_lines": [],
+                "signal_lines": [],
+                "recent_lines": [
+                  "GetCartAsync called with userId=145ebd9c-2132-4704-a03f-54dce195b80e",
+                  "GetCartAsync called with userId=590b7570-f15e-45cd-9452-e3b5e6b7c8f4",
+                  "GetCartAsync called with userId=12508404-eab4-4004-ab8d-f3cea40653b5",
+                  "GetCartAsync called with userId=145ebd9c-2132-4704-a03f-54dce195b80e",
+                  "AddItemAsync called with userId=12508404-eab4-4004-ab8d-f3cea40653b5, productId=LS4PSXUNUM, quantity=4",
+                  "GetCartAsync called with userId=590b7570-f15e-45cd-9452-e3b5e6b7c8f4",
+                  "EmptyCartAsync called with userId=590b7570-f15e-45cd-9452-e3b5e6b7c8f4",
+                  "GetCartAsync called with userId=12508404-eab4-4004-ab8d-f3cea40653b5"
+                ],
+                "pod_name": "cartservice-6d57458d89-mpw4z"
+              }
+            ],
+            "error": null,
+            "call_id": "63bbaffe-c426-4627-8a77-83d529d999e9",
+            "timestamp": "2026-04-16T18:30:31.142611Z"
+          }
+        },
+        "get_traces|service=cartservice": {
+          "service": "cartservice",
+          "timestamp": "2026-04-16T18:30:48.101795Z",
+          "trace_id": "",
+          "critical_path": [],
+          "bottleneck": "",
+          "error_attribution": "no clear bottleneck identified",
+          "trace_quality": "missing",
+          "raw_output": {
+            "service": "cartservice",
+            "entry_point": "cartservice",
+            "trace_count": 0,
+            "call_chain": [],
+            "bottleneck_service": "",
+            "bottleneck_pct_of_total": 0.0,
+            "error_spans": [],
+            "deviation_factor": 0.0,
+            "baseline_p99_ms": 0.0,
+            "slowest_trace_id": "",
+            "trace_quality": "missing",
+            "observability_error": false,
+            "observability_status": "",
+            "error": null,
+            "call_id": "417673e8-62df-4c2a-b363-c657e49fcdf1",
+            "timestamp": "2026-04-16T18:30:48.101795Z"
+          }
+        },
+        "get_k8s_state|service=redis-cart": {
+          "service": "redis-cart",
+          "timestamp": "2026-04-16T18:31:23.114470Z",
+          "desired_replicas": 1,
+          "available_replicas": 1,
+          "rollout_progressing": false,
+          "restart_count": 2,
+          "pod_phases": [
+            {
+              "pod_name": "redis-cart-6899b65948-q5mxh",
+              "phase": "Running",
+              "ready": true,
+              "restart_count": 2,
+              "labels": {
+                "app": "redis-cart",
+                "pod-template-hash": "6899b65948"
+              },
+              "container_ports": [
+                {
+                  "container": "redis",
+                  "name": "",
+                  "containerPort": 6379,
+                  "protocol": "TCP"
+                }
+              ]
+            }
+          ],
+          "service_config_summary": {
+            "service": "redis-cart",
+            "exists": true,
+            "selector": {
+              "app": "redis-cart"
+            },
+            "selected_pod_count": 1,
+            "deployment_pod_count": 1,
+            "deployment_pod_labels": [
+              {
+                "name": "redis-cart-6899b65948-q5mxh",
+                "labels": {
+                  "app": "redis-cart",
+                  "pod-template-hash": "6899b65948"
+                },
+                "ready": true
+              }
+            ],
+            "service_ports": [
+              {
+                "name": "tcp-redis",
+                "port": 6379,
+                "targetPort": 6379,
+                "protocol": "TCP"
+              }
+            ],
+            "container_ports": [
+              {
+                "container": "redis",
+                "name": "",
+                "containerPort": 6379,
+                "protocol": "TCP"
+              }
+            ],
+            "endpoint_counts": {
+              "effective_ready": 1,
+              "effective_not_ready": 0,
+              "raw_endpoints_ready": 1,
+              "raw_endpoints_not_ready": 0,
+              "endpoint_slice_ready": 1,
+              "endpoint_slice_not_ready": 0
+            },
+            "service_port_alignment": {
+              "aligned": true,
+              "mismatches": []
+            },
+            "anomalies": [],
+            "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+          },
+          "recent_events": [],
+          "deployment_selector": {
+            "app": "redis-cart"
+          },
+          "service_config": {
+            "selector": {
+              "app": "redis-cart"
+            },
+            "ports": [
+              {
+                "name": "tcp-redis",
+                "port": 6379,
+                "targetPort": 6379,
+                "protocol": "TCP"
+              }
+            ],
+            "selected_pods": [
+              {
+                "name": "redis-cart-6899b65948-q5mxh",
+                "labels": {
+                  "app": "redis-cart",
+                  "pod-template-hash": "6899b65948"
+                },
+                "phase": "Running",
+                "ready": true,
+                "pod_ip": "10.244.1.7",
+                "container_ports": [
+                  {
+                    "container": "redis",
+                    "name": "",
+                    "containerPort": 6379,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "deployment_pods": [
+              {
+                "name": "redis-cart-6899b65948-q5mxh",
+                "labels": {
+                  "app": "redis-cart",
+                  "pod-template-hash": "6899b65948"
+                },
+                "phase": "Running",
+                "ready": true,
+                "pod_ip": "10.244.1.7",
+                "container_ports": [
+                  {
+                    "container": "redis",
+                    "name": "",
+                    "containerPort": 6379,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "endpoints": {
+              "ready_addresses": 1,
+              "not_ready_addresses": 0,
+              "subsets": [
+                {
+                  "ports": [
+                    {
+                      "name": "tcp-redis",
+                      "port": 6379,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "ready_addresses": [
+                    {
+                      "ip": "10.244.1.7",
+                      "target_ref": "redis-cart-6899b65948-q5mxh"
+                    }
+                  ],
+                  "not_ready_addresses": []
+                }
+              ],
+              "endpoint_slices": [
+                {
+                  "name": "redis-cart-smvdf",
+                  "ports": [
+                    {
+                      "name": "tcp-redis",
+                      "port": 6379,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "endpoints": [
+                    {
+                      "addresses": [
+                        "10.244.1.7"
+                      ],
+                      "ready": true,
+                      "serving": true,
+                      "terminating": false,
+                      "target_ref": "redis-cart-6899b65948-q5mxh"
+                    }
+                  ]
+                }
+              ],
+              "endpoints_error": null,
+              "endpoint_slices_error": null
+            },
+            "error": null
+          },
+          "anomalies": [],
+          "raw_output": {
+            "service": "redis-cart",
+            "desired_replicas": 1,
+            "available_replicas": 1,
+            "pod_phases": [
+              {
+                "pod_name": "redis-cart-6899b65948-q5mxh",
+                "phase": "Running",
+                "ready": true,
+                "restart_count": 2,
+                "labels": {
+                  "app": "redis-cart",
+                  "pod-template-hash": "6899b65948"
+                },
+                "container_ports": [
+                  {
+                    "container": "redis",
+                    "name": "",
+                    "containerPort": 6379,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "service_config_summary": {
+              "service": "redis-cart",
+              "exists": true,
+              "selector": {
+                "app": "redis-cart"
+              },
+              "selected_pod_count": 1,
+              "deployment_pod_count": 1,
+              "deployment_pod_labels": [
+                {
+                  "name": "redis-cart-6899b65948-q5mxh",
+                  "labels": {
+                    "app": "redis-cart",
+                    "pod-template-hash": "6899b65948"
+                  },
+                  "ready": true
+                }
+              ],
+              "service_ports": [
+                {
+                  "name": "tcp-redis",
+                  "port": 6379,
+                  "targetPort": 6379,
+                  "protocol": "TCP"
+                }
+              ],
+              "container_ports": [
+                {
+                  "container": "redis",
+                  "name": "",
+                  "containerPort": 6379,
+                  "protocol": "TCP"
+                }
+              ],
+              "endpoint_counts": {
+                "effective_ready": 1,
+                "effective_not_ready": 0,
+                "raw_endpoints_ready": 1,
+                "raw_endpoints_not_ready": 0,
+                "endpoint_slice_ready": 1,
+                "endpoint_slice_not_ready": 0
+              },
+              "service_port_alignment": {
+                "aligned": true,
+                "mismatches": []
+              },
+              "anomalies": [],
+              "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+            },
+            "recent_events": [],
+            "rollout_progressing": false,
+            "restart_count": 2,
+            "deployment_selector": {
+              "app": "redis-cart"
+            },
+            "service_config": {
+              "service": "redis-cart",
+              "exists": true,
+              "selector": {
+                "app": "redis-cart"
+              },
+              "ports": [
+                {
+                  "name": "tcp-redis",
+                  "port": 6379,
+                  "targetPort": 6379,
+                  "protocol": "TCP"
+                }
+              ],
+              "selected_pods": [
+                {
+                  "name": "redis-cart-6899b65948-q5mxh",
+                  "labels": {
+                    "app": "redis-cart",
+                    "pod-template-hash": "6899b65948"
+                  },
+                  "phase": "Running",
+                  "ready": true,
+                  "pod_ip": "10.244.1.7",
+                  "container_ports": [
+                    {
+                      "container": "redis",
+                      "name": "",
+                      "containerPort": 6379,
+                      "protocol": "TCP"
+                    }
+                  ]
+                }
+              ],
+              "deployment_pods": [
+                {
+                  "name": "redis-cart-6899b65948-q5mxh",
+                  "labels": {
+                    "app": "redis-cart",
+                    "pod-template-hash": "6899b65948"
+                  },
+                  "phase": "Running",
+                  "ready": true,
+                  "pod_ip": "10.244.1.7",
+                  "container_ports": [
+                    {
+                      "container": "redis",
+                      "name": "",
+                      "containerPort": 6379,
+                      "protocol": "TCP"
+                    }
+                  ]
+                }
+              ],
+              "endpoints": {
+                "ready_addresses": 1,
+                "not_ready_addresses": 0,
+                "subsets": [
+                  {
+                    "ports": [
+                      {
+                        "name": "tcp-redis",
+                        "port": 6379,
+                        "protocol": "TCP"
+                      }
+                    ],
+                    "ready_addresses": [
+                      {
+                        "ip": "10.244.1.7",
+                        "target_ref": "redis-cart-6899b65948-q5mxh"
+                      }
+                    ],
+                    "not_ready_addresses": []
+                  }
+                ],
+                "endpoint_slices": [
+                  {
+                    "name": "redis-cart-smvdf",
+                    "ports": [
+                      {
+                        "name": "tcp-redis",
+                        "port": 6379,
+                        "protocol": "TCP"
+                      }
+                    ],
+                    "endpoints": [
+                      {
+                        "addresses": [
+                          "10.244.1.7"
+                        ],
+                        "ready": true,
+                        "serving": true,
+                        "terminating": false,
+                        "target_ref": "redis-cart-6899b65948-q5mxh"
+                      }
+                    ]
+                  }
+                ],
+                "endpoints_error": null,
+                "endpoint_slices_error": null
+              },
+              "summary": {
+                "service": "redis-cart",
+                "exists": true,
+                "selector": {
+                  "app": "redis-cart"
+                },
+                "selected_pod_count": 1,
+                "deployment_pod_count": 1,
+                "deployment_pod_labels": [
+                  {
+                    "name": "redis-cart-6899b65948-q5mxh",
+                    "labels": {
+                      "app": "redis-cart",
+                      "pod-template-hash": "6899b65948"
+                    },
+                    "ready": true
+                  }
+                ],
+                "service_ports": [
+                  {
+                    "name": "tcp-redis",
+                    "port": 6379,
+                    "targetPort": 6379,
+                    "protocol": "TCP"
+                  }
+                ],
+                "container_ports": [
+                  {
+                    "container": "redis",
+                    "name": "",
+                    "containerPort": 6379,
+                    "protocol": "TCP"
+                  }
+                ],
+                "endpoint_counts": {
+                  "effective_ready": 1,
+                  "effective_not_ready": 0,
+                  "raw_endpoints_ready": 1,
+                  "raw_endpoints_not_ready": 0,
+                  "endpoint_slice_ready": 1,
+                  "endpoint_slice_not_ready": 0
+                },
+                "service_port_alignment": {
+                  "aligned": true,
+                  "mismatches": []
+                },
+                "anomalies": [],
+                "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+              },
+              "error": null
+            },
+            "error": null,
+            "call_id": "dbd05a99-d08b-4b28-8296-8b857eb68079",
+            "timestamp": "2026-04-16T18:31:23.114470Z"
+          }
+        },
+        "get_metrics|service=redis-cart": {
+          "service": "redis-cart",
+          "timestamp": "2026-04-16T18:31:23.784811Z",
+          "metrics": {
+            "error_rate_pct": 0.0,
+            "latency_p95_ms": 0.0,
+            "latency_p99_ms": 0.0,
+            "request_rps": 0.0,
+            "cpu_usage_cores": 0.0,
+            "cpu_limit_pct": 0.0,
+            "cpu_throttle_pct": 0.0,
+            "memory_limit_pct": 0.0
+          },
+          "anomalies": [],
+          "baseline_deltas": {},
+          "raw_output": {
+            "service": "redis-cart",
+            "metrics": {
+              "cpu_usage": null,
+              "cpu_mcores": null,
+              "cpu_request_cores": null,
+              "cpu_limit_cores": null,
+              "cpu_utilization_pct_of_request": null,
+              "cpu_utilization_pct_of_limit": null,
+              "cpu_headroom_cores_to_limit": null,
+              "cpu_throttled_seconds_rate": null,
+              "cpu_throttled_periods_rate": null,
+              "cpu_periods_rate": null,
+              "cpu_throttling_ratio": null,
+              "memory_usage": null,
+              "memory_rss_bytes": null,
+              "error_rate": null,
+              "p95_latency_ms": 0.0,
+              "p99_latency_ms": 0.0,
+              "request_rps": null,
+              "error_rps": 0.0,
+              "memory_mib": null,
+              "memory_rss_mib": null,
+              "memory_request_bytes": null,
+              "memory_limit_bytes": null,
+              "memory_request_mib": null,
+              "memory_limit_mib": null,
+              "memory_utilization_pct_of_request": null,
+              "memory_utilization_pct_of_limit": null,
+              "memory_headroom_bytes_to_limit": null,
+              "resource_metrics_available": false,
+              "application_metrics_available": false,
+              "resource_metric_gaps": [
+                "cpu_usage",
+                "cpu_request_cores",
+                "cpu_limit_cores",
+                "cpu_throttled_seconds_rate",
+                "memory_usage",
+                "memory_request_bytes",
+                "memory_limit_bytes"
+              ],
+              "application_metric_gaps": [
+                "request_rps"
+              ]
+            },
+            "error": "cpu_usage: Prometheus query timed out or failed: HTTP Error 400: Bad Request; cpu_request: Prometheus query timed out or failed: HTTP Error 400: Bad Request; cpu_limit: Prometheus query timed out or failed: HTTP Error 400: Bad Request; cpu_throttled_seconds_rate: Prometheus query timed out or failed: HTTP Error 400: Bad Request; cpu_throttled_periods_rate: Prometheus query timed out or failed: HTTP Error 400: Bad Request; cpu_periods_rate: Prometheus query timed out or failed: HTTP Error 400: Bad Request; memory_usage: Prometheus query timed out or failed: HTTP Error 400: Bad Request; memory_rss: Prometheus query timed out or failed: HTTP Error 400: Bad Request; memory_request: Prometheus query timed out or failed: HTTP Error 400: Bad Request; memory_limit: Prometheus query timed out or failed: HTTP Error 400: Bad Request",
+            "call_id": "ab22fb0b-510d-4176-a5e5-c83019a41726",
+            "timestamp": "2026-04-16T18:31:23.784811Z"
+          }
+        },
+        "get_logs|service=redis-cart": {
+          "service": "redis-cart",
+          "timestamp": "2026-04-16T18:31:54.095942Z",
+          "lines": [
+            {
+              "level": "INFO",
+              "msg": "1:M 16 Apr 2026 16:42:41.044 # WARNING: Redis does not require authentication and is not protected by network restrictions. Redis will accept connections from any IP address on any network interface.",
+              "signal_class": "informational"
+            }
+          ],
+          "dominant_signal": "informational",
+          "raw_output": {
+            "service": "redis-cart",
+            "pod_name": "redis-cart-6899b65948-q5mxh",
+            "error_count": 0,
+            "error_lines": [],
+            "signal_lines": [
+              "1:M 16 Apr 2026 16:42:41.044 # WARNING: Redis does not require authentication and is not protected by network restrictions. Redis will accept connections from any IP address on any network interface."
+            ],
+            "recent_lines": [
+              "32:C 16 Apr 2026 18:22:06.458 * Fork CoW for RDB: current 0 MB, peak 0 MB, average 0 MB",
+              "1:M 16 Apr 2026 18:22:06.560 * Background saving terminated with success",
+              "1:M 16 Apr 2026 18:27:07.093 * 100 changes in 300 seconds. Saving...",
+              "1:M 16 Apr 2026 18:27:07.105 * Background saving started by pid 33",
+              "33:C 16 Apr 2026 18:27:07.166 * BGSAVE done, 3534 keys saved, 0 keys skipped, 396716 bytes written.",
+              "33:C 16 Apr 2026 18:27:07.257 * DB saved on disk",
+              "33:C 16 Apr 2026 18:27:07.258 * Fork CoW for RDB: current 1 MB, peak 1 MB, average 0 MB",
+              "1:M 16 Apr 2026 18:27:07.308 * Background saving terminated with success"
+            ],
+            "pods": [
+              {
+                "error_count": 0,
+                "error_lines": [],
+                "signal_lines": [
+                  "1:M 16 Apr 2026 16:42:41.044 # WARNING: Redis does not require authentication and is not protected by network restrictions. Redis will accept connections from any IP address on any network interface."
+                ],
+                "recent_lines": [
+                  "32:C 16 Apr 2026 18:22:06.458 * Fork CoW for RDB: current 0 MB, peak 0 MB, average 0 MB",
+                  "1:M 16 Apr 2026 18:22:06.560 * Background saving terminated with success",
+                  "1:M 16 Apr 2026 18:27:07.093 * 100 changes in 300 seconds. Saving...",
+                  "1:M 16 Apr 2026 18:27:07.105 * Background saving started by pid 33",
+                  "33:C 16 Apr 2026 18:27:07.166 * BGSAVE done, 3534 keys saved, 0 keys skipped, 396716 bytes written.",
+                  "33:C 16 Apr 2026 18:27:07.257 * DB saved on disk",
+                  "33:C 16 Apr 2026 18:27:07.258 * Fork CoW for RDB: current 1 MB, peak 1 MB, average 0 MB",
+                  "1:M 16 Apr 2026 18:27:07.308 * Background saving terminated with success"
+                ],
+                "pod_name": "redis-cart-6899b65948-q5mxh"
+              }
+            ],
+            "error": null,
+            "call_id": "1605cee4-3916-4b70-bf24-e2e8a8901cc7",
+            "timestamp": "2026-04-16T18:31:54.095942Z"
+          }
+        }
+      },
+      "observability": {
+        "metrics_quality": "weak",
+        "logs_quality": "rich",
+        "traces_quality": "rich",
+        "summary_counts": {
+          "rich": 4,
+          "weak": 1,
+          "missing": 2
+        }
+      },
+      "transitions": [
+        {
+          "trigger_type": "tool",
+          "trigger_value": "wait_and_monitor",
+          "target_phase": 0,
+          "label": "static_replay",
+          "threshold": 0
+        }
+      ]
+    }
+  ],
+  "ground_truth": {
+    "root_cause": "cartservice service selector mismatch",
+    "root_cause_service": "cartservice",
+    "fault_class": "native_service_selector_mismatch",
+    "correct_actions": [
+      {
+        "canonical": "patch_service_selector:cartservice",
+        "tool_equivalents": [
+          "patch_service_selector(cartservice)"
+        ]
+      }
+    ],
+    "acceptable_actions": [
+      {
+        "canonical": "patch_service_selector:cartservice",
+        "tool_equivalents": [
+          "patch_service_selector(cartservice)"
+        ]
+      }
+    ],
+    "incorrect_actions": [
+      {
+        "canonical": "restart_pod:cartservice",
+        "tool_equivalents": [
+          "restart_pod(cartservice)"
+        ]
+      },
+      {
+        "canonical": "rollout_restart:cartservice",
+        "tool_equivalents": [
+          "rollout_restart(cartservice)"
+        ]
+      }
+    ]
+  },
+  "telemetry_contract": {
+    "required_present": [
+      "get_k8s_state(cartservice)",
+      "get_logs(cartservice)"
+    ],
+    "required_nonzero": []
+  },
+  "scoring": {
+    "max_steps": 12,
+    "diagnosis_weight": 0.5,
+    "action_correctness_weight": 0.3,
+    "step_economy_weight": 0.2,
+    "step_economy_baseline": 6
+  },
+  "provenance": {
+    "source_run_dir": "results/native_episode_collection/easy_topoff_20260416T182707Z/native_service_selector_mismatch_cartservice/20260416T182938Z_native_service_selector_mismatch_cartservice_baseline_evidence",
+    "captured_from_live_run": true,
+    "capture_timestamp_utc": "2026-04-16T18:32:58Z"
+  }
+}

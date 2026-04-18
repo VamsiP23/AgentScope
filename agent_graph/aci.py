@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 from uuid import uuid4
@@ -16,6 +17,7 @@ from agent_graph.aci_support import (
     utc_timestamp,
     validate_solution_payload,
 )
+from agent_graph.evidence_distiller import EVIDENCE_TOOLS, EvidenceDistiller
 from agent_graph.tools.actions import ActionTools
 from agent_graph.tools.jaeger import JaegerTools
 from agent_graph.tools.kubernetes import KubernetesTools
@@ -33,6 +35,7 @@ class AgentCloudInterface:
         run_log_path: str = "",
         jaeger_enabled: bool = True,
         dry_run: bool = True,
+        evidence_view: str = "",
     ) -> None:
         self.namespace = namespace
         self.prom_url = prom_url
@@ -40,6 +43,10 @@ class AgentCloudInterface:
         self.kubectl_context = kubectl_context.strip()
         self.jaeger_enabled = jaeger_enabled
         self.dry_run = dry_run
+        self.evidence_view = (evidence_view or os.environ.get("AGENTSCOPE_EVIDENCE_VIEW", "raw")).strip().lower()
+        if self.evidence_view not in {"raw", "compact", "distilled"}:
+            raise ValueError(f"unsupported evidence_view: {self.evidence_view}")
+        self.distiller = EvidenceDistiller()
 
         self.run_id = run_id or str(uuid4())
         default_log_path = Path("results") / "aci" / f"{self.run_id}.jsonl"
@@ -326,6 +333,8 @@ class AgentCloudInterface:
         output.setdefault("error", None)
         output["call_id"] = call_id
         output["timestamp"] = timestamp
+        if self.evidence_view in {"compact", "distilled"} and method in EVIDENCE_TOOLS:
+            output = self.distiller.distill(method, output)
 
         record = build_call_record(method, inputs, output)
         self.run_log.append(record)

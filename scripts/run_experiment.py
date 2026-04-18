@@ -186,7 +186,22 @@ def main() -> int:
         action="store_true",
         help="Skip calling start_all.sh even if startup.enabled is true in the YAML",
     )
+    parser.add_argument(
+        "--skip-reset",
+        action="store_true",
+        help="Skip reset.before_run even if the experiment enables it",
+    )
+    parser.add_argument(
+        "--warm-cluster",
+        action="store_true",
+        help=(
+            "Fast mode for an already-healthy cluster: skip startup and reset, "
+            "but still verify the environment and clean up the active fault."
+        ),
+    )
     args = parser.parse_args()
+    skip_startup = bool(args.skip_startup or args.warm_cluster)
+    skip_reset = bool(args.skip_reset or args.warm_cluster)
 
     require_binary("kubectl")
     require_binary("python3")
@@ -216,6 +231,9 @@ def main() -> int:
         "started_at_utc": utc_now(),
         "experiment_file": str(experiment_path),
         "namespace": namespace,
+        "warm_cluster": bool(args.warm_cluster),
+        "skip_startup": skip_startup,
+        "skip_reset": skip_reset,
         "steps": {},
         "snapshots": {},
     }
@@ -250,7 +268,7 @@ def main() -> int:
 
     try:
         startup = config.get("startup", {}) or {}
-        startup_enabled = bool_value(startup.get("enabled"), True) and not args.skip_startup
+        startup_enabled = bool_value(startup.get("enabled"), True) and not skip_startup
         summary["startup_effective_enabled"] = startup_enabled
         if startup_enabled:
             print_status("phase=startup: running start_all.sh")
@@ -263,7 +281,14 @@ def main() -> int:
         else:
             print_status("phase=startup: skipped")
 
-        if bool_value(reset_cfg.get("enabled"), False) and bool_value(reset_cfg.get("before_run"), True):
+        if skip_reset:
+            summary["steps"]["reset_before"] = {
+                "skipped": True,
+                "reason": "skip-reset/warm-cluster requested",
+                "finished_at_utc": utc_now(),
+            }
+            print_status("phase=reset: skipped (warm cluster)")
+        elif bool_value(reset_cfg.get("enabled"), False) and bool_value(reset_cfg.get("before_run"), True):
             summary["steps"]["reset_before_check"] = assess_reset_need(namespace)
             if summary["steps"]["reset_before_check"]["needs_reset"]:
                 print_status("phase=reset: restoring cluster baseline")

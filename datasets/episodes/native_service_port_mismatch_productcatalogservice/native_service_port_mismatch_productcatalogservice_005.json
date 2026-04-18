@@ -1,0 +1,1670 @@
+{
+  "task_id": "native_service_port_mismatch_productcatalogservice_005",
+  "family": "native_service_port_mismatch",
+  "scenario": "productcatalogservice Service targetPort is changed away from the container port",
+  "split": "dev",
+  "difficulty": "easy",
+  "fault_spec": {
+    "type": "native_service_port_mismatch",
+    "target_service": "productcatalogservice",
+    "injected_at": "phase_0",
+    "parameters": {
+      "experiment_file": "experiments/native_service_port_mismatch_productcatalogservice_baseline.yaml",
+      "detector_primary_signal": "service_port_alignment"
+    }
+  },
+  "initial_context": "PagerDuty alert: an incident has been detected affecting productcatalogservice. The monitoring pipeline observed availability symptoms. Investigate and recommend the most appropriate remediation action.",
+  "phases": [
+    {
+      "phase_id": 0,
+      "label": "initial_degradation",
+      "tool_responses": {
+        "get_k8s_state|service=productcatalogservice": {
+          "service": "productcatalogservice",
+          "timestamp": "2026-04-16T18:27:58.511823Z",
+          "desired_replicas": 1,
+          "available_replicas": 1,
+          "rollout_progressing": false,
+          "restart_count": 0,
+          "pod_phases": [
+            {
+              "pod_name": "productcatalogservice-576fdbff8c-f2f2l",
+              "phase": "Running",
+              "ready": true,
+              "restart_count": 0,
+              "labels": {
+                "app": "productcatalogservice",
+                "pod-template-hash": "576fdbff8c"
+              },
+              "container_ports": [
+                {
+                  "container": "server",
+                  "name": "",
+                  "containerPort": 3550,
+                  "protocol": "TCP"
+                }
+              ]
+            }
+          ],
+          "service_config_summary": {
+            "service": "productcatalogservice",
+            "exists": true,
+            "selector": {
+              "app": "productcatalogservice"
+            },
+            "selected_pod_count": 1,
+            "deployment_pod_count": 1,
+            "deployment_pod_labels": [
+              {
+                "name": "productcatalogservice-576fdbff8c-f2f2l",
+                "labels": {
+                  "app": "productcatalogservice",
+                  "pod-template-hash": "576fdbff8c"
+                },
+                "ready": true
+              }
+            ],
+            "service_ports": [
+              {
+                "name": "grpc",
+                "port": 3550,
+                "targetPort": 1,
+                "protocol": "TCP"
+              }
+            ],
+            "container_ports": [
+              {
+                "container": "server",
+                "name": "",
+                "containerPort": 3550,
+                "protocol": "TCP"
+              }
+            ],
+            "endpoint_counts": {
+              "effective_ready": 1,
+              "effective_not_ready": 0,
+              "raw_endpoints_ready": 1,
+              "raw_endpoints_not_ready": 0,
+              "endpoint_slice_ready": 1,
+              "endpoint_slice_not_ready": 0
+            },
+            "service_port_alignment": {
+              "aligned": false,
+              "mismatches": [
+                {
+                  "service_port": 3550,
+                  "targetPort": 1,
+                  "reason": "numeric targetPort is not exposed by any selected deployment pod container"
+                }
+              ]
+            },
+            "anomalies": [
+              "service_target_port_mismatch"
+            ],
+            "takeaway": "Service targetPort does not match exposed deployment container ports: [{'service_port': 3550, 'targetPort': 1, 'reason': 'numeric targetPort is not exposed by any selected deployment pod container'}]"
+          },
+          "recent_events": [
+            {
+              "reason": "Failed",
+              "message": "Error: ImagePullBackOff",
+              "type": "Warning",
+              "object": "productcatalogservice-956cb8858-fwb29",
+              "kind": "Pod",
+              "stale": false
+            },
+            {
+              "reason": "Failed",
+              "message": "Error: ErrImagePull",
+              "type": "Warning",
+              "object": "productcatalogservice-956cb8858-9n9cg",
+              "kind": "Pod",
+              "stale": false
+            },
+            {
+              "reason": "Failed",
+              "message": "Failed to pull image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing\": rpc error: code = NotFound desc = failed to pull and unpack image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing\": failed to resolve reference \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing\": us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing: not found",
+              "type": "Warning",
+              "object": "productcatalogservice-956cb8858-9n9cg",
+              "kind": "Pod",
+              "stale": false
+            },
+            {
+              "reason": "Failed",
+              "message": "Error: ImagePullBackOff",
+              "type": "Warning",
+              "object": "productcatalogservice-956cb8858-9n9cg",
+              "kind": "Pod",
+              "stale": false
+            },
+            {
+              "reason": "BackOff",
+              "message": "Back-off pulling image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing\"",
+              "type": "Normal",
+              "object": "productcatalogservice-956cb8858-9n9cg",
+              "kind": "Pod",
+              "stale": false
+            },
+            {
+              "reason": "SuccessfulDelete",
+              "message": "Deleted pod: productcatalogservice-956cb8858-fwb29",
+              "type": "Normal",
+              "object": "productcatalogservice-956cb8858",
+              "kind": "ReplicaSet",
+              "stale": false
+            }
+          ],
+          "deployment_selector": {
+            "app": "productcatalogservice"
+          },
+          "service_config": {
+            "selector": {
+              "app": "productcatalogservice"
+            },
+            "ports": [
+              {
+                "name": "grpc",
+                "port": 3550,
+                "targetPort": 1,
+                "protocol": "TCP"
+              }
+            ],
+            "selected_pods": [
+              {
+                "name": "productcatalogservice-576fdbff8c-f2f2l",
+                "labels": {
+                  "app": "productcatalogservice",
+                  "pod-template-hash": "576fdbff8c"
+                },
+                "phase": "Running",
+                "ready": true,
+                "pod_ip": "10.244.1.3",
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 3550,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "deployment_pods": [
+              {
+                "name": "productcatalogservice-576fdbff8c-f2f2l",
+                "labels": {
+                  "app": "productcatalogservice",
+                  "pod-template-hash": "576fdbff8c"
+                },
+                "phase": "Running",
+                "ready": true,
+                "pod_ip": "10.244.1.3",
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 3550,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "endpoints": {
+              "ready_addresses": 1,
+              "not_ready_addresses": 0,
+              "subsets": [
+                {
+                  "ports": [
+                    {
+                      "name": "grpc",
+                      "port": 1,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "ready_addresses": [
+                    {
+                      "ip": "10.244.1.3",
+                      "target_ref": "productcatalogservice-576fdbff8c-f2f2l"
+                    }
+                  ],
+                  "not_ready_addresses": []
+                }
+              ],
+              "endpoint_slices": [
+                {
+                  "name": "productcatalogservice-fjqwn",
+                  "ports": [
+                    {
+                      "name": "grpc",
+                      "port": 1,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "endpoints": [
+                    {
+                      "addresses": [
+                        "10.244.1.3"
+                      ],
+                      "ready": true,
+                      "serving": true,
+                      "terminating": false,
+                      "target_ref": "productcatalogservice-576fdbff8c-f2f2l"
+                    }
+                  ]
+                }
+              ],
+              "endpoints_error": null,
+              "endpoint_slices_error": null
+            },
+            "error": null
+          },
+          "anomalies": [
+            "service_target_port_mismatch"
+          ],
+          "raw_output": {
+            "service": "productcatalogservice",
+            "desired_replicas": 1,
+            "available_replicas": 1,
+            "pod_phases": [
+              {
+                "pod_name": "productcatalogservice-576fdbff8c-f2f2l",
+                "phase": "Running",
+                "ready": true,
+                "restart_count": 0,
+                "labels": {
+                  "app": "productcatalogservice",
+                  "pod-template-hash": "576fdbff8c"
+                },
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 3550,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "service_config_summary": {
+              "service": "productcatalogservice",
+              "exists": true,
+              "selector": {
+                "app": "productcatalogservice"
+              },
+              "selected_pod_count": 1,
+              "deployment_pod_count": 1,
+              "deployment_pod_labels": [
+                {
+                  "name": "productcatalogservice-576fdbff8c-f2f2l",
+                  "labels": {
+                    "app": "productcatalogservice",
+                    "pod-template-hash": "576fdbff8c"
+                  },
+                  "ready": true
+                }
+              ],
+              "service_ports": [
+                {
+                  "name": "grpc",
+                  "port": 3550,
+                  "targetPort": 1,
+                  "protocol": "TCP"
+                }
+              ],
+              "container_ports": [
+                {
+                  "container": "server",
+                  "name": "",
+                  "containerPort": 3550,
+                  "protocol": "TCP"
+                }
+              ],
+              "endpoint_counts": {
+                "effective_ready": 1,
+                "effective_not_ready": 0,
+                "raw_endpoints_ready": 1,
+                "raw_endpoints_not_ready": 0,
+                "endpoint_slice_ready": 1,
+                "endpoint_slice_not_ready": 0
+              },
+              "service_port_alignment": {
+                "aligned": false,
+                "mismatches": [
+                  {
+                    "service_port": 3550,
+                    "targetPort": 1,
+                    "reason": "numeric targetPort is not exposed by any selected deployment pod container"
+                  }
+                ]
+              },
+              "anomalies": [
+                "service_target_port_mismatch"
+              ],
+              "takeaway": "Service targetPort does not match exposed deployment container ports: [{'service_port': 3550, 'targetPort': 1, 'reason': 'numeric targetPort is not exposed by any selected deployment pod container'}]"
+            },
+            "recent_events": [
+              {
+                "reason": "Failed",
+                "message": "Error: ImagePullBackOff",
+                "type": "Warning",
+                "object": "productcatalogservice-956cb8858-fwb29",
+                "kind": "Pod",
+                "stale": false
+              },
+              {
+                "reason": "Failed",
+                "message": "Error: ErrImagePull",
+                "type": "Warning",
+                "object": "productcatalogservice-956cb8858-9n9cg",
+                "kind": "Pod",
+                "stale": false
+              },
+              {
+                "reason": "Failed",
+                "message": "Failed to pull image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing\": rpc error: code = NotFound desc = failed to pull and unpack image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing\": failed to resolve reference \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing\": us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing: not found",
+                "type": "Warning",
+                "object": "productcatalogservice-956cb8858-9n9cg",
+                "kind": "Pod",
+                "stale": false
+              },
+              {
+                "reason": "Failed",
+                "message": "Error: ImagePullBackOff",
+                "type": "Warning",
+                "object": "productcatalogservice-956cb8858-9n9cg",
+                "kind": "Pod",
+                "stale": false
+              },
+              {
+                "reason": "BackOff",
+                "message": "Back-off pulling image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing\"",
+                "type": "Normal",
+                "object": "productcatalogservice-956cb8858-9n9cg",
+                "kind": "Pod",
+                "stale": false
+              },
+              {
+                "reason": "SuccessfulDelete",
+                "message": "Deleted pod: productcatalogservice-956cb8858-fwb29",
+                "type": "Normal",
+                "object": "productcatalogservice-956cb8858",
+                "kind": "ReplicaSet",
+                "stale": false
+              }
+            ],
+            "rollout_progressing": false,
+            "restart_count": 0,
+            "deployment_selector": {
+              "app": "productcatalogservice"
+            },
+            "service_config": {
+              "service": "productcatalogservice",
+              "exists": true,
+              "selector": {
+                "app": "productcatalogservice"
+              },
+              "ports": [
+                {
+                  "name": "grpc",
+                  "port": 3550,
+                  "targetPort": 1,
+                  "protocol": "TCP"
+                }
+              ],
+              "selected_pods": [
+                {
+                  "name": "productcatalogservice-576fdbff8c-f2f2l",
+                  "labels": {
+                    "app": "productcatalogservice",
+                    "pod-template-hash": "576fdbff8c"
+                  },
+                  "phase": "Running",
+                  "ready": true,
+                  "pod_ip": "10.244.1.3",
+                  "container_ports": [
+                    {
+                      "container": "server",
+                      "name": "",
+                      "containerPort": 3550,
+                      "protocol": "TCP"
+                    }
+                  ]
+                }
+              ],
+              "deployment_pods": [
+                {
+                  "name": "productcatalogservice-576fdbff8c-f2f2l",
+                  "labels": {
+                    "app": "productcatalogservice",
+                    "pod-template-hash": "576fdbff8c"
+                  },
+                  "phase": "Running",
+                  "ready": true,
+                  "pod_ip": "10.244.1.3",
+                  "container_ports": [
+                    {
+                      "container": "server",
+                      "name": "",
+                      "containerPort": 3550,
+                      "protocol": "TCP"
+                    }
+                  ]
+                }
+              ],
+              "endpoints": {
+                "ready_addresses": 1,
+                "not_ready_addresses": 0,
+                "subsets": [
+                  {
+                    "ports": [
+                      {
+                        "name": "grpc",
+                        "port": 1,
+                        "protocol": "TCP"
+                      }
+                    ],
+                    "ready_addresses": [
+                      {
+                        "ip": "10.244.1.3",
+                        "target_ref": "productcatalogservice-576fdbff8c-f2f2l"
+                      }
+                    ],
+                    "not_ready_addresses": []
+                  }
+                ],
+                "endpoint_slices": [
+                  {
+                    "name": "productcatalogservice-fjqwn",
+                    "ports": [
+                      {
+                        "name": "grpc",
+                        "port": 1,
+                        "protocol": "TCP"
+                      }
+                    ],
+                    "endpoints": [
+                      {
+                        "addresses": [
+                          "10.244.1.3"
+                        ],
+                        "ready": true,
+                        "serving": true,
+                        "terminating": false,
+                        "target_ref": "productcatalogservice-576fdbff8c-f2f2l"
+                      }
+                    ]
+                  }
+                ],
+                "endpoints_error": null,
+                "endpoint_slices_error": null
+              },
+              "summary": {
+                "service": "productcatalogservice",
+                "exists": true,
+                "selector": {
+                  "app": "productcatalogservice"
+                },
+                "selected_pod_count": 1,
+                "deployment_pod_count": 1,
+                "deployment_pod_labels": [
+                  {
+                    "name": "productcatalogservice-576fdbff8c-f2f2l",
+                    "labels": {
+                      "app": "productcatalogservice",
+                      "pod-template-hash": "576fdbff8c"
+                    },
+                    "ready": true
+                  }
+                ],
+                "service_ports": [
+                  {
+                    "name": "grpc",
+                    "port": 3550,
+                    "targetPort": 1,
+                    "protocol": "TCP"
+                  }
+                ],
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 3550,
+                    "protocol": "TCP"
+                  }
+                ],
+                "endpoint_counts": {
+                  "effective_ready": 1,
+                  "effective_not_ready": 0,
+                  "raw_endpoints_ready": 1,
+                  "raw_endpoints_not_ready": 0,
+                  "endpoint_slice_ready": 1,
+                  "endpoint_slice_not_ready": 0
+                },
+                "service_port_alignment": {
+                  "aligned": false,
+                  "mismatches": [
+                    {
+                      "service_port": 3550,
+                      "targetPort": 1,
+                      "reason": "numeric targetPort is not exposed by any selected deployment pod container"
+                    }
+                  ]
+                },
+                "anomalies": [
+                  "service_target_port_mismatch"
+                ],
+                "takeaway": "Service targetPort does not match exposed deployment container ports: [{'service_port': 3550, 'targetPort': 1, 'reason': 'numeric targetPort is not exposed by any selected deployment pod container'}]"
+              },
+              "error": null
+            },
+            "error": null,
+            "call_id": "6075800e-03f7-4a64-a4c5-09bc5e917eca",
+            "timestamp": "2026-04-16T18:27:58.511823Z"
+          }
+        },
+        "get_metrics|service=productcatalogservice": {
+          "service": "productcatalogservice",
+          "timestamp": "2026-04-16T18:27:59.194555Z",
+          "metrics": {
+            "error_rate_pct": 0.0,
+            "latency_p95_ms": 4.775796524257784,
+            "latency_p99_ms": 4.976882693700217,
+            "request_rps": 24.146566266107854,
+            "cpu_usage_cores": 0.041009689836839905,
+            "cpu_limit_pct": 8.20193796736798,
+            "cpu_throttle_pct": 1.048,
+            "memory_limit_pct": 21.0357666015625
+          },
+          "anomalies": [],
+          "baseline_deltas": {},
+          "raw_output": {
+            "service": "productcatalogservice",
+            "metrics": {
+              "cpu_usage": 0.041009689836839905,
+              "cpu_mcores": 41.009689836839904,
+              "cpu_request_cores": 0.2,
+              "cpu_limit_cores": 0.5,
+              "cpu_utilization_pct_of_request": 20.504844918419952,
+              "cpu_utilization_pct_of_limit": 8.20193796736798,
+              "cpu_headroom_cores_to_limit": 0.4589903101631601,
+              "cpu_throttled_seconds_rate": 0.004062230755941781,
+              "cpu_throttled_periods_rate": 0.057110186128576934,
+              "cpu_periods_rate": 5.448261253628752,
+              "cpu_throttling_ratio": 0.01048227745880199,
+              "memory_usage": 56467456.0,
+              "memory_rss_bytes": 44302336.0,
+              "error_rate": 0.0,
+              "p95_latency_ms": 4.775796524257784,
+              "p99_latency_ms": 4.976882693700217,
+              "request_rps": 24.146566266107854,
+              "error_rps": 0.0,
+              "memory_mib": 53.8515625,
+              "memory_rss_mib": 42.25,
+              "memory_request_bytes": 134217728.0,
+              "memory_limit_bytes": 268435456.0,
+              "memory_request_mib": 128.0,
+              "memory_limit_mib": 256.0,
+              "memory_utilization_pct_of_request": 42.071533203125,
+              "memory_utilization_pct_of_limit": 21.0357666015625,
+              "memory_headroom_bytes_to_limit": 211968000.0,
+              "resource_metrics_available": true,
+              "application_metrics_available": true,
+              "resource_metric_gaps": [],
+              "application_metric_gaps": []
+            },
+            "error": null,
+            "call_id": "08495487-e73d-4d00-8f62-9ddd3a956f8a",
+            "timestamp": "2026-04-16T18:27:59.194555Z"
+          }
+        },
+        "get_logs|service=productcatalogservice": {
+          "service": "productcatalogservice",
+          "timestamp": "2026-04-16T18:27:59.223778Z",
+          "lines": [
+            {
+              "level": "ERROR",
+              "msg": "2026/04/16 16:21:14 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "signal_class": "latency_breach"
+            },
+            {
+              "level": "ERROR",
+              "msg": "2026/04/16 16:21:29 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "signal_class": "latency_breach"
+            },
+            {
+              "level": "ERROR",
+              "msg": "2026/04/16 16:21:39 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "signal_class": "latency_breach"
+            },
+            {
+              "level": "ERROR",
+              "msg": "2026/04/16 16:21:54 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "signal_class": "latency_breach"
+            },
+            {
+              "level": "ERROR",
+              "msg": "2026/04/16 16:22:09 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "signal_class": "latency_breach"
+            },
+            {
+              "level": "ERROR",
+              "msg": "2026/04/16 16:22:19 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "signal_class": "latency_breach"
+            },
+            {
+              "level": "ERROR",
+              "msg": "2026/04/16 16:22:29 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "signal_class": "latency_breach"
+            },
+            {
+              "level": "ERROR",
+              "msg": "2026/04/16 16:22:39 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "signal_class": "latency_breach"
+            }
+          ],
+          "dominant_signal": "latency_breach",
+          "raw_output": {
+            "service": "productcatalogservice",
+            "pod_name": "productcatalogservice-576fdbff8c-f2f2l",
+            "error_count": 109,
+            "error_lines": [
+              "2026/04/16 16:21:14 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "2026/04/16 16:21:29 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "2026/04/16 16:21:39 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "2026/04/16 16:21:54 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "2026/04/16 16:22:09 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "2026/04/16 16:22:19 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "2026/04/16 16:22:29 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "2026/04/16 16:22:39 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\""
+            ],
+            "signal_lines": [
+              "2026/04/16 16:21:14 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "2026/04/16 16:21:29 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "2026/04/16 16:21:39 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "2026/04/16 16:21:54 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "2026/04/16 16:22:09 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "2026/04/16 16:22:19 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "2026/04/16 16:22:29 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "2026/04/16 16:22:39 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\""
+            ],
+            "recent_lines": [
+              "2026/04/16 16:56:31 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "2026/04/16 16:56:46 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+              "2026/04/16 17:02:57 traces export: context deadline exceeded: rpc error: code = DeadlineExceeded desc = context deadline exceeded",
+              "2026/04/16 17:03:51 traces export: context deadline exceeded: rpc error: code = DeadlineExceeded desc = context deadline exceeded",
+              "2026/04/16 17:04:08 traces export: context deadline exceeded: rpc error: code = DeadlineExceeded desc = context deadline exceeded",
+              "2026/04/16 17:06:24 traces export: context deadline exceeded: rpc error: code = DeadlineExceeded desc = context deadline exceeded",
+              "2026/04/16 17:07:03 traces export: context deadline exceeded: rpc error: code = DeadlineExceeded desc = context deadline exceeded",
+              "2026/04/16 17:09:54 traces export: context deadline exceeded: rpc error: code = DeadlineExceeded desc = context deadline exceeded"
+            ],
+            "pods": [
+              {
+                "error_count": 109,
+                "error_lines": [
+                  "2026/04/16 16:21:14 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+                  "2026/04/16 16:21:29 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+                  "2026/04/16 16:21:39 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+                  "2026/04/16 16:21:54 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+                  "2026/04/16 16:22:09 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+                  "2026/04/16 16:22:19 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+                  "2026/04/16 16:22:29 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+                  "2026/04/16 16:22:39 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\""
+                ],
+                "signal_lines": [
+                  "2026/04/16 16:21:14 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+                  "2026/04/16 16:21:29 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+                  "2026/04/16 16:21:39 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+                  "2026/04/16 16:21:54 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+                  "2026/04/16 16:22:09 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+                  "2026/04/16 16:22:19 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+                  "2026/04/16 16:22:29 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+                  "2026/04/16 16:22:39 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\""
+                ],
+                "recent_lines": [
+                  "2026/04/16 16:56:31 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+                  "2026/04/16 16:56:46 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\"",
+                  "2026/04/16 17:02:57 traces export: context deadline exceeded: rpc error: code = DeadlineExceeded desc = context deadline exceeded",
+                  "2026/04/16 17:03:51 traces export: context deadline exceeded: rpc error: code = DeadlineExceeded desc = context deadline exceeded",
+                  "2026/04/16 17:04:08 traces export: context deadline exceeded: rpc error: code = DeadlineExceeded desc = context deadline exceeded",
+                  "2026/04/16 17:06:24 traces export: context deadline exceeded: rpc error: code = DeadlineExceeded desc = context deadline exceeded",
+                  "2026/04/16 17:07:03 traces export: context deadline exceeded: rpc error: code = DeadlineExceeded desc = context deadline exceeded",
+                  "2026/04/16 17:09:54 traces export: context deadline exceeded: rpc error: code = DeadlineExceeded desc = context deadline exceeded"
+                ],
+                "pod_name": "productcatalogservice-576fdbff8c-f2f2l"
+              }
+            ],
+            "error": null,
+            "call_id": "91dc19ba-2cba-4ed2-8689-d98246a306ce",
+            "timestamp": "2026-04-16T18:27:59.223778Z"
+          }
+        },
+        "get_traces|service=productcatalogservice": {
+          "service": "productcatalogservice",
+          "timestamp": "2026-04-16T18:28:17.134460Z",
+          "trace_id": "628853abf52a40be2ac64dd66368b79b",
+          "critical_path": [
+            {
+              "service": "frontend",
+              "duration_ms": 118.868,
+              "status": "OK",
+              "operation": "frontend",
+              "peer_service": ""
+            },
+            {
+              "service": "frontend",
+              "duration_ms": 1.175,
+              "status": "OK",
+              "operation": "hipstershop.ProductCatalogService/GetProduct",
+              "peer_service": "hipstershop.ProductCatalogService"
+            },
+            {
+              "service": "productcatalogservice",
+              "duration_ms": 0.008,
+              "status": "OK",
+              "operation": "hipstershop.ProductCatalogService/GetProduct",
+              "peer_service": "hipstershop.ProductCatalogService"
+            },
+            {
+              "service": "frontend",
+              "duration_ms": 55.334,
+              "status": "OK",
+              "operation": "hipstershop.CurrencyService/GetSupportedCurrencies",
+              "peer_service": "hipstershop.CurrencyService"
+            },
+            {
+              "service": "currencyservice",
+              "duration_ms": 0.158,
+              "status": "OK",
+              "operation": "grpc.hipstershop.CurrencyService/GetSupportedCurrencies",
+              "peer_service": "hipstershop.CurrencyService"
+            },
+            {
+              "service": "frontend",
+              "duration_ms": 1.372,
+              "status": "OK",
+              "operation": "hipstershop.CartService/GetCart",
+              "peer_service": "hipstershop.CartService"
+            },
+            {
+              "service": "frontend",
+              "duration_ms": 50.955,
+              "status": "OK",
+              "operation": "hipstershop.CurrencyService/Convert",
+              "peer_service": "hipstershop.CurrencyService"
+            },
+            {
+              "service": "currencyservice",
+              "duration_ms": 0.058,
+              "status": "OK",
+              "operation": "grpc.hipstershop.CurrencyService/Convert",
+              "peer_service": "hipstershop.CurrencyService"
+            }
+          ],
+          "bottleneck": "frontend",
+          "error_attribution": "dominant latency attributed to frontend",
+          "trace_quality": "good",
+          "raw_output": {
+            "service": "productcatalogservice",
+            "entry_point": "currencyservice",
+            "trace_count": 19,
+            "call_chain": [
+              {
+                "span_id": "bea251a3ff3ce639",
+                "service": "frontend",
+                "operation": "frontend",
+                "duration_ms": 118.868,
+                "pct_of_total": 1.0,
+                "error": false,
+                "error_message": "200"
+              },
+              {
+                "span_id": "b09437309fc0529f",
+                "service": "frontend",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 1.175,
+                "pct_of_total": 0.009884914358784535,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "d5bb2e74504af74a",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.008,
+                "pct_of_total": 6.73015445704479e-05,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "1a9eedf56f36d003",
+                "service": "frontend",
+                "operation": "hipstershop.CurrencyService/GetSupportedCurrencies",
+                "duration_ms": 55.334,
+                "pct_of_total": 0.46550795840764553,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.CurrencyService"
+              },
+              {
+                "span_id": "4089787bf2f71ffc",
+                "service": "currencyservice",
+                "operation": "grpc.hipstershop.CurrencyService/GetSupportedCurrencies",
+                "duration_ms": 0.158,
+                "pct_of_total": 0.0013292055052663459,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.CurrencyService"
+              },
+              {
+                "span_id": "dc513799d07c28b2",
+                "service": "frontend",
+                "operation": "hipstershop.CartService/GetCart",
+                "duration_ms": 1.372,
+                "pct_of_total": 0.011542214893831814,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.CartService"
+              },
+              {
+                "span_id": "66c195fb5f4f07a8",
+                "service": "frontend",
+                "operation": "hipstershop.CurrencyService/Convert",
+                "duration_ms": 50.955,
+                "pct_of_total": 0.42866877544839654,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.CurrencyService"
+              },
+              {
+                "span_id": "70bfa6a58ac35cfd",
+                "service": "currencyservice",
+                "operation": "grpc.hipstershop.CurrencyService/Convert",
+                "duration_ms": 0.058,
+                "pct_of_total": 0.00048793619813574724,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.CurrencyService"
+              },
+              {
+                "span_id": "a956c0c6c4678a99",
+                "service": "frontend",
+                "operation": "hipstershop.RecommendationService/ListRecommendations",
+                "duration_ms": 5.894,
+                "pct_of_total": 0.04958441296227749,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.RecommendationService"
+              },
+              {
+                "span_id": "3e145a73d144063c",
+                "service": "recommendationservice",
+                "operation": "/hipstershop.RecommendationService/ListRecommendations",
+                "duration_ms": 3.238,
+                "pct_of_total": 0.027240300164888785,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.RecommendationService"
+              },
+              {
+                "span_id": "a6329dca07ba63d9",
+                "service": "recommendationservice",
+                "operation": "/hipstershop.ProductCatalogService/ListProducts",
+                "duration_ms": 2.565,
+                "pct_of_total": 0.021578557727899857,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "dcd4be110324c426",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/ListProducts",
+                "duration_ms": 0.011,
+                "pct_of_total": 9.253962378436585e-05,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "62c1205ed919bdc1",
+                "service": "frontend",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.293,
+                "pct_of_total": 0.002464919069892654,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "de03e0840b9890e7",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.004,
+                "pct_of_total": 3.365077228522395e-05,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "e8929e596a0e418f",
+                "service": "frontend",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.234,
+                "pct_of_total": 0.001968570178685601,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "343656cfc6649b01",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.003,
+                "pct_of_total": 2.523807921391796e-05,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "db897622491ab28e",
+                "service": "frontend",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.208,
+                "pct_of_total": 0.0017498401588316452,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "0e2e0ba6ecf59031",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.002,
+                "pct_of_total": 1.6825386142611974e-05,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "8e78d7d3e993d94c",
+                "service": "frontend",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.166,
+                "pct_of_total": 0.001396507049836794,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "16f33a796823590a",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.002,
+                "pct_of_total": 1.6825386142611974e-05,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "5a7e217c69849727",
+                "service": "frontend",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.24,
+                "pct_of_total": 0.0020190463371134366,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "e01b93fdcb2df83a",
+                "service": "productcatalogservice",
+                "operation": "hipstershop.ProductCatalogService/GetProduct",
+                "duration_ms": 0.006,
+                "pct_of_total": 5.047615842783592e-05,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.ProductCatalogService"
+              },
+              {
+                "span_id": "f6f5fbec4d28e9de",
+                "service": "frontend",
+                "operation": "hipstershop.AdService/GetAds",
+                "duration_ms": 2.165,
+                "pct_of_total": 0.01821348049937746,
+                "error": false,
+                "error_message": "0",
+                "peer_service": "hipstershop.AdService"
+              }
+            ],
+            "bottleneck_service": "frontend",
+            "bottleneck_pct_of_total": 0.1660833866137228,
+            "error_spans": [],
+            "deviation_factor": 0.010460238890605301,
+            "baseline_p99_ms": 670.142,
+            "slowest_trace_id": "628853abf52a40be2ac64dd66368b79b",
+            "trace_quality": "good",
+            "observability_error": false,
+            "observability_status": "",
+            "error": null,
+            "call_id": "862c9b38-9ed0-4830-871d-f428b1715629",
+            "timestamp": "2026-04-16T18:28:17.134460Z"
+          }
+        },
+        "get_k8s_state|service=frontend": {
+          "service": "frontend",
+          "timestamp": "2026-04-16T18:28:31.794413Z",
+          "desired_replicas": 1,
+          "available_replicas": 1,
+          "rollout_progressing": false,
+          "restart_count": 0,
+          "pod_phases": [
+            {
+              "pod_name": "frontend-d5f45cf8-zn8b4",
+              "phase": "Running",
+              "ready": true,
+              "restart_count": 0,
+              "labels": {
+                "app": "frontend",
+                "pod-template-hash": "d5f45cf8"
+              },
+              "container_ports": [
+                {
+                  "container": "server",
+                  "name": "",
+                  "containerPort": 8080,
+                  "protocol": "TCP"
+                }
+              ]
+            }
+          ],
+          "service_config_summary": {
+            "service": "frontend",
+            "exists": true,
+            "selector": {
+              "app": "frontend"
+            },
+            "selected_pod_count": 1,
+            "deployment_pod_count": 1,
+            "deployment_pod_labels": [
+              {
+                "name": "frontend-d5f45cf8-zn8b4",
+                "labels": {
+                  "app": "frontend",
+                  "pod-template-hash": "d5f45cf8"
+                },
+                "ready": true
+              }
+            ],
+            "service_ports": [
+              {
+                "name": "http",
+                "port": 80,
+                "targetPort": 8080,
+                "protocol": "TCP"
+              }
+            ],
+            "container_ports": [
+              {
+                "container": "server",
+                "name": "",
+                "containerPort": 8080,
+                "protocol": "TCP"
+              }
+            ],
+            "endpoint_counts": {
+              "effective_ready": 1,
+              "effective_not_ready": 0,
+              "raw_endpoints_ready": 1,
+              "raw_endpoints_not_ready": 0,
+              "endpoint_slice_ready": 1,
+              "endpoint_slice_not_ready": 0
+            },
+            "service_port_alignment": {
+              "aligned": true,
+              "mismatches": []
+            },
+            "anomalies": [],
+            "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+          },
+          "recent_events": [],
+          "deployment_selector": {
+            "app": "frontend"
+          },
+          "service_config": {
+            "selector": {
+              "app": "frontend"
+            },
+            "ports": [
+              {
+                "name": "http",
+                "port": 80,
+                "targetPort": 8080,
+                "protocol": "TCP"
+              }
+            ],
+            "selected_pods": [
+              {
+                "name": "frontend-d5f45cf8-zn8b4",
+                "labels": {
+                  "app": "frontend",
+                  "pod-template-hash": "d5f45cf8"
+                },
+                "phase": "Running",
+                "ready": true,
+                "pod_ip": "10.244.1.10",
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 8080,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "deployment_pods": [
+              {
+                "name": "frontend-d5f45cf8-zn8b4",
+                "labels": {
+                  "app": "frontend",
+                  "pod-template-hash": "d5f45cf8"
+                },
+                "phase": "Running",
+                "ready": true,
+                "pod_ip": "10.244.1.10",
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 8080,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "endpoints": {
+              "ready_addresses": 1,
+              "not_ready_addresses": 0,
+              "subsets": [
+                {
+                  "ports": [
+                    {
+                      "name": "http",
+                      "port": 8080,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "ready_addresses": [
+                    {
+                      "ip": "10.244.1.10",
+                      "target_ref": "frontend-d5f45cf8-zn8b4"
+                    }
+                  ],
+                  "not_ready_addresses": []
+                }
+              ],
+              "endpoint_slices": [
+                {
+                  "name": "frontend-hbhsc",
+                  "ports": [
+                    {
+                      "name": "http",
+                      "port": 8080,
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "endpoints": [
+                    {
+                      "addresses": [
+                        "10.244.1.10"
+                      ],
+                      "ready": true,
+                      "serving": true,
+                      "terminating": false,
+                      "target_ref": "frontend-d5f45cf8-zn8b4"
+                    }
+                  ]
+                }
+              ],
+              "endpoints_error": null,
+              "endpoint_slices_error": null
+            },
+            "error": null
+          },
+          "anomalies": [],
+          "raw_output": {
+            "service": "frontend",
+            "desired_replicas": 1,
+            "available_replicas": 1,
+            "pod_phases": [
+              {
+                "pod_name": "frontend-d5f45cf8-zn8b4",
+                "phase": "Running",
+                "ready": true,
+                "restart_count": 0,
+                "labels": {
+                  "app": "frontend",
+                  "pod-template-hash": "d5f45cf8"
+                },
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 8080,
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ],
+            "service_config_summary": {
+              "service": "frontend",
+              "exists": true,
+              "selector": {
+                "app": "frontend"
+              },
+              "selected_pod_count": 1,
+              "deployment_pod_count": 1,
+              "deployment_pod_labels": [
+                {
+                  "name": "frontend-d5f45cf8-zn8b4",
+                  "labels": {
+                    "app": "frontend",
+                    "pod-template-hash": "d5f45cf8"
+                  },
+                  "ready": true
+                }
+              ],
+              "service_ports": [
+                {
+                  "name": "http",
+                  "port": 80,
+                  "targetPort": 8080,
+                  "protocol": "TCP"
+                }
+              ],
+              "container_ports": [
+                {
+                  "container": "server",
+                  "name": "",
+                  "containerPort": 8080,
+                  "protocol": "TCP"
+                }
+              ],
+              "endpoint_counts": {
+                "effective_ready": 1,
+                "effective_not_ready": 0,
+                "raw_endpoints_ready": 1,
+                "raw_endpoints_not_ready": 0,
+                "endpoint_slice_ready": 1,
+                "endpoint_slice_not_ready": 0
+              },
+              "service_port_alignment": {
+                "aligned": true,
+                "mismatches": []
+              },
+              "anomalies": [],
+              "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+            },
+            "recent_events": [],
+            "rollout_progressing": false,
+            "restart_count": 0,
+            "deployment_selector": {
+              "app": "frontend"
+            },
+            "service_config": {
+              "service": "frontend",
+              "exists": true,
+              "selector": {
+                "app": "frontend"
+              },
+              "ports": [
+                {
+                  "name": "http",
+                  "port": 80,
+                  "targetPort": 8080,
+                  "protocol": "TCP"
+                }
+              ],
+              "selected_pods": [
+                {
+                  "name": "frontend-d5f45cf8-zn8b4",
+                  "labels": {
+                    "app": "frontend",
+                    "pod-template-hash": "d5f45cf8"
+                  },
+                  "phase": "Running",
+                  "ready": true,
+                  "pod_ip": "10.244.1.10",
+                  "container_ports": [
+                    {
+                      "container": "server",
+                      "name": "",
+                      "containerPort": 8080,
+                      "protocol": "TCP"
+                    }
+                  ]
+                }
+              ],
+              "deployment_pods": [
+                {
+                  "name": "frontend-d5f45cf8-zn8b4",
+                  "labels": {
+                    "app": "frontend",
+                    "pod-template-hash": "d5f45cf8"
+                  },
+                  "phase": "Running",
+                  "ready": true,
+                  "pod_ip": "10.244.1.10",
+                  "container_ports": [
+                    {
+                      "container": "server",
+                      "name": "",
+                      "containerPort": 8080,
+                      "protocol": "TCP"
+                    }
+                  ]
+                }
+              ],
+              "endpoints": {
+                "ready_addresses": 1,
+                "not_ready_addresses": 0,
+                "subsets": [
+                  {
+                    "ports": [
+                      {
+                        "name": "http",
+                        "port": 8080,
+                        "protocol": "TCP"
+                      }
+                    ],
+                    "ready_addresses": [
+                      {
+                        "ip": "10.244.1.10",
+                        "target_ref": "frontend-d5f45cf8-zn8b4"
+                      }
+                    ],
+                    "not_ready_addresses": []
+                  }
+                ],
+                "endpoint_slices": [
+                  {
+                    "name": "frontend-hbhsc",
+                    "ports": [
+                      {
+                        "name": "http",
+                        "port": 8080,
+                        "protocol": "TCP"
+                      }
+                    ],
+                    "endpoints": [
+                      {
+                        "addresses": [
+                          "10.244.1.10"
+                        ],
+                        "ready": true,
+                        "serving": true,
+                        "terminating": false,
+                        "target_ref": "frontend-d5f45cf8-zn8b4"
+                      }
+                    ]
+                  }
+                ],
+                "endpoints_error": null,
+                "endpoint_slices_error": null
+              },
+              "summary": {
+                "service": "frontend",
+                "exists": true,
+                "selector": {
+                  "app": "frontend"
+                },
+                "selected_pod_count": 1,
+                "deployment_pod_count": 1,
+                "deployment_pod_labels": [
+                  {
+                    "name": "frontend-d5f45cf8-zn8b4",
+                    "labels": {
+                      "app": "frontend",
+                      "pod-template-hash": "d5f45cf8"
+                    },
+                    "ready": true
+                  }
+                ],
+                "service_ports": [
+                  {
+                    "name": "http",
+                    "port": 80,
+                    "targetPort": 8080,
+                    "protocol": "TCP"
+                  }
+                ],
+                "container_ports": [
+                  {
+                    "container": "server",
+                    "name": "",
+                    "containerPort": 8080,
+                    "protocol": "TCP"
+                  }
+                ],
+                "endpoint_counts": {
+                  "effective_ready": 1,
+                  "effective_not_ready": 0,
+                  "raw_endpoints_ready": 1,
+                  "raw_endpoints_not_ready": 0,
+                  "endpoint_slice_ready": 1,
+                  "endpoint_slice_not_ready": 0
+                },
+                "service_port_alignment": {
+                  "aligned": true,
+                  "mismatches": []
+                },
+                "anomalies": [],
+                "takeaway": "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+              },
+              "error": null
+            },
+            "error": null,
+            "call_id": "6b75ea39-1662-421f-9aad-3399b8c21070",
+            "timestamp": "2026-04-16T18:28:31.794413Z"
+          }
+        },
+        "get_metrics|service=frontend": {
+          "service": "frontend",
+          "timestamp": "2026-04-16T18:28:32.867403Z",
+          "metrics": {
+            "error_rate_pct": 0.0,
+            "latency_p95_ms": 70.33811475409814,
+            "latency_p99_ms": 243.12709030100314,
+            "request_rps": 124.95434862002398,
+            "cpu_usage_cores": 0.17749464563211875,
+            "cpu_limit_pct": 29.58244093868646,
+            "cpu_throttle_pct": 2.409,
+            "memory_limit_pct": 31.70166015625
+          },
+          "anomalies": [],
+          "baseline_deltas": {},
+          "raw_output": {
+            "service": "frontend",
+            "metrics": {
+              "cpu_usage": 0.17749464563211875,
+              "cpu_mcores": 177.49464563211876,
+              "cpu_request_cores": 0.25,
+              "cpu_limit_cores": 0.6,
+              "cpu_utilization_pct_of_request": 70.99785825284751,
+              "cpu_utilization_pct_of_limit": 29.58244093868646,
+              "cpu_headroom_cores_to_limit": 0.4225053543678812,
+              "cpu_throttled_seconds_rate": 0.006972919372312206,
+              "cpu_throttled_periods_rate": 0.2288053643946315,
+              "cpu_periods_rate": 9.496482105954927,
+              "cpu_throttling_ratio": 0.0240936972072169,
+              "memory_usage": 85098496.0,
+              "memory_rss_bytes": 71860224.0,
+              "error_rate": 0.0,
+              "p95_latency_ms": 70.33811475409814,
+              "p99_latency_ms": 243.12709030100314,
+              "request_rps": 124.95434862002398,
+              "error_rps": 0.0,
+              "memory_mib": 81.15625,
+              "memory_rss_mib": 68.53125,
+              "memory_request_bytes": 134217728.0,
+              "memory_limit_bytes": 268435456.0,
+              "memory_request_mib": 128.0,
+              "memory_limit_mib": 256.0,
+              "memory_utilization_pct_of_request": 63.4033203125,
+              "memory_utilization_pct_of_limit": 31.70166015625,
+              "memory_headroom_bytes_to_limit": 183336960.0,
+              "resource_metrics_available": true,
+              "application_metrics_available": true,
+              "resource_metric_gaps": [],
+              "application_metric_gaps": []
+            },
+            "error": null,
+            "call_id": "d0732c92-f278-4a22-a006-3d68e3e1196b",
+            "timestamp": "2026-04-16T18:28:32.867403Z"
+          }
+        },
+        "get_logs|service=frontend": {
+          "service": "frontend",
+          "timestamp": "2026-04-16T18:28:32.892953Z",
+          "lines": [
+            {
+              "level": "ERROR",
+              "msg": "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"0be51192-2dca-47f0-9c40-ac9486398dd2\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"4ccd7a4b-ffd0-4c7f-82da-6445b70cfe52\",\"severity\":\"error\",\"timestamp\":\"2026-04-16T18:28:30.268251877Z\"}",
+              "signal_class": "application_error"
+            },
+            {
+              "level": "ERROR",
+              "msg": "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"5422bf61-00b4-4fe0-881d-4ad8d99f76a2\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"ebcf011c-cc35-44a3-a53f-b3c3bfb3bc98\",\"severity\":\"error\",\"timestamp\":\"2026-04-16T18:28:30.268541919Z\"}",
+              "signal_class": "application_error"
+            }
+          ],
+          "dominant_signal": "application_error",
+          "raw_output": {
+            "service": "frontend",
+            "pod_name": "frontend-d5f45cf8-zn8b4",
+            "error_count": 2,
+            "error_lines": [
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"0be51192-2dca-47f0-9c40-ac9486398dd2\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"4ccd7a4b-ffd0-4c7f-82da-6445b70cfe52\",\"severity\":\"error\",\"timestamp\":\"2026-04-16T18:28:30.268251877Z\"}",
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"5422bf61-00b4-4fe0-881d-4ad8d99f76a2\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"ebcf011c-cc35-44a3-a53f-b3c3bfb3bc98\",\"severity\":\"error\",\"timestamp\":\"2026-04-16T18:28:30.268541919Z\"}"
+            ],
+            "signal_lines": [
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"0be51192-2dca-47f0-9c40-ac9486398dd2\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"4ccd7a4b-ffd0-4c7f-82da-6445b70cfe52\",\"severity\":\"error\",\"timestamp\":\"2026-04-16T18:28:30.268251877Z\"}",
+              "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"5422bf61-00b4-4fe0-881d-4ad8d99f76a2\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"ebcf011c-cc35-44a3-a53f-b3c3bfb3bc98\",\"severity\":\"error\",\"timestamp\":\"2026-04-16T18:28:30.268541919Z\"}"
+            ],
+            "recent_lines": [
+              "env platform is either empty or invalid",
+              "env platform is either empty or invalid",
+              "env platform is either empty or invalid",
+              "env platform is either empty or invalid",
+              "{\"http.req.id\":\"bef1c8ba-9f3b-4d6d-8da5-92664ec9a60f\",\"http.req.method\":\"GET\",\"http.req.path\":\"/\",\"message\":\"ENV_PLATFORM is: local\",\"session\":\"3b06f8dc-1f8a-47ec-889d-1bd85783ab73\",\"severity\":\"debug\",\"timestamp\":\"2026-04-16T18:28:33.028725837Z\"}",
+              "{\"http.req.id\":\"a59df4ee-5a26-4503-a9aa-c6f2a79c9ccf\",\"http.req.method\":\"GET\",\"http.req.path\":\"/\",\"message\":\"ENV_PLATFORM is: local\",\"session\":\"9c6a524b-aaca-4f25-bd9a-3eb324d2e3e8\",\"severity\":\"debug\",\"timestamp\":\"2026-04-16T18:28:33.030357754Z\"}",
+              "{\"http.req.id\":\"12338d1f-5bac-434b-935b-214fb751d79a\",\"http.req.method\":\"GET\",\"http.req.path\":\"/\",\"message\":\"ENV_PLATFORM is: local\",\"session\":\"e6680017-1a45-4923-881c-8371df2a4524\",\"severity\":\"debug\",\"timestamp\":\"2026-04-16T18:28:33.030383795Z\"}",
+              "{\"http.req.id\":\"28c4e9a6-e0de-4106-a7c3-698004c28cea\",\"http.req.method\":\"GET\",\"http.req.path\":\"/\",\"message\":\"ENV_PLATFORM is: local\",\"session\":\"753e9701-0bea-48a3-a3df-42db52d8f24a\",\"severity\":\"debug\",\"timestamp\":\"2026-04-16T18:28:33.030451587Z\"}"
+            ],
+            "pods": [
+              {
+                "error_count": 2,
+                "error_lines": [
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"0be51192-2dca-47f0-9c40-ac9486398dd2\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"4ccd7a4b-ffd0-4c7f-82da-6445b70cfe52\",\"severity\":\"error\",\"timestamp\":\"2026-04-16T18:28:30.268251877Z\"}",
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"5422bf61-00b4-4fe0-881d-4ad8d99f76a2\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"ebcf011c-cc35-44a3-a53f-b3c3bfb3bc98\",\"severity\":\"error\",\"timestamp\":\"2026-04-16T18:28:30.268541919Z\"}"
+                ],
+                "signal_lines": [
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"0be51192-2dca-47f0-9c40-ac9486398dd2\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"4ccd7a4b-ffd0-4c7f-82da-6445b70cfe52\",\"severity\":\"error\",\"timestamp\":\"2026-04-16T18:28:30.268251877Z\"}",
+                  "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"5422bf61-00b4-4fe0-881d-4ad8d99f76a2\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"ebcf011c-cc35-44a3-a53f-b3c3bfb3bc98\",\"severity\":\"error\",\"timestamp\":\"2026-04-16T18:28:30.268541919Z\"}"
+                ],
+                "recent_lines": [
+                  "env platform is either empty or invalid",
+                  "env platform is either empty or invalid",
+                  "env platform is either empty or invalid",
+                  "env platform is either empty or invalid",
+                  "{\"http.req.id\":\"bef1c8ba-9f3b-4d6d-8da5-92664ec9a60f\",\"http.req.method\":\"GET\",\"http.req.path\":\"/\",\"message\":\"ENV_PLATFORM is: local\",\"session\":\"3b06f8dc-1f8a-47ec-889d-1bd85783ab73\",\"severity\":\"debug\",\"timestamp\":\"2026-04-16T18:28:33.028725837Z\"}",
+                  "{\"http.req.id\":\"a59df4ee-5a26-4503-a9aa-c6f2a79c9ccf\",\"http.req.method\":\"GET\",\"http.req.path\":\"/\",\"message\":\"ENV_PLATFORM is: local\",\"session\":\"9c6a524b-aaca-4f25-bd9a-3eb324d2e3e8\",\"severity\":\"debug\",\"timestamp\":\"2026-04-16T18:28:33.030357754Z\"}",
+                  "{\"http.req.id\":\"12338d1f-5bac-434b-935b-214fb751d79a\",\"http.req.method\":\"GET\",\"http.req.path\":\"/\",\"message\":\"ENV_PLATFORM is: local\",\"session\":\"e6680017-1a45-4923-881c-8371df2a4524\",\"severity\":\"debug\",\"timestamp\":\"2026-04-16T18:28:33.030383795Z\"}",
+                  "{\"http.req.id\":\"28c4e9a6-e0de-4106-a7c3-698004c28cea\",\"http.req.method\":\"GET\",\"http.req.path\":\"/\",\"message\":\"ENV_PLATFORM is: local\",\"session\":\"753e9701-0bea-48a3-a3df-42db52d8f24a\",\"severity\":\"debug\",\"timestamp\":\"2026-04-16T18:28:33.030451587Z\"}"
+                ],
+                "pod_name": "frontend-d5f45cf8-zn8b4"
+              }
+            ],
+            "error": null,
+            "call_id": "72d32daa-f087-4431-9d0a-50d468db12ca",
+            "timestamp": "2026-04-16T18:28:32.892953Z"
+          }
+        }
+      },
+      "observability": {
+        "metrics_quality": "rich",
+        "logs_quality": "rich",
+        "traces_quality": "rich",
+        "summary_counts": {
+          "rich": 7,
+          "weak": 0,
+          "missing": 0
+        }
+      },
+      "transitions": [
+        {
+          "trigger_type": "tool",
+          "trigger_value": "wait_and_monitor",
+          "target_phase": 0,
+          "label": "static_replay",
+          "threshold": 0
+        }
+      ]
+    }
+  ],
+  "ground_truth": {
+    "root_cause": "productcatalogservice service targetPort mismatch",
+    "root_cause_service": "productcatalogservice",
+    "fault_class": "native_service_port_mismatch",
+    "correct_actions": [
+      {
+        "canonical": "patch_service_target_port:productcatalogservice",
+        "tool_equivalents": [
+          "patch_service_target_port(productcatalogservice)"
+        ]
+      }
+    ],
+    "acceptable_actions": [
+      {
+        "canonical": "patch_service_target_port:productcatalogservice",
+        "tool_equivalents": [
+          "patch_service_target_port(productcatalogservice)"
+        ]
+      }
+    ],
+    "incorrect_actions": [
+      {
+        "canonical": "restart_pod:productcatalogservice",
+        "tool_equivalents": [
+          "restart_pod(productcatalogservice)"
+        ]
+      },
+      {
+        "canonical": "rollout_restart:productcatalogservice",
+        "tool_equivalents": [
+          "rollout_restart(productcatalogservice)"
+        ]
+      }
+    ]
+  },
+  "telemetry_contract": {
+    "required_present": [
+      "get_k8s_state(productcatalogservice)",
+      "get_logs(productcatalogservice)"
+    ],
+    "required_nonzero": []
+  },
+  "scoring": {
+    "max_steps": 12,
+    "diagnosis_weight": 0.5,
+    "action_correctness_weight": 0.3,
+    "step_economy_weight": 0.2,
+    "step_economy_baseline": 6
+  },
+  "provenance": {
+    "source_run_dir": "results/native_episode_collection/easy_topoff_20260416T182707Z/native_service_port_mismatch_productcatalogservice/20260416T182707Z_native_service_port_mismatch_productcatalogservice_baseline_evidence",
+    "captured_from_live_run": true,
+    "capture_timestamp_utc": "2026-04-16T18:29:37Z"
+  }
+}

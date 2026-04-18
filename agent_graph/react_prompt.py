@@ -29,7 +29,14 @@ get_k8s_state(service)
   - desired_replicas
   - available_replicas
   - pod_phases
-  - recent_events
+  - deployment_selector
+  - deployment_config with container images, env vars, envFrom refs, resources, readiness/liveness/startup probes, and container ports
+  - service_config_summary with selector, selected pod count, pod labels, Service ports/targetPorts, container ports, effective endpoint counts, Service/port anomalies, and a concise takeaway
+  - service_config.selector
+  - service_config.ports with Service port and targetPort
+  - service_config.selected_pods and deployment_pods with labels and container ports
+  - service_config.endpoints with EndpointSlice and ready/not-ready endpoint counts
+  - recent_events with age/stale labels when available
   - rollout_progressing
   - restart_count
 
@@ -156,6 +163,7 @@ action_type choices:
 - patch_service_selector
 - patch_service_target_port
 - scale_deployment
+- delete_stress_job
 - wait_and_monitor
 
 Use these action styles when the evidence supports them:
@@ -163,6 +171,7 @@ Use these action styles when the evidence supports them:
 - Service targetPort mismatch: action_type=patch_service_target_port and action_taken="patch service/<service> targetPort to <container_port>"
 - Deployment scaled to zero: action_type=scale_deployment and action_taken="scale_deployment(<service>)"
 - Bad deployment config/image/probe: action_type=rollout_undo and action_taken="rollout_undo(<service>)"
+- Native stress job pressure: action_type=delete_stress_job and action_taken="delete the AgentScope native stress job"
 
 MISSION
 
@@ -190,6 +199,7 @@ INVESTIGATION PRINCIPLES
 - Start by inspecting Kubernetes state to understand cluster health.
 - Use traces when dependency behavior, latency concentration, or request-path localization is unclear.
 - Use get_dependency_traces when a service itself looks healthy but may be waiting on one of its downstream calls.
+- Use deployment_config when a dependency or bad-env configuration fault is plausible. Compare env service addresses and ports against Service ports/endpoints, logs, and traces before blaming a downstream service.
 - Use metrics when resource pressure, traffic anomalies, or performance degradation is suspected.
 - Use logs to confirm specific failure modes such as rollout issues, crash behavior, dependency errors, or repeated restarts.
 - If get_traces returns transport or API errors, treat trace data as unavailable observability evidence. Do not infer service unhealthiness from trace retrieval failure alone.
@@ -230,10 +240,12 @@ Use these as guidance, not rigid rules:
   - traces or logs showing failures concentrated on the downstream dependency
 
 - Native Kubernetes Service misconfiguration is often indicated by:
+  - service_config_summary.anomalies containing service_selector_matches_no_pods or service_target_port_mismatch
   - Service endpoints missing or not matching otherwise healthy pods
   - a Service selector that does not match the pods' labels
   - a Service targetPort that does not match the container port exposed by healthy pods
   - upstream errors while the target deployment itself has healthy replicas
+  - current Service config evidence should outweigh stale startup/probe events when the deployment is currently available
 
 - Network faults are often indicated by:
   - one service-to-service hop dominating latency in traces

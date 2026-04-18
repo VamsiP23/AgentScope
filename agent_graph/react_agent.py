@@ -269,6 +269,7 @@ class ReActAgent:
                             "patch_service_selector",
                             "patch_service_target_port",
                             "scale_deployment",
+                            "delete_stress_job",
                             "wait_and_monitor",
                         ],
                     },
