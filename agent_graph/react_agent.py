@@ -25,6 +25,37 @@ from agent_graph.react_prompt import PURE_SYSTEM_PROMPT
 from agent_graph.react_render import format_thought, summarize_output, summarize_output_for_prompt, tool_signatures
 from agent_graph.reasoning.llm import ResponsesJSONClient
 
+
+BOUNDED_REACT_POLICY_PROMPT = """
+BOUNDED DIAGNOSTIC REACT POLICY
+
+You are running in bounded diagnostic mode. Gather the minimum discriminating
+evidence before submitting, and make every tool call test a hypothesis rather
+than merely confirm an early guess.
+
+Before every non-submit tool call, make the hypothesis test explicit:
+- leading_hypothesis: the current best diagnosis
+- alternative_hypothesis: the strongest competing diagnosis
+- why_this_tool_reduces_uncertainty: what this tool will confirm or rule out
+
+Submission gates:
+- Do not submit a dependency-path diagnosis until traces have been inspected
+  with get_dependency_traces or get_traces, unless trace tooling is unavailable.
+- Do not submit a resource/performance diagnosis until get_metrics has been
+  inspected.
+- If external CPU/memory pressure or a native stress job is plausible and
+  get_cluster_resource_context is available, inspect it before submitting.
+- Before final submission, explicitly distinguish service wiring vs dependency
+  path, resource pressure vs dependency degradation, and lifecycle/rollout vs
+  resource failure when those alternatives are plausible.
+- Keep taxonomy and remediation semantics aligned: dependency configuration
+  regressions use rollout_undo, Service wiring mismatches use the corresponding
+  Service patch action, app-local resource limit faults use patch_resources,
+  external stress-job pressure uses delete_stress_job, and pod deletion uses
+  wait_and_monitor.
+""".strip()
+
+
 class ReActAgent:
     def __init__(
         self,
@@ -34,6 +65,7 @@ class ReActAgent:
         max_steps: int = 35,
         allow_exec_shell: bool = True,
         diagnosis_only: bool = False,
+        agent_variant: str = "pure_react",
         step_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> None:
         self.aci = aci
@@ -42,6 +74,8 @@ class ReActAgent:
         self.max_steps = max_steps
         self.allow_exec_shell = allow_exec_shell
         self.diagnosis_only = diagnosis_only
+        self.agent_variant = agent_variant.strip() or "pure_react"
+        self.bounded_mode = self.agent_variant in {"bounded_react", "bounded_react_compact"}
         self.step_callback = step_callback
         self.client = ResponsesJSONClient(model=self.model, provider=self.provider)
         self.trace: List[Dict[str, Any]] = []
@@ -83,7 +117,7 @@ class ReActAgent:
                         "agent_type": "react",
                         "provider": self.provider,
                         "model": self.model,
-                        "agent_variant": "pure_react",
+                        "agent_variant": self.agent_variant,
                         "guardrail_events": list(self.guardrail_events),
                         "steps": list(self.trace),
                         "solution": output,
@@ -102,6 +136,8 @@ class ReActAgent:
         allowed = ["get_k8s_state", "get_metrics", "get_logs"]
         if self.aci.jaeger_enabled:
             allowed.extend(["get_traces", "get_dependency_traces"])
+        if self.bounded_mode and self._cluster_resource_context_available():
+            allowed.append("get_cluster_resource_context")
         if len(evidence_calls) >= 2 and not self.diagnosis_only:
             allowed.extend(
                 [
@@ -123,7 +159,7 @@ class ReActAgent:
 
     def _build_prompt(self, problem_description: str, step_number: int, allowed_tools: List[str]) -> Dict[str, Any]:
         return {
-            "system_prompt": PURE_SYSTEM_PROMPT,
+            "system_prompt": self._system_prompt(),
             "task": problem_description,
             "provider": self.provider,
             "model": self.model,
@@ -152,9 +188,15 @@ class ReActAgent:
                 "must_use_typed_action_tools_instead_of_raw_shell": True,
                 "must_not_execute_remediation_tools_in_diagnosis_only_mode": self.diagnosis_only,
             },
+            "bounded_react_policy": self._bounded_policy_state() if self.bounded_mode else {},
             "completed_steps": list(self._decision_history),
             "available_call_ids": [step["call_id"] for step in self.trace if step["tool_called"] != "submit_solution"],
         }
+
+    def _system_prompt(self) -> str:
+        if not self.bounded_mode:
+            return PURE_SYSTEM_PROMPT
+        return f"{PURE_SYSTEM_PROMPT}\n\n{BOUNDED_REACT_POLICY_PROMPT}"
 
     def _build_retry_prompt(
         self,
@@ -360,7 +402,7 @@ class ReActAgent:
         thought = format_thought(decision)
         service = ""
 
-        if tool in {"get_k8s_state", "get_metrics", "get_traces", "get_dependency_traces", "get_logs"}:
+        if tool in {"get_k8s_state", "get_metrics", "get_traces", "get_dependency_traces", "get_logs", "get_cluster_resource_context"}:
             service = self._resolve_service(tool, tool_input)
             tool_input["service"] = service
         elif tool in {"restart_pod", "rollout_restart", "rollout_undo", "patch_resources"}:
@@ -391,6 +433,16 @@ class ReActAgent:
                 service,
                 tail_lines=int(tool_input.get("tail_lines", 100) or 100),
             )
+        elif tool == "get_cluster_resource_context":
+            getter = getattr(self.aci, "get_cluster_resource_context", None)
+            if callable(getter):
+                output = getter(service)
+            else:
+                output = {
+                    "call_id": "",
+                    "timestamp": time.time(),
+                    "error": "get_cluster_resource_context is not available for this backend",
+                }
         elif tool == "restart_pod":
             output = self.aci.restart_pod(
                 service,
@@ -417,17 +469,19 @@ class ReActAgent:
         elif tool == "exec_shell":
             output = self.aci.exec_shell(str(tool_input.get("command", "")).strip())
         elif tool == "submit_solution":
-            root_cause = str(decision.get("root_cause", "")).strip()
-            action_taken = str(decision.get("action_taken", "")).strip()
-            fault_class = str(decision.get("fault_class", "")).strip()
-            affected_service = str(decision.get("affected_service", "")).strip()
-            action_type = str(decision.get("action_type", "")).strip()
+            root_cause = self._submit_field(decision, tool_input, "root_cause")
+            action_taken = self._submit_field(decision, tool_input, "action_taken")
+            fault_class = self._submit_field(decision, tool_input, "fault_class")
+            affected_service = self._submit_field(decision, tool_input, "affected_service")
+            action_type = self._submit_field(decision, tool_input, "action_type")
             if fault_class == "unknown":
                 fault_class = ""
             if action_type == "unknown":
                 action_type = ""
-            confidence = float(decision.get("confidence", 0.0) or 0.0)
-            evidence = [str(item).strip() for item in list(decision.get("evidence", []) or []) if str(item).strip()]
+            confidence_value = decision.get("confidence", tool_input.get("confidence", 0.0))
+            confidence = float(confidence_value or 0.0)
+            evidence_value = decision.get("evidence", tool_input.get("evidence", []))
+            evidence = [str(item).strip() for item in list(evidence_value or []) if str(item).strip()]
             if confidence <= 0.0 and (root_cause or action_taken):
                 confidence = 0.5
             output = self.aci.submit_solution(
@@ -460,8 +514,19 @@ class ReActAgent:
         requested = str(tool_input.get("service", "")).strip()
         return requested or self._default_service()
 
+    def _submit_field(self, decision: Dict[str, Any], tool_input: Dict[str, Any], field: str) -> str:
+        value = decision.get(field)
+        if value in (None, ""):
+            value = tool_input.get(field, "")
+        return str(value or "").strip()
+
     def _decision_guardrail_violation(self, decision: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         tool = str(decision.get("tool", "")).strip()
+        if tool == "submit_solution" and self.bounded_mode:
+            submit_violation = self._bounded_submit_violation(decision)
+            if submit_violation is not None:
+                return submit_violation
+
         if tool in {"", "submit_solution"}:
             return None
 
@@ -529,6 +594,7 @@ class ReActAgent:
             "get_traces",
             "get_dependency_traces",
             "get_logs",
+            "get_cluster_resource_context",
             "restart_pod",
             "rollout_restart",
             "rollout_undo",
@@ -725,6 +791,11 @@ class ReActAgent:
             tokens.add(f"cpu_band:{round(float(metrics.get('cpu_usage', 0.0) or 0.0), 2)}")
             tokens.add(f"error_rate_band:{round(float(metrics.get('error_rate', 0.0) or 0.0), 2)}")
             tokens.add(f"latency_band:{round(float(metrics.get('p99_latency_ms', 0.0) or 0.0), -1)}")
+        elif tool == "get_cluster_resource_context":
+            for anomaly in output.get("anomalies", []) or []:
+                if not isinstance(anomaly, dict):
+                    continue
+                tokens.add(f"cluster_resource:{anomaly.get('type', '')}:{anomaly.get('resource', '')}")
         elif tool == "get_traces":
             tokens.add(f"trace_count:{int(output.get('trace_count', 0) or 0)}")
             bottleneck = normalize_service_name(str(output.get("bottleneck_service", "")))
@@ -752,6 +823,214 @@ class ReActAgent:
         for prior in prior_steps:
             prior_tokens |= self._diagnostic_tokens(prior)
         return bool(current_tokens - prior_tokens)
+
+    def _cluster_resource_context_available(self) -> bool:
+        return callable(getattr(self.aci, "get_cluster_resource_context", None))
+
+    def _bounded_policy_state(self) -> Dict[str, Any]:
+        return {
+            "variant": self.agent_variant,
+            "called_tools": [str(step.get("tool_called", "")) for step in self._evidence_steps()],
+            "has_trace_evidence": self._has_trace_evidence(),
+            "has_metrics_evidence": self._has_metrics_evidence(),
+            "has_cluster_resource_context": self._has_cluster_resource_context(),
+            "cluster_resource_context_available": self._cluster_resource_context_available(),
+            "submit_gates": [
+                "dependency-path diagnosis requires get_dependency_traces or get_traces first",
+                "resource/performance diagnosis requires get_metrics first",
+                "external pressure/stress-job diagnosis requires get_cluster_resource_context when available",
+            ],
+        }
+
+    def _bounded_submit_violation(self, decision: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        text = self._decision_text(decision)
+        if self.aci.jaeger_enabled and self._decision_mentions_dependency(text) and not self._has_trace_evidence():
+            return {
+                "type": "bounded_submit_missing_trace_evidence",
+                "reason": (
+                    "The proposed submission is dependency-path or downstream-config related, but no trace evidence "
+                    "has been inspected. Call get_dependency_traces or get_traces before submitting."
+                ),
+                "disallow_tool": "submit_solution",
+                "required_evidence": ["get_dependency_traces", "get_traces"],
+            }
+
+        if self._decision_mentions_service_port_patch(text) and not self._has_service_port_mismatch_evidence():
+            return {
+                "type": "bounded_submit_missing_service_port_evidence",
+                "reason": (
+                    "The proposed submission is a Service targetPort mismatch, but inspected Kubernetes evidence "
+                    "does not contain a service-scoped port inconsistency. If the signal is an application dependency "
+                    "address/port inconsistency, inspect dependency traces and classify it as dependency-path/config "
+                    "rather than patching the Kubernetes Service targetPort."
+                ),
+                "disallow_tool": "submit_solution",
+                "required_evidence": ["get_k8s_state with service-scoped port_inconsistency"],
+            }
+
+        if self._decision_mentions_resource(text) and not self._has_metrics_evidence():
+            return {
+                "type": "bounded_submit_missing_metrics_evidence",
+                "reason": (
+                    "The proposed submission is resource/performance related, but get_metrics has not been inspected. "
+                    "Call get_metrics before submitting a resource diagnosis or action."
+                ),
+                "disallow_tool": "submit_solution",
+                "required_evidence": ["get_metrics"],
+            }
+
+        if (
+            self._cluster_resource_context_available()
+            and self._decision_mentions_external_pressure(text)
+            and not self._has_cluster_resource_context()
+        ):
+            return {
+                "type": "bounded_submit_missing_cluster_resource_context",
+                "reason": (
+                    "The proposed submission involves external CPU/memory pressure or a stress job, but cluster "
+                    "resource context has not been inspected. Call get_cluster_resource_context before submitting."
+                ),
+                "disallow_tool": "submit_solution",
+                "required_evidence": ["get_cluster_resource_context"],
+            }
+
+        action_violation = self._bounded_action_semantics_violation(decision)
+        if action_violation is not None:
+            return action_violation
+
+        return None
+
+    def _decision_text(self, decision: Dict[str, Any]) -> str:
+        fields = [
+            "belief",
+            "uncertainty",
+            "next_evidence_needed",
+            "leading_hypothesis",
+            "alternative_hypothesis",
+            "evidence_supporting_leading",
+            "evidence_against_alternative",
+            "what_result_would_change_my_mind",
+            "decision_impact",
+            "why_this_tool_reduces_uncertainty",
+            "why_not_submit_now",
+            "root_cause",
+            "action_taken",
+            "fault_class",
+            "affected_service",
+            "action_type",
+        ]
+        return " ".join(str(decision.get(field, "")) for field in fields).lower()
+
+    def _decision_mentions_dependency(self, text: str) -> bool:
+        markers = [
+            "dependency",
+            "downstream",
+            "upstream",
+            "endpoint",
+            "bad_env",
+            "native_bad_env",
+            "native_dependency_bad_endpoint",
+            "timeout contacting",
+            "connection refused",
+        ]
+        if "native_service_port_mismatch" in text or "native_service_selector_mismatch" in text:
+            return False
+        return any(marker in text for marker in markers)
+
+    def _decision_mentions_service_port_patch(self, text: str) -> bool:
+        markers = [
+            "native_service_port_mismatch",
+            "patch_service_target_port",
+            "service targetport mismatch",
+            "service target port mismatch",
+        ]
+        return any(marker in text for marker in markers)
+
+    def _decision_mentions_resource(self, text: str) -> bool:
+        markers = [
+            "resource",
+            "cpu",
+            "memory",
+            "oom",
+            "throttle",
+            "throttling",
+            "saturation",
+            "pressure",
+            "native_cpu_limit_throttle",
+            "native_memory_limit_oom",
+            "native_cpu_pressure_stress_job",
+            "native_memory_pressure_stress_job",
+            "patch_resources",
+            "delete_stress_job",
+        ]
+        return any(marker in text for marker in markers)
+
+    def _decision_mentions_external_pressure(self, text: str) -> bool:
+        markers = [
+            "stress",
+            "stress_job",
+            "stress job",
+            "external pressure",
+            "external resource",
+            "native_cpu_pressure_stress_job",
+            "native_memory_pressure_stress_job",
+            "delete_stress_job",
+        ]
+        return any(marker in text for marker in markers)
+
+    def _has_trace_evidence(self) -> bool:
+        return bool(self._steps_for_tool("get_dependency_traces") or self._steps_for_tool("get_traces"))
+
+    def _has_metrics_evidence(self) -> bool:
+        return bool(self._steps_for_tool("get_metrics"))
+
+    def _has_cluster_resource_context(self) -> bool:
+        return bool(self._steps_for_tool("get_cluster_resource_context"))
+
+    def _bounded_action_semantics_violation(self, decision: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        tool_input = dict(decision.get("tool_input", {}) or {})
+        fault_class = self._submit_field(decision, tool_input, "fault_class")
+        action_type = self._submit_field(decision, tool_input, "action_type")
+        if not fault_class or not action_type or fault_class == "unknown" or action_type == "unknown":
+            return None
+
+        expected_by_class = {
+            "native_dependency_bad_endpoint": "rollout_undo",
+            "native_bad_env": "rollout_undo",
+            "native_service_port_mismatch": "patch_service_target_port",
+            "native_service_selector_mismatch": "patch_service_selector",
+            "native_bad_image_rollout": "rollout_undo",
+            "native_bad_probe_rollout": "rollout_undo",
+            "native_scale_zero": "scale_deployment",
+            "native_pod_delete": "wait_and_monitor",
+            "native_cpu_limit_throttle": "patch_resources",
+            "native_memory_limit_oom": "patch_resources",
+            "native_cpu_pressure_stress_job": "delete_stress_job",
+            "native_memory_pressure_stress_job": "delete_stress_job",
+        }
+        expected = expected_by_class.get(fault_class)
+        if expected is None or action_type == expected:
+            return None
+        return {
+            "type": "bounded_submit_incoherent_action",
+            "reason": (
+                f"The proposed fault_class={fault_class} is not semantically aligned with "
+                f"action_type={action_type}. Use action_type={expected} unless new evidence supports a "
+                "different fault class."
+            ),
+            "disallow_tool": "submit_solution",
+            "expected_action_type": expected,
+        }
+
+    def _has_service_port_mismatch_evidence(self) -> bool:
+        for step in self._steps_for_tool("get_k8s_state"):
+            output = step.get("output", {}) or {}
+            for anomaly in output.get("anomalies", []) or []:
+                if not isinstance(anomaly, dict):
+                    continue
+                if anomaly.get("type") == "port_inconsistency" and anomaly.get("scope") == "service":
+                    return True
+        return False
 
     def _rate_limit(self) -> None:
         if self._last_llm_call_at is None:

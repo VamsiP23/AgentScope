@@ -87,16 +87,16 @@ def build_agent_cmd(
     problem: ProblemSpec | None = None,
 ) -> List[str]:
     agent_type = str_value(agent.get("type"), "pipeline").strip().lower()
-    if agent_type != "react":
+    if agent_type not in {"react", "bounded_react"}:
         raise RuntimeError(
-            f"unsupported agent type '{agent_type}'. The legacy workflow agent path was removed; use type=react."
+            f"unsupported agent type '{agent_type}'. Use type=react or type=bounded_react."
         )
 
     cmd = [
         "python3",
         "./scripts/run_benchmark_agent.py",
         "--agent-type",
-        "react",
+        agent_type,
         "--backend",
         "live",
         "--namespace",

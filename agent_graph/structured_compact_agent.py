@@ -99,6 +99,7 @@ def group_evidence_by_channel(evidence: List[Dict[str, Any]]) -> Dict[str, List[
         "metrics": [],
         "traces": [],
         "dependency_traces": [],
+        "cluster_resource_context": [],
     }
     for item in evidence:
         tool = str(item.get("tool", ""))
@@ -112,6 +113,8 @@ def group_evidence_by_channel(evidence: List[Dict[str, Any]]) -> Dict[str, List[
             groups["traces"].append(item)
         elif tool == "get_dependency_traces":
             groups["dependency_traces"].append(item)
+        elif tool == "get_cluster_resource_context":
+            groups["cluster_resource_context"].append(item)
     return groups
 
 
@@ -127,7 +130,15 @@ def triage_schema() -> Dict[str, Any]:
                 "type": "array",
                 "items": {
                     "type": "string",
-                    "enum": ["k8s_state", "service_config", "logs", "metrics", "traces", "dependency_traces"],
+                    "enum": [
+                        "k8s_state",
+                        "service_config",
+                        "logs",
+                        "metrics",
+                        "traces",
+                        "dependency_traces",
+                        "cluster_resource_context",
+                    ],
                 },
             },
             "key_observations": {"type": "array", "items": {"type": "string"}},

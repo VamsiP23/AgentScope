@@ -12,6 +12,7 @@ EVIDENCE_TOOLS = {
     "get_logs",
     "get_traces",
     "get_dependency_traces",
+    "get_cluster_resource_context",
 }
 
 
@@ -32,6 +33,8 @@ class EvidenceDistiller:
             view = self._logs(raw)
         elif method in {"get_traces", "get_dependency_traces"}:
             view = self._traces(method, raw)
+        elif method == "get_cluster_resource_context":
+            view = self._cluster_resource_context(raw)
         else:
             view = self._base(method, raw)
 
@@ -43,6 +46,50 @@ class EvidenceDistiller:
         if raw.get("error"):
             view["status"] = "error"
             view["observability_gaps"].append(str(raw.get("error")))
+        return view
+
+    def _cluster_resource_context(self, raw: Dict[str, Any]) -> Dict[str, Any]:
+        view = self._base("get_cluster_resource_context", raw)
+        service = str(raw.get("service", "")).strip() or "service"
+        workloads = list(raw.get("active_non_app_workloads", []) or [])
+        pressure = dict(raw.get("resource_pressure", {}) or {})
+        resource = str(pressure.get("resource", "unknown") or "unknown").strip().lower()
+        if workloads:
+            phases = Counter(str(item.get("phase", "unknown") or "unknown") for item in workloads)
+            nodes = sorted({str(item.get("node", "")).strip() for item in workloads if str(item.get("node", "")).strip()})
+            view["key_facts"].append(
+                {
+                    "active_non_app_workloads": {
+                        "count": len(workloads),
+                        "phases": dict(phases),
+                        "nodes": nodes[:5],
+                    }
+                }
+            )
+            view["anomalies"].append(
+                {
+                    "type": "external_resource_pressure",
+                    "resource": resource if resource in {"cpu", "memory"} else "unknown",
+                    "scope": "node_or_namespace",
+                }
+            )
+        else:
+            view["negative_evidence"].append("No active non-application pressure workload was included in this evidence context.")
+
+        if raw.get("app_local_saturation_absent"):
+            view["negative_evidence"].append(
+                f"{service} app-local CPU, memory, and throttling metrics do not show limit saturation."
+            )
+        for item in raw.get("negative_evidence", []) or []:
+            text = str(item).strip()
+            if text:
+                view["negative_evidence"].append(text)
+
+        if view["anomalies"]:
+            view["status"] = "anomalous"
+            view["summary"] = "Non-application workload activity is present during the incident window."
+        else:
+            view["summary"] = "No non-application resource pressure context was returned."
         return view
 
     def _base(self, tool: str, raw: Dict[str, Any]) -> Dict[str, Any]:
@@ -141,14 +188,24 @@ class EvidenceDistiller:
                 view["negative_evidence"].append("Service targetPort values align with exposed selected-pod container ports.")
             else:
                 mismatches = list(alignment.get("mismatches", []) or [])
-                view["anomalies"].append({"type": "service_port_alignment_mismatch", "mismatches": mismatches[:5]})
+                view["anomalies"].append(
+                    {
+                        "type": "port_inconsistency",
+                        "scope": "service",
+                        "evidence_refs": ["service_ports", "selected_pod_container_ports"],
+                        "count": len(mismatches),
+                    }
+                )
         if selected_count == 0 and deployment_count > 0:
             view["anomalies"].append({"type": "service_selector_matches_no_deployment_pods", "selector": selector})
 
+        generic_service_signals = 0
         for anomaly in service_summary.get("anomalies", []) or []:
             text = str(anomaly).strip()
             if text:
-                view["anomalies"].append({"type": "service_config_anomaly", "signal": _safe_anomaly_signal(text)})
+                generic_service_signals += 1
+        if generic_service_signals:
+            view["anomalies"].append({"type": "service_config_signal", "scope": "service", "count": generic_service_signals})
         takeaway = str(service_summary.get("takeaway", "")).strip()
         if takeaway:
             view["key_facts"].append(takeaway)
@@ -186,14 +243,15 @@ class EvidenceDistiller:
             view["key_facts"].append(f"Relevant deployment env/config values: {_short_json(interesting_env[:12])}.")
             addresses = _dependency_addresses_from_env(interesting_env)
             if addresses:
-                view["key_facts"].append({"dependency_address_config": addresses[:12]})
+                view["key_facts"].append({"configured_dependency_addresses": addresses[:12]})
                 unusual = [item for item in addresses if item.get("port") in {0, 1} or _to_int(item.get("port")) > 65535]
                 if unusual:
                     view["anomalies"].append(
                         {
-                            "type": "unusual_dependency_env_port",
-                            "config_scope": "deployment_env_dependency_address",
-                            "addresses": unusual[:5],
+                            "type": "port_inconsistency",
+                            "scope": "dependency_config",
+                            "evidence_refs": ["configured_dependency_addresses"],
+                            "count": len(unusual),
                         }
                     )
 
@@ -466,6 +524,9 @@ class EvidenceDistiller:
 
     def _raw_refs(self, tool: str, raw: Dict[str, Any]) -> List[Dict[str, Any]]:
         refs = [{"tool": tool, "call_id": raw.get("call_id", ""), "timestamp": raw.get("timestamp", "")}]
+        for ref in raw.get("raw_refs", []) or []:
+            if isinstance(ref, dict):
+                refs.append(dict(ref))
         if "raw_output" in raw:
             nested = raw.get("raw_output") or {}
             refs.append(
@@ -513,25 +574,22 @@ def add_cross_record_evidence(records: List[Dict[str, Any]]) -> List[Dict[str, A
         if mismatches:
             evidence.setdefault("anomalies", []).append(
                 {
-                    "type": "dependency_env_port_mismatch_with_observed_service",
-                    "config_scope": "deployment_env_dependency_address",
-                    "mismatches": mismatches[:6],
+                    "type": "port_inconsistency",
+                    "scope": "dependency",
+                    "evidence_refs": ["configured_dependency_addresses", "observed_service_ports"],
+                    "count": len(mismatches),
                 }
             )
+            observed_by_host: Dict[str, List[int]] = {}
+            for item in mismatches[:6]:
+                host = str(item.get("host", "")).strip()
+                if host:
+                    observed_by_host[host] = list(item.get("observed_ports_for_host", []) or [])
             evidence.setdefault("key_facts", []).append(
-                {
-                    "dependency_env_service_port_comparison": [
-                        {
-                            "env": item.get("env", ""),
-                            "configured": f"{item.get('host', '')}:{item.get('port', '')}",
-                            "observed_ports_for_host": item.get("observed_ports_for_host", []),
-                        }
-                        for item in mismatches[:6]
-                    ]
-                }
+                {"observed_service_ports": observed_by_host}
             )
             evidence.setdefault("negative_evidence", []).append(
-                "Observed downstream Service/container ports do not match at least one deployment dependency env address."
+                "Configured dependency addresses and observed downstream Service/container ports both appear in evidence."
             )
     return rows
 
@@ -558,7 +616,14 @@ def select_compact_evidence_records(records: List[Dict[str, Any]], *, max_record
             selected.append(row)
 
     primary_rows = [row for row in rows if _row_service(row) == primary_service]
-    for tool in ("get_k8s_state", "get_metrics", "get_logs", "get_dependency_traces", "get_traces"):
+    for tool in (
+        "get_k8s_state",
+        "get_metrics",
+        "get_cluster_resource_context",
+        "get_logs",
+        "get_dependency_traces",
+        "get_traces",
+    ):
         for row in primary_rows:
             if row.get("tool") == tool:
                 add(row)
@@ -781,9 +846,10 @@ def _dependency_addresses_from_compact_evidence(evidence: Dict[str, Any]) -> Lis
     for fact in evidence.get("key_facts", []) or []:
         if not isinstance(fact, dict):
             continue
-        values = fact.get("dependency_address_config")
-        if isinstance(values, list):
-            addresses.extend(item for item in values if isinstance(item, dict))
+        for key in ("configured_dependency_addresses", "dependency_address_config"):
+            values = fact.get(key)
+            if isinstance(values, list):
+                addresses.extend(item for item in values if isinstance(item, dict))
     return addresses
 
 
@@ -844,25 +910,3 @@ _EVENT_SIGNAL_TOKENS = (
     "scheduled",
     "deleted",
 )
-
-
-_LEAKY_LABEL_PATTERN = re.compile(
-    r"\bnative_(service_port_mismatch|service_selector_mismatch|bad_image|bad_probe|scale_zero|pod_delete|"
-    r"dependency_bad_endpoint|cpu_limit_throttle|memory_limit_oom|cpu_pressure_stress_job|memory_pressure_stress_job|bad_env)\b"
-)
-
-
-def _safe_anomaly_type(value: str) -> str:
-    cleaned = value.strip()
-    if _LEAKY_LABEL_PATTERN.search(cleaned):
-        return "evidence_anomaly"
-    return cleaned
-
-
-def _safe_anomaly_signal(value: str) -> str:
-    cleaned = _safe_anomaly_type(value)
-    if cleaned == "evidence_anomaly":
-        return cleaned
-    tokens = cleaned.lower().replace("-", "_").split("_")
-    safe_tokens = [token for token in tokens if token and token not in {"native", "fault", "mismatch", "bad"}]
-    return "_".join(safe_tokens[:4]) or "evidence_anomaly"

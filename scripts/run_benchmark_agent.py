@@ -126,7 +126,8 @@ def main() -> int:
         seeded_detection = read_json(Path(args.seed_detection_file)) if args.seed_detection_file else {}
         initial_context = summarize_seeded_detection(seeded_detection)
 
-    if args.agent_type.strip().lower() != "react":
+    agent_type = args.agent_type.strip().lower()
+    if agent_type not in {"react", "bounded_react"}:
         raise RuntimeError(f"unsupported agent type: {args.agent_type}")
 
     problem = {}
@@ -143,6 +144,7 @@ def main() -> int:
         max_steps=args.max_steps,
         allow_exec_shell=not bool(args.dry_run),
         diagnosis_only=args.backend == "replay",
+        agent_variant="bounded_react" if agent_type == "bounded_react" else "pure_react",
         step_callback=None,
     )
 

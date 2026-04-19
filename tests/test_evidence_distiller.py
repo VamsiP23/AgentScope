@@ -42,7 +42,11 @@ def test_k8s_service_port_mismatch_compacts_without_raw_dump() -> None:
     assert "raw_output" not in compact
     assert compact["raw_refs"][1]["artifact"] == "packaged_raw_payload"
     assert any("targetPort=1" in str(fact) for fact in compact["key_facts"])
-    assert any(item.get("type") == "service_port_alignment_mismatch" for item in compact["anomalies"])
+    assert any(
+        item.get("type") == "port_inconsistency" and item.get("scope") == "service"
+        for item in compact["anomalies"]
+    )
+    assert "service_port_alignment_mismatch" not in str(compact)
 
 
 def test_logs_group_error_patterns() -> None:
@@ -144,6 +148,27 @@ def test_metrics_surface_external_pressure_profile_without_app_saturation() -> N
     assert any("App-local CPU" in item for item in compact["negative_evidence"])
 
 
+def test_cluster_resource_context_sanitizes_external_pressure_evidence() -> None:
+    compact = EvidenceDistiller().distill(
+        "get_cluster_resource_context",
+        {
+            "service": "frontend",
+            "active_non_app_workloads": [
+                {"phase": "Running", "node": "worker-a", "resource_hint": "cpu"},
+            ],
+            "resource_pressure": {"resource": "cpu", "scope": "node_or_namespace"},
+            "app_local_saturation_absent": True,
+            "raw_refs": [{"artifact": "source_run_detector_snapshot", "field": "active_stress_jobs"}],
+        },
+    )
+
+    assert compact["status"] == "anomalous"
+    assert any(item.get("type") == "external_resource_pressure" for item in compact["anomalies"])
+    assert any("active_non_app_workloads" in item for item in compact["key_facts"] if isinstance(item, dict))
+    assert "native_stress_job" not in str(compact)
+    assert "agentscope-cpu-pressure" not in str(compact)
+
+
 def test_deployment_env_addresses_are_parsed_without_label_leak() -> None:
     raw = {
         "service": "frontend",
@@ -159,8 +184,12 @@ def test_deployment_env_addresses_are_parsed_without_label_leak() -> None:
 
     compact = EvidenceDistiller().distill("get_k8s_state", raw)
 
-    assert any("dependency_address_config" in item for item in compact["key_facts"] if isinstance(item, dict))
-    assert any(item.get("type") == "unusual_dependency_env_port" for item in compact["anomalies"])
+    assert any("configured_dependency_addresses" in item for item in compact["key_facts"] if isinstance(item, dict))
+    assert any(
+        item.get("type") == "port_inconsistency" and item.get("scope") == "dependency_config"
+        for item in compact["anomalies"]
+    )
+    assert "unusual_dependency_env_port" not in str(compact)
     assert "native_dependency_bad_endpoint" not in str(compact)
 
 
@@ -173,7 +202,7 @@ def test_cross_record_dependency_env_port_comparison() -> None:
                 "service": "checkoutservice",
                 "key_facts": [
                     {
-                        "dependency_address_config": [
+                        "configured_dependency_addresses": [
                             {
                                 "env": "EMAIL_SERVICE_ADDR",
                                 "dependency_hint": "email",
@@ -205,7 +234,13 @@ def test_cross_record_dependency_env_port_comparison() -> None:
     compact_rows = add_cross_record_evidence(rows)
     checkout = compact_rows[0]["evidence"]
 
-    assert any(item.get("type") == "dependency_env_port_mismatch_with_observed_service" for item in checkout["anomalies"])
+    assert any(
+        item.get("type") == "port_inconsistency" and item.get("scope") == "dependency"
+        for item in checkout["anomalies"]
+    )
+    assert any("observed_service_ports" in item for item in checkout["key_facts"] if isinstance(item, dict))
+    assert "dependency_env_port_mismatch_with_observed_service" not in str(checkout)
+    assert "dependency_env_service_port_comparison" not in str(checkout)
     assert "native_bad_env" not in str(checkout)
 
 
@@ -218,7 +253,7 @@ def test_compact_selection_keeps_log_mentioned_dependency_state() -> None:
                 "service": "checkoutservice",
                 "key_facts": [
                     {
-                        "dependency_address_config": [
+                        "configured_dependency_addresses": [
                             {"env": "EMAIL_SERVICE_ADDR", "host": "emailservice", "port": 5999},
                             {"env": "CART_SERVICE_ADDR", "host": "cartservice", "port": 7070},
                         ]
@@ -251,4 +286,7 @@ def test_compact_selection_keeps_log_mentioned_dependency_state() -> None:
 
     assert any(row["inputs"].get("service") == "emailservice" for row in selected)
     checkout = next(row["evidence"] for row in selected if row["inputs"].get("service") == "checkoutservice")
-    assert any(item.get("type") == "dependency_env_port_mismatch_with_observed_service" for item in checkout["anomalies"])
+    assert any(
+        item.get("type") == "port_inconsistency" and item.get("scope") == "dependency"
+        for item in checkout["anomalies"]
+    )

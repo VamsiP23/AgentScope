@@ -9,6 +9,8 @@ from uuid import uuid4
 
 from agent_graph.evidence_distiller import EVIDENCE_TOOLS, EvidenceDistiller
 
+ROOT = Path(__file__).resolve().parent.parent
+
 
 @dataclass
 class ReplayDataset:
@@ -42,6 +44,7 @@ class ReplayDataset:
         calls = list(payload.get("calls", []) or [])
         if not calls and payload.get("phases"):
             calls = _calls_from_episode_phases(list(payload.get("phases", []) or []))
+        calls.extend(_cluster_resource_context_calls(payload, path, calls))
 
         return cls(
             path=path.resolve(),
@@ -67,6 +70,168 @@ def _calls_from_episode_phases(phases: List[Dict[str, Any]]) -> List[Dict[str, A
                 }
             )
     return calls
+
+
+def _cluster_resource_context_calls(
+    payload: Dict[str, Any],
+    dataset_path: Path,
+    calls: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    if any(str(record.get("method", "")).strip() == "get_cluster_resource_context" for record in calls):
+        return []
+
+    provenance = dict(payload.get("provenance", {}) or {})
+    source_run_dir = str(provenance.get("source_run_dir", "") or "").strip()
+    if not source_run_dir:
+        return []
+    source_path = Path(source_run_dir)
+    if not source_path.is_absolute():
+        source_path = ROOT / source_path
+    if not source_path.exists():
+        return []
+
+    detector = _load_detector_snapshot(source_path)
+    active_workloads = _sanitized_active_pressure_workloads(detector)
+    if not active_workloads:
+        return []
+
+    initial_context = payload.get("initial_context", {}) or {}
+    suspicious_services = []
+    if isinstance(initial_context, dict):
+        suspicious_services = list(initial_context.get("suspicious_services", []) or [])
+    service = _detector_service(detector) or str(suspicious_services[0] if suspicious_services else "")
+    if not service:
+        service = str((payload.get("fault_spec", {}) or {}).get("target_service", ""))
+    resource = _resource_from_workload_context(active_workloads)
+    outputs = {
+        "service": service,
+        "active_non_app_workloads": active_workloads,
+        "resource_pressure": {
+            "resource": resource,
+            "scope": "node_or_namespace",
+        },
+        "app_local_saturation_absent": _app_local_saturation_absent(calls, service),
+        "raw_refs": [
+            {
+                "tool": "get_cluster_resource_context",
+                "artifact": "source_run_detector_snapshot",
+                "field": "active_stress_jobs",
+            }
+        ],
+    }
+    return [
+        {
+            "method": "get_cluster_resource_context",
+            "inputs": {"service": service},
+            "outputs": outputs,
+        }
+    ]
+
+
+def _load_detector_snapshot(source_path: Path) -> Dict[str, Any]:
+    candidates = [
+        source_path / "evidence_report.json",
+        source_path / "seeded_detection.json",
+        source_path / "summary.json",
+    ]
+    for candidate in candidates:
+        if not candidate.exists():
+            continue
+        try:
+            payload = json.loads(candidate.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        detector = payload.get("detector_snapshot") if isinstance(payload, dict) else None
+        if isinstance(detector, dict):
+            return detector
+        steps = payload.get("steps", {}) if isinstance(payload, dict) else {}
+        detection = (steps or {}).get("detection") if isinstance(steps, dict) else None
+        if isinstance(detection, dict):
+            return detection
+        if isinstance(payload, dict) and payload.get("findings"):
+            return payload
+    return {}
+
+
+def _sanitized_active_pressure_workloads(detector: Dict[str, Any]) -> List[Dict[str, Any]]:
+    workloads: List[Dict[str, Any]] = []
+    findings = list(detector.get("findings", []) or [])
+    for finding in findings:
+        details = dict((finding or {}).get("details", {}) or {})
+        for item in details.get("active_stress_jobs", []) or []:
+            if not isinstance(item, dict):
+                continue
+            context = " ".join(str(item.get(key, "")) for key in ("pod", "job", "name")).lower()
+            workloads.append(
+                {
+                    "phase": str(item.get("phase", "") or ""),
+                    "node": str(item.get("node", "") or ""),
+                    "resource_hint": _resource_from_text(context),
+                }
+            )
+    unique: List[Dict[str, Any]] = []
+    seen = set()
+    for item in workloads:
+        key = tuple(sorted(item.items()))
+        if key not in seen:
+            seen.add(key)
+            unique.append(item)
+    return unique
+
+
+def _resource_from_workload_context(workloads: List[Dict[str, Any]]) -> str:
+    resources = {str(item.get("resource_hint", "")) for item in workloads}
+    if "cpu" in resources:
+        return "cpu"
+    if "memory" in resources:
+        return "memory"
+    return "unknown"
+
+
+def _resource_from_text(text: str) -> str:
+    lowered = text.lower()
+    if "cpu" in lowered:
+        return "cpu"
+    if "memory" in lowered or "mem" in lowered:
+        return "memory"
+    return "unknown"
+
+
+def _detector_service(detector: Dict[str, Any]) -> str:
+    for finding in detector.get("findings", []) or []:
+        if not isinstance(finding, dict):
+            continue
+        details = dict(finding.get("details", {}) or {})
+        active = details.get("active_stress_jobs")
+        if active:
+            return str(finding.get("service", "") or "")
+    services = detector.get("suspicious_services", []) or []
+    return str(services[0]) if services else ""
+
+
+def _app_local_saturation_absent(calls: List[Dict[str, Any]], service: str) -> bool:
+    normalized_service = str(service or "").strip()
+    for record in calls:
+        if str(record.get("method", "")).strip() != "get_metrics":
+            continue
+        inputs = dict(record.get("inputs", {}) or {})
+        outputs = dict(record.get("outputs", {}) or {})
+        if normalized_service and str(inputs.get("service", outputs.get("service", ""))).strip() != normalized_service:
+            continue
+        metrics = dict(outputs.get("metrics", {}) or {})
+        cpu_limit = _to_float(metrics.get("cpu_utilization_pct_of_limit"))
+        memory_limit = _to_float(metrics.get("memory_utilization_pct_of_limit"))
+        throttling = _to_float(metrics.get("cpu_throttling_ratio"))
+        if cpu_limit < 80.0 and memory_limit < 80.0 and throttling < 0.1:
+            return True
+    return False
+
+
+def _to_float(value: Any) -> float:
+    try:
+        return float(value or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _parse_episode_fingerprint(fingerprint: str) -> Tuple[str, Dict[str, Any]]:
@@ -123,6 +288,9 @@ class ReplayAgentCloudInterface:
 
     def get_k8s_state(self, service: str) -> Dict[str, Any]:
         return self._recorded_call("get_k8s_state", {"service": service})
+
+    def get_cluster_resource_context(self, service: str) -> Dict[str, Any]:
+        return self._recorded_call("get_cluster_resource_context", {"service": service})
 
     def get_trace_by_id(self, trace_id: str) -> Dict[str, Any]:
         return self._recorded_call("get_trace_by_id", {"trace_id": trace_id})
@@ -269,7 +437,7 @@ class ReplayAgentCloudInterface:
         return normalized
 
     def _same_target(self, method: str, recorded: Dict[str, Any], requested: Dict[str, Any]) -> bool:
-        if method in {"get_metrics", "get_traces", "get_k8s_state", "get_logs"}:
+        if method in {"get_metrics", "get_traces", "get_k8s_state", "get_logs", "get_cluster_resource_context"}:
             return str(recorded.get("service", "")).strip() == str(requested.get("service", "")).strip()
         if method == "get_dependency_traces":
             return (
