@@ -1,0 +1,181 @@
+{
+  "timestamp_utc": "2026-04-16T18:39:39Z",
+  "config": {
+    "namespace": "default",
+    "prom_url": "http://localhost:9090",
+    "window": "1m",
+    "target_deployment": "cartservice",
+    "error_ratio_threshold": 0.1,
+    "service_error_rps_threshold": 0.5,
+    "service_latency_threshold_ms": 1000.0,
+    "latency_consecutive_required": 2,
+    "service_error_consecutive_required": 1,
+    "min_total_rps": 0.1,
+    "restart_count_threshold": 1,
+    "primary_detectors": [
+      "error_ratio",
+      "service_error_rate",
+      "service_latency",
+      "deployment_availability",
+      "service_endpoints",
+      "service_port_alignment",
+      "native_stress_job"
+    ],
+    "out_file": ""
+  },
+  "incident_detected": false,
+  "suspicious_services": [],
+  "findings": [
+    {
+      "name": "error_ratio",
+      "triggered": false,
+      "severity": "info",
+      "reason": "global error ratio 0.000 with total_rps=220.218",
+      "service": "",
+      "value": 0.00033,
+      "threshold": 0.1,
+      "details": {
+        "total_rps": 220.21818181818185,
+        "error_rps": 0.07272727272727272,
+        "error_ratio": 0.0003302509907529722
+      }
+    },
+    {
+      "name": "service_error_rate",
+      "triggered": false,
+      "severity": "info",
+      "reason": "top error service frontend at 0.073 rps",
+      "service": "frontend",
+      "value": 0.072727,
+      "threshold": 0.5,
+      "details": {
+        "top_error_services": [
+          {
+            "service_name": "frontend",
+            "error_rps": 0.07272727272727272
+          }
+        ]
+      }
+    },
+    {
+      "name": "service_latency",
+      "triggered": false,
+      "severity": "info",
+      "reason": "service cartservice p99 latency 0.000 ms",
+      "service": "cartservice",
+      "value": 0.0,
+      "threshold": 1000.0,
+      "details": {
+        "service_name": "cartservice",
+        "p99_latency_ms": 0.0
+      }
+    },
+    {
+      "name": "deployment_availability",
+      "triggered": false,
+      "severity": "info",
+      "reason": "deployment cartservice available=1 updated=1 unavailable=0 desired=1",
+      "service": "cartservice",
+      "value": 1,
+      "threshold": 1,
+      "details": {
+        "exists": true,
+        "desired": 1,
+        "available": 1,
+        "ready": 1,
+        "updated": 1,
+        "unavailable": 0,
+        "generation": 9,
+        "observed_generation": 9,
+        "rollout_observed": true,
+        "rollout_updated": true,
+        "progressing_reason": "NewReplicaSetAvailable",
+        "progressing_message": "ReplicaSet \"cartservice-6d57458d89\" has successfully progressed.",
+        "healthy": true
+      }
+    },
+    {
+      "name": "service_endpoints",
+      "triggered": false,
+      "severity": "info",
+      "reason": "service cartservice ready_endpoints=1 not_ready_endpoints=0",
+      "service": "cartservice",
+      "value": 1,
+      "threshold": 1,
+      "details": {
+        "exists": true,
+        "ready_addresses": 1,
+        "not_ready_addresses": 0,
+        "ports": [
+          7070
+        ],
+        "healthy": true
+      }
+    },
+    {
+      "name": "service_port_alignment",
+      "triggered": false,
+      "severity": "info",
+      "reason": "service cartservice port alignment ok",
+      "service": "cartservice",
+      "value": 0,
+      "threshold": 0,
+      "details": {
+        "exists": true,
+        "aligned": true,
+        "selector": {
+          "app": "cartservice"
+        },
+        "service_ports": [
+          {
+            "name": "grpc",
+            "port": 7070,
+            "protocol": "TCP",
+            "targetPort": 7070
+          }
+        ],
+        "container_ports": [
+          7070
+        ],
+        "named_ports": {},
+        "mismatches": []
+      }
+    },
+    {
+      "name": "native_stress_job",
+      "triggered": false,
+      "severity": "info",
+      "reason": "no active native stress jobs",
+      "service": "cartservice",
+      "value": 0,
+      "threshold": 0,
+      "details": {
+        "active_stress_jobs": []
+      }
+    },
+    {
+      "name": "restart_history",
+      "triggered": false,
+      "severity": "info",
+      "reason": "historical restart count observed on jaeger-845b6c89f7-7bffd count=2",
+      "service": "jaeger-845b6c89f7-7bffd",
+      "value": 2,
+      "threshold": 1,
+      "details": {
+        "top_pod_restarts": [
+          {
+            "pod": "jaeger-845b6c89f7-7bffd",
+            "container": "jaeger",
+            "restart_count": 2
+          },
+          {
+            "pod": "redis-cart-6899b65948-q5mxh",
+            "container": "redis",
+            "restart_count": 2
+          }
+        ]
+      }
+    }
+  ],
+  "summary": "no detector triggered"
+}

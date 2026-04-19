@@ -1,0 +1,31 @@
+{
+  "problem_id": "native_dependency_bad_endpoint_frontend_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "pure_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "partial_degradation",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": false,
+  "tool_calls_to_solution": 5,
+  "time_to_diagnosis_seconds": 176.612,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 0.667,
+  "missing_required_evidence": [
+    "get_dependency_traces(frontend)"
+  ],
+  "submitted_root_cause": "Recommendationservice is experiencing intermittent responsiveness issues causing readiness probe failures and frontend timeout errors when calling for ads. The service continues processing requests when responsive but has periods of unresponsiveness affecting both Kubernetes readiness probes and frontend service-to-service calls.",
+  "submitted_action": "rollout_restart(recommendationservice)",
+  "submitted_fault_class": "partial_degradation",
+  "expected_fault_class": "native_dependency_bad_endpoint",
+  "submitted_affected_service": "recommendationservice",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "rollout_restart",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

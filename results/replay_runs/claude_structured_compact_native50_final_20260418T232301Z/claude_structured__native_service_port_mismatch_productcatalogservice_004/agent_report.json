@@ -1,0 +1,735 @@
+{
+  "agent_type": "benchmark",
+  "timestamp_utc": "2026-04-18T23:26:25Z",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-0",
+  "agent_variant": "structured_compact",
+  "backend": "replay",
+  "diagnosis_only": true,
+  "evidence_view": "compact",
+  "replay_dataset": "/Users/aarnavsawant/Documents/CS6365/AgentScope/datasets/episodes/native_service_port_mismatch_productcatalogservice/native_service_port_mismatch_productcatalogservice_004.json",
+  "problem": {
+    "id": "native_service_port_mismatch_productcatalogservice",
+    "status": "candidate",
+    "category": "availability_control",
+    "experiment_file": "/Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/native_service_port_mismatch_productcatalogservice_baseline.yaml",
+    "target_service": "productcatalogservice",
+    "detector_gate": {
+      "require_incident_detected": true,
+      "target_deployment": "productcatalogservice",
+      "primary_signal": "service_port_alignment"
+    },
+    "ground_truth": {
+      "acceptable_root_causes": [
+        "productcatalogservice service targetPort mismatch",
+        "productcatalogservice service port misconfiguration",
+        "productcatalogservice targetPort mismatch",
+        "productcatalogservice service targetPort misconfiguration"
+      ],
+      "acceptable_actions": [
+        "patch service/productcatalogservice targetPort to 3550",
+        "patch productcatalogservice service targetPort to 3550",
+        "restore productcatalogservice service targetPort to 3550",
+        "fix productcatalogservice Service targetPort to 3550"
+      ],
+      "required_evidence": [
+        "get_k8s_state(productcatalogservice)",
+        "get_logs(productcatalogservice)"
+      ],
+      "traces_required": false
+    },
+    "task_family": "native_service_port_mismatch",
+    "scenario": "productcatalogservice Service targetPort is changed away from the container port",
+    "entry_service": "frontend",
+    "telemetry_contract": {
+      "required_validation_checks": [
+        "otel_spanmetrics_up",
+        "kube_state_metrics_up",
+        "cadvisor_up",
+        "cpu_series_present",
+        "memory_series_present",
+        "jaeger_services"
+      ],
+      "required_services": [
+        "frontend",
+        "productcatalogservice"
+      ],
+      "fail_open": false,
+      "notes": "Full-observability native service-port mismatch episode."
+    },
+    "notes": "Easy native service config task; Kubernetes Service port alignment is primary evidence and logs are a sanity check."
+  },
+  "seeded_detection": {},
+  "guardrail_events": [],
+  "steps": [
+    {
+      "step": 1,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_k8s_state",
+      "call_id": "",
+      "inputs": {
+        "service": "productcatalogservice"
+      },
+      "output": {
+        "status": "anomalous",
+        "summary": "Kubernetes evidence for productcatalogservice has 3 anomaly group(s).",
+        "key_facts": [
+          "Replicas available/desired: 1/1.",
+          "Rollout progressing: False; total restart count: 0.",
+          "Pods ready/total: 1/1; phases: {'Running': 1}.",
+          "Service selector: {'app': 'productcatalogservice'}.",
+          "Service-selected pods/deployment pods: 1/1.",
+          "Service ports/targetPorts: port=3550 targetPort=1 name=grpc.",
+          "Selected pod container ports: container=server port=3550 name=.",
+          "Effective endpoints ready/not-ready: 1/0.",
+          "Service targetPort does not match exposed deployment container ports: [{'service_port': 3550, 'targetPort': 1, 'reason': 'numeric targetPort is not exposed by any selected deployment pod container'}]"
+        ],
+        "anomalies": [
+          {
+            "type": "port_inconsistency",
+            "scope": "service",
+            "evidence_refs": [
+              "service_ports",
+              "selected_pod_container_ports"
+            ],
+            "count": 1
+          },
+          {
+            "type": "service_config_signal",
+            "scope": "service",
+            "count": 1
+          },
+          {
+            "type": "meaningful_kubernetes_events",
+            "events": [
+              {
+                "reason": "Unhealthy",
+                "object": "productcatalogservice-576fdbff8c-f2f2l",
+                "type": "Warning",
+                "message": "Readiness probe failed: timeout: failed to connect service \"10.244.1.3:3550\" within 10s: context deadline exceeded",
+                "stale": false
+              },
+              {
+                "reason": "Unhealthy",
+                "object": "productcatalogservice-576fdbff8c-f2f2l",
+                "type": "Warning",
+                "message": "Liveness probe failed: timeout: failed to connect service \"10.244.1.3:3550\" within 10s: context deadline exceeded",
+                "stale": false
+              },
+              {
+                "reason": "Unhealthy",
+                "object": "productcatalogservice-576fdbff8c-f2f2l",
+                "type": "Warning",
+                "message": "Readiness probe failed: timeout: health rpc did not complete within 10s",
+                "stale": false
+              },
+              {
+                "reason": "Unhealthy",
+                "object": "productcatalogservice-576fdbff8c-f2f2l",
+                "type": "Warning",
+                "message": "Liveness probe failed: timeout: health rpc did not complete within 10s",
+                "stale": false
+              }
+            ]
+          }
+        ],
+        "negative_evidence": [
+          "All listed pods are Running, ready, and have no restarts.",
+          "No replica availability gap is visible."
+        ],
+        "observability_gaps": [],
+        "tool": "get_k8s_state",
+        "call_id": "",
+        "timestamp": "2026-04-16T17:51:56.837162Z",
+        "service": "productcatalogservice",
+        "raw_refs": [
+          {
+            "tool": "get_k8s_state",
+            "call_id": "",
+            "timestamp": "2026-04-16T17:51:56.837162Z"
+          },
+          {
+            "tool": "get_k8s_state",
+            "call_id": "7559a5ce-ef52-4985-bd2a-0b7259962862",
+            "timestamp": "2026-04-16T17:51:56.837162Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776554785.759468
+    },
+    {
+      "step": 2,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_metrics",
+      "call_id": "",
+      "inputs": {
+        "service": "productcatalogservice"
+      },
+      "output": {
+        "status": "ok",
+        "summary": "Metrics for productcatalogservice show low error rate, bounded latency, and no resource saturation signal.",
+        "key_facts": [
+          "Traffic health: rps=31.2, error_rate=0%, p95=4.76ms, p99=4.96ms.",
+          "CPU: limit_util=8.9%, request_util=0%, throttling=1.1%.",
+          "Memory: limit_util=20.8%, request_util=0%."
+        ],
+        "anomalies": [],
+        "negative_evidence": [
+          "No elevated error rate, latency breach, throttling, CPU pressure, or memory pressure in metrics."
+        ],
+        "observability_gaps": [],
+        "tool": "get_metrics",
+        "call_id": "",
+        "timestamp": "2026-04-16T17:51:57.304411Z",
+        "service": "productcatalogservice",
+        "raw_refs": [
+          {
+            "tool": "get_metrics",
+            "call_id": "",
+            "timestamp": "2026-04-16T17:51:57.304411Z"
+          },
+          {
+            "tool": "get_metrics",
+            "call_id": "88364967-1ab1-44af-a9b3-db9cf0c46aad",
+            "timestamp": "2026-04-16T17:51:57.304411Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776554785.7604682
+    },
+    {
+      "step": 3,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_logs",
+      "call_id": "",
+      "inputs": {
+        "service": "productcatalogservice"
+      },
+      "output": {
+        "status": "anomalous",
+        "summary": "Logs for productcatalogservice contain 8 signal line(s) across 1 group(s).",
+        "key_facts": [
+          "Log signal groups: {'timeout': 8}.",
+          {
+            "representative_snippets": [
+              {
+                "signal_class": "timeout",
+                "snippet": "2026/04/16 16:21:14 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\""
+              },
+              {
+                "signal_class": "timeout",
+                "snippet": "2026/04/16 16:21:29 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\""
+              },
+              {
+                "signal_class": "timeout",
+                "snippet": "2026/04/16 16:21:39 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\""
+              },
+              {
+                "signal_class": "timeout",
+                "snippet": "2026/04/16 16:21:54 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\""
+              }
+            ]
+          }
+        ],
+        "anomalies": [
+          {
+            "type": "log_signal_patterns",
+            "groups": {
+              "timeout": 8
+            }
+          }
+        ],
+        "negative_evidence": [],
+        "observability_gaps": [],
+        "tool": "get_logs",
+        "call_id": "",
+        "timestamp": "2026-04-16T17:51:57.341053Z",
+        "service": "productcatalogservice",
+        "raw_refs": [
+          {
+            "tool": "get_logs",
+            "call_id": "",
+            "timestamp": "2026-04-16T17:51:57.341053Z"
+          },
+          {
+            "tool": "get_logs",
+            "call_id": "f11d33f6-de0a-47ba-8ae3-18e07edd4080",
+            "timestamp": "2026-04-16T17:51:57.341053Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776554785.7614682
+    },
+    {
+      "step": 4,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_traces",
+      "call_id": "",
+      "inputs": {
+        "service": "productcatalogservice"
+      },
+      "output": {
+        "status": "ok",
+        "summary": "Trace evidence for productcatalogservice has no returned error span or dominant downstream bottleneck.",
+        "key_facts": [
+          "Trace count: 0.",
+          "Bottleneck service: recommendationservice (0 of total when available)."
+        ],
+        "anomalies": [],
+        "negative_evidence": [
+          "No error spans were returned."
+        ],
+        "observability_gaps": [
+          "No traces returned in the lookback window."
+        ],
+        "tool": "get_traces",
+        "call_id": "",
+        "timestamp": "2026-04-16T17:52:14.472714Z",
+        "service": "productcatalogservice",
+        "raw_refs": [
+          {
+            "tool": "get_traces",
+            "call_id": "",
+            "timestamp": "2026-04-16T17:52:14.472714Z"
+          },
+          {
+            "tool": "get_traces",
+            "call_id": "9666ebb1-2f9d-4207-afa3-55c34a0375e6",
+            "timestamp": "2026-04-16T17:52:14.472714Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776554785.762468
+    },
+    {
+      "step": 5,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_k8s_state",
+      "call_id": "",
+      "inputs": {
+        "service": "recommendationservice"
+      },
+      "output": {
+        "status": "anomalous",
+        "summary": "Kubernetes evidence for recommendationservice has 1 anomaly group(s).",
+        "key_facts": [
+          "Replicas available/desired: 1/1.",
+          "Rollout progressing: False; total restart count: 0.",
+          "Pods ready/total: 1/1; phases: {'Running': 1}.",
+          "Service selector: {'app': 'recommendationservice'}.",
+          "Service-selected pods/deployment pods: 1/1.",
+          "Service ports/targetPorts: port=8080 targetPort=8080 name=grpc.",
+          "Selected pod container ports: container=server port=8080 name=.",
+          "Effective endpoints ready/not-ready: 1/0.",
+          "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+        ],
+        "anomalies": [
+          {
+            "type": "meaningful_kubernetes_events",
+            "events": [
+              {
+                "reason": "Unhealthy",
+                "object": "recommendationservice-595c546755-vrfsc",
+                "type": "Warning",
+                "message": "Liveness probe failed: timeout: failed to connect service \"10.244.1.11:8080\" within 10s: context deadline exceeded",
+                "stale": false
+              },
+              {
+                "reason": "Unhealthy",
+                "object": "recommendationservice-595c546755-vrfsc",
+                "type": "Warning",
+                "message": "Readiness probe failed: timeout: failed to connect service \"10.244.1.11:8080\" within 10s: context deadline exceeded",
+                "stale": false
+              },
+              {
+                "reason": "Unhealthy",
+                "object": "recommendationservice-595c546755-vrfsc",
+                "type": "Warning",
+                "message": "Liveness probe failed: timeout: health rpc did not complete within 10s",
+                "stale": false
+              },
+              {
+                "reason": "Unhealthy",
+                "object": "recommendationservice-595c546755-vrfsc",
+                "type": "Warning",
+                "message": "Readiness probe failed: timeout: health rpc did not complete within 10s",
+                "stale": false
+              }
+            ]
+          }
+        ],
+        "negative_evidence": [
+          "All listed pods are Running, ready, and have no restarts.",
+          "No replica availability gap is visible.",
+          "Service targetPort values align with exposed selected-pod container ports."
+        ],
+        "observability_gaps": [],
+        "tool": "get_k8s_state",
+        "call_id": "",
+        "timestamp": "2026-04-16T17:52:34.981450Z",
+        "service": "recommendationservice",
+        "raw_refs": [
+          {
+            "tool": "get_k8s_state",
+            "call_id": "",
+            "timestamp": "2026-04-16T17:52:34.981450Z"
+          },
+          {
+            "tool": "get_k8s_state",
+            "call_id": "970e1dee-c65e-4092-ba7f-637b3fdaf7b6",
+            "timestamp": "2026-04-16T17:52:34.981450Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776554785.7634683
+    },
+    {
+      "step": 6,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_metrics",
+      "call_id": "",
+      "inputs": {
+        "service": "recommendationservice"
+      },
+      "output": {
+        "status": "ok",
+        "summary": "Metrics for recommendationservice show low error rate, bounded latency, and no resource saturation signal.",
+        "key_facts": [
+          "Traffic health: rps=19.7, error_rate=0%, p95=17.8ms, p99=59.7ms.",
+          "CPU: limit_util=33.8%, request_util=0%, throttling=5.97%.",
+          "Memory: limit_util=26.9%, request_util=0%."
+        ],
+        "anomalies": [],
+        "negative_evidence": [
+          "No elevated error rate, latency breach, throttling, CPU pressure, or memory pressure in metrics."
+        ],
+        "observability_gaps": [],
+        "tool": "get_metrics",
+        "call_id": "",
+        "timestamp": "2026-04-16T17:52:35.773748Z",
+        "service": "recommendationservice",
+        "raw_refs": [
+          {
+            "tool": "get_metrics",
+            "call_id": "",
+            "timestamp": "2026-04-16T17:52:35.773748Z"
+          },
+          {
+            "tool": "get_metrics",
+            "call_id": "b81f438c-d237-444d-8b41-5d2c8ee35245",
+            "timestamp": "2026-04-16T17:52:35.773748Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776554785.7644682
+    },
+    {
+      "step": 7,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_logs",
+      "call_id": "",
+      "inputs": {
+        "service": "recommendationservice"
+      },
+      "output": {
+        "status": "ok",
+        "summary": "Logs for recommendationservice contain only informational sampled lines.",
+        "key_facts": [
+          "Log signal groups: {'informational': 8}.",
+          {
+            "representative_snippets": [
+              {
+                "signal_class": "informational",
+                "snippet": "{\"timestamp\": 1776361954.703463, \"severity\": \"INFO\", \"name\": \"recommendationservice-server\", \"message\": \"[Recv ListRecommendations] product_ids=['0PUK6V6EV0', '66VCHSJNUP', 'L9ECAV7KIM', 'OLJCESPC7Z', '2ZYFJ3GM2N']\", \"taskName\": null}"
+              },
+              {
+                "signal_class": "informational",
+                "snippet": "{\"timestamp\": 1776361954.705679, \"severity\": \"INFO\", \"name\": \"recommendationservice-server\", \"message\": \"[Recv ListRecommendations] product_ids=['0PUK6V6EV0', '9SIQT8TOJO', 'LS4PSXUNUM', 'OLJCESPC7Z', '1YMWWN1N4O']\", \"taskName\": null}"
+              },
+              {
+                "signal_class": "informational",
+                "snippet": "{\"timestamp\": 1776361954.711012, \"severity\": \"INFO\", \"name\": \"recommendationservice-server\", \"message\": \"[Recv ListRecommendations] product_ids=['LS4PSXUNUM', 'OLJCESPC7Z', '9SIQT8TOJO', '66VCHSJNUP', '2ZYFJ3GM2N']\", \"taskName\": null}"
+              },
+              {
+                "signal_class": "informational",
+                "snippet": "{\"timestamp\": 1776361954.7810159, \"severity\": \"INFO\", \"name\": \"recommendationservice-server\", \"message\": \"[Recv ListRecommendations] product_ids=['6E92ZMYYFZ', '66VCHSJNUP', '0PUK6V6EV0', '2ZYFJ3GM2N', 'LS4PSXUNUM']\", \"taskName\": null}"
+              }
+            ]
+          }
+        ],
+        "anomalies": [],
+        "negative_evidence": [
+          "No error, timeout, OOM, throttling, or connection-failure log pattern was grouped."
+        ],
+        "observability_gaps": [],
+        "tool": "get_logs",
+        "call_id": "",
+        "timestamp": "2026-04-16T17:52:35.818187Z",
+        "service": "recommendationservice",
+        "raw_refs": [
+          {
+            "tool": "get_logs",
+            "call_id": "",
+            "timestamp": "2026-04-16T17:52:35.818187Z"
+          },
+          {
+            "tool": "get_logs",
+            "call_id": "add41649-8e95-49f4-adfb-ddf5688c2478",
+            "timestamp": "2026-04-16T17:52:35.818187Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776554785.7654681
+    },
+    {
+      "step": 8,
+      "thought": "Structured compact structured_triage.",
+      "tool_called": "structured_triage",
+      "call_id": "54dd94b8-adf6-4ecd-b691-f5160cb51f25",
+      "inputs": {},
+      "output": {
+        "suspected_categories": [
+          "service_wiring_configuration"
+        ],
+        "needed_evidence": [
+          "service_config"
+        ],
+        "key_observations": [
+          "Service targetPort (1) does not match exposed deployment container ports (3550)",
+          "Health probe failures due to connection timeout to port 3550",
+          "Logs show timeout errors connecting to external service (10.96.106.17:4317) for traces export",
+          "Metrics show normal traffic and performance despite k8s events",
+          "No traces returned in lookbook window"
+        ],
+        "why": "The primary issue is a service configuration mismatch where the service targetPort is set to 1 but the container is actually listening on port 3550. This causes health probes to fail when trying to connect to the wrong port. While there are also logs showing trace export timeouts to an external service, the core availability issue stems from the port configuration mismatch preventing proper service routing and health checks."
+      },
+      "timestamp": 1776554785.766468
+    },
+    {
+      "step": 9,
+      "thought": "Structured compact structured_candidate_analysis.",
+      "tool_called": "structured_candidate_analysis",
+      "call_id": "ac014bee-8d52-40e1-b664-8bb07afd03a0",
+      "inputs": {},
+      "output": {
+        "positive_facts": [
+          "Service targetPort (1) does not match exposed deployment container ports (3550)",
+          "Health probe failures due to connection timeout to port 3550",
+          "Replicas available/desired: 1/1",
+          "Service selector: {'app': 'productcatalogservice'}",
+          "Service-selected pods/deployment pods: 1/1",
+          "Selected pod container ports: container=server port=3550",
+          "Service ports/targetPorts: port=3550 targetPort=1 name=grpc",
+          "Effective endpoints ready/not-ready: 1/0",
+          "Traffic health: rps=31.2, error_rate=0%, p95=4.76ms, p99=4.96ms",
+          "All listed pods are Running, ready, and have no restarts"
+        ],
+        "anomalies": [
+          "Service targetPort does not match exposed deployment container ports",
+          "Readiness probe failed: timeout: failed to connect service \"10.244.1.3:3550\" within 10s",
+          "Liveness probe failed: timeout: failed to connect service \"10.244.1.3:3550\" within 10s",
+          "Logs show timeout errors connecting to external service (10.96.106.17:4317) for traces export"
+        ],
+        "negative_evidence": [
+          "No replica availability gap is visible",
+          "No elevated error rate, latency breach, throttling, CPU pressure, or memory pressure in metrics",
+          "Rollout progressing: False; total restart count: 0",
+          "CPU: limit_util=8.9%, request_util=0%, throttling=1.1%",
+          "Memory: limit_util=20.8%, request_util=0%"
+        ],
+        "observability_gaps": [
+          "No traces returned in lookbook window"
+        ],
+        "candidates": [
+          {
+            "fault_class": "native_service_port_mismatch",
+            "affected_service": "productcatalogservice",
+            "action_type": "patch_service_target_port",
+            "supporting_evidence": [
+              "Service targetPort (1) does not match exposed deployment container ports (3550)",
+              "Service ports/targetPorts: port=3550 targetPort=1 name=grpc",
+              "Selected pod container ports: container=server port=3550 name=.",
+              "Health probe failures due to connection timeout to port 3550",
+              "Readiness probe failed: timeout: failed to connect service \"10.244.1.3:3550\" within 10s"
+            ],
+            "contradicting_evidence": [
+              "Metrics show normal traffic and performance despite k8s events",
+              "Traffic health: rps=31.2, error_rate=0%, p95=4.76ms, p99=4.96ms"
+            ],
+            "score": 0.95
+          },
+          {
+            "fault_class": "native_dependency_bad_endpoint",
+            "affected_service": "productcatalogservice",
+            "action_type": "wait_and_monitor",
+            "supporting_evidence": [
+              "Logs show timeout errors connecting to external service (10.96.106.17:4317) for traces export",
+              "traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error",
+              "Log signal groups: {'timeout': 8}"
+            ],
+            "contradicting_evidence": [
+              "Service targetPort (1) does not match exposed deployment container ports (3550) is a more direct cause",
+              "Health probes failing on port configuration issue",
+              "Traffic health shows normal performance indicating trace export timeouts may not be affecting core service functionality"
+            ],
+            "score": 0.25
+          }
+        ],
+        "rejected_candidates": [
+          "native_service_selector_mismatch - Service selector {'app': 'productcatalogservice'} correctly selects pods and service-selected pods/deployment pods: 1/1",
+          "native_bad_image_rollout - No rollout progression issues and restart count is 0",
+          "native_bad_probe_rollout - Probes are failing due to port mismatch, not probe configuration",
+          "native_cpu_limit_throttle - CPU utilization is low at 8.9% with minimal throttling",
+          "native_memory_limit_oom - Memory utilization is healthy at 20.8%",
+          "native_scale_zero - Replicas available/desired: 1/1 shows proper scaling"
+        ]
+      },
+      "timestamp": 1776554785.7674682
+    },
+    {
+      "step": 10,
+      "thought": "Submit structured compact diagnosis.",
+      "tool_called": "submit_solution",
+      "call_id": "8f290b3e-441e-41d0-a774-8058e72bf42b",
+      "inputs": {},
+      "output": {
+        "call_id": "8f290b3e-441e-41d0-a774-8058e72bf42b",
+        "solution_logged": true,
+        "evidence_valid": true,
+        "invalid_evidence": [],
+        "error": null,
+        "root_cause": "Service targetPort (1) does not match exposed deployment container ports (3550), causing health probes to fail when trying to connect to the wrong port",
+        "action_taken": "Patch service targetPort from 1 to 3550 to align with container port configuration",
+        "fault_class": "native_service_port_mismatch",
+        "affected_service": "productcatalogservice",
+        "action_type": "patch_service_target_port",
+        "confidence": 0.95,
+        "evidence": [
+          "Service targetPort (1) does not match exposed deployment container ports (3550)",
+          "Service ports/targetPorts: port=3550 targetPort=1 name=grpc",
+          "Selected pod container ports: container=server port=3550",
+          "Readiness probe failed: timeout: failed to connect service \"10.244.1.3:3550\" within 10s",
+          "Liveness probe failed: timeout: failed to connect service \"10.244.1.3:3550\" within 10s",
+          "get_k8s_state(service) shows port_inconsistency anomaly with numeric targetPort not exposed by selected deployment pod container"
+        ]
+      },
+      "timestamp": 1776554785.7684681
+    }
+  ],
+  "structured_trace": {
+    "triage": {
+      "suspected_categories": [
+        "service_wiring_configuration"
+      ],
+      "needed_evidence": [
+        "service_config"
+      ],
+      "key_observations": [
+        "Service targetPort (1) does not match exposed deployment container ports (3550)",
+        "Health probe failures due to connection timeout to port 3550",
+        "Logs show timeout errors connecting to external service (10.96.106.17:4317) for traces export",
+        "Metrics show normal traffic and performance despite k8s events",
+        "No traces returned in lookbook window"
+      ],
+      "why": "The primary issue is a service configuration mismatch where the service targetPort is set to 1 but the container is actually listening on port 3550. This causes health probes to fail when trying to connect to the wrong port. While there are also logs showing trace export timeouts to an external service, the core availability issue stems from the port configuration mismatch preventing proper service routing and health checks."
+    },
+    "candidate_analysis": {
+      "positive_facts": [
+        "Service targetPort (1) does not match exposed deployment container ports (3550)",
+        "Health probe failures due to connection timeout to port 3550",
+        "Replicas available/desired: 1/1",
+        "Service selector: {'app': 'productcatalogservice'}",
+        "Service-selected pods/deployment pods: 1/1",
+        "Selected pod container ports: container=server port=3550",
+        "Service ports/targetPorts: port=3550 targetPort=1 name=grpc",
+        "Effective endpoints ready/not-ready: 1/0",
+        "Traffic health: rps=31.2, error_rate=0%, p95=4.76ms, p99=4.96ms",
+        "All listed pods are Running, ready, and have no restarts"
+      ],
+      "anomalies": [
+        "Service targetPort does not match exposed deployment container ports",
+        "Readiness probe failed: timeout: failed to connect service \"10.244.1.3:3550\" within 10s",
+        "Liveness probe failed: timeout: failed to connect service \"10.244.1.3:3550\" within 10s",
+        "Logs show timeout errors connecting to external service (10.96.106.17:4317) for traces export"
+      ],
+      "negative_evidence": [
+        "No replica availability gap is visible",
+        "No elevated error rate, latency breach, throttling, CPU pressure, or memory pressure in metrics",
+        "Rollout progressing: False; total restart count: 0",
+        "CPU: limit_util=8.9%, request_util=0%, throttling=1.1%",
+        "Memory: limit_util=20.8%, request_util=0%"
+      ],
+      "observability_gaps": [
+        "No traces returned in lookbook window"
+      ],
+      "candidates": [
+        {
+          "fault_class": "native_service_port_mismatch",
+          "affected_service": "productcatalogservice",
+          "action_type": "patch_service_target_port",
+          "supporting_evidence": [
+            "Service targetPort (1) does not match exposed deployment container ports (3550)",
+            "Service ports/targetPorts: port=3550 targetPort=1 name=grpc",
+            "Selected pod container ports: container=server port=3550 name=.",
+            "Health probe failures due to connection timeout to port 3550",
+            "Readiness probe failed: timeout: failed to connect service \"10.244.1.3:3550\" within 10s"
+          ],
+          "contradicting_evidence": [
+            "Metrics show normal traffic and performance despite k8s events",
+            "Traffic health: rps=31.2, error_rate=0%, p95=4.76ms, p99=4.96ms"
+          ],
+          "score": 0.95
+        },
+        {
+          "fault_class": "native_dependency_bad_endpoint",
+          "affected_service": "productcatalogservice",
+          "action_type": "wait_and_monitor",
+          "supporting_evidence": [
+            "Logs show timeout errors connecting to external service (10.96.106.17:4317) for traces export",
+            "traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error",
+            "Log signal groups: {'timeout': 8}"
+          ],
+          "contradicting_evidence": [
+            "Service targetPort (1) does not match exposed deployment container ports (3550) is a more direct cause",
+            "Health probes failing on port configuration issue",
+            "Traffic health shows normal performance indicating trace export timeouts may not be affecting core service functionality"
+          ],
+          "score": 0.25
+        }
+      ],
+      "rejected_candidates": [
+        "native_service_selector_mismatch - Service selector {'app': 'productcatalogservice'} correctly selects pods and service-selected pods/deployment pods: 1/1",
+        "native_bad_image_rollout - No rollout progression issues and restart count is 0",
+        "native_bad_probe_rollout - Probes are failing due to port mismatch, not probe configuration",
+        "native_cpu_limit_throttle - CPU utilization is low at 8.9% with minimal throttling",
+        "native_memory_limit_oom - Memory utilization is healthy at 20.8%",
+        "native_scale_zero - Replicas available/desired: 1/1 shows proper scaling"
+      ]
+    }
+  },
+  "solution": {
+    "root_cause": "Service targetPort (1) does not match exposed deployment container ports (3550), causing health probes to fail when trying to connect to the wrong port",
+    "action_taken": "Patch service targetPort from 1 to 3550 to align with container port configuration",
+    "fault_class": "native_service_port_mismatch",
+    "affected_service": "productcatalogservice",
+    "action_type": "patch_service_target_port",
+    "confidence": 0.95,
+    "evidence": [
+      "Service targetPort (1) does not match exposed deployment container ports (3550)",
+      "Service ports/targetPorts: port=3550 targetPort=1 name=grpc",
+      "Selected pod container ports: container=server port=3550",
+      "Readiness probe failed: timeout: failed to connect service \"10.244.1.3:3550\" within 10s",
+      "Liveness probe failed: timeout: failed to connect service \"10.244.1.3:3550\" within 10s",
+      "get_k8s_state(service) shows port_inconsistency anomaly with numeric targetPort not exposed by selected deployment pod container"
+    ]
+  },
+  "verification": {},
+  "error": null
+}

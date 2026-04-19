@@ -1,0 +1,55 @@
+Traceback (most recent call last):
+  File "/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_benchmark_agent.py", line 175, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_benchmark_agent.py", line 143, in main
+    result = agent.run(args.problem_description, initial_context=initial_context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/react_agent.py", line 64, in run
+    decision = self._decide_with_guardrails(prompt, allowed_tools)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/react_agent.py", line 319, in _decide_with_guardrails
+    decision = self._decide(retry_prompt, retry_allowed_tools)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/react_agent.py", line 211, in _decide
+    parsed = self.client.complete_json(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/reasoning/llm.py", line 329, in complete_json
+    return self.delegate.complete_json(name=name, schema=schema, prompt=prompt)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/reasoning/llm.py", line 290, in complete_json
+    payload = self._post_json(
+              ^^^^^^^^^^^^^^^^
+  File "/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/reasoning/llm.py", line 36, in _post_json
+    with urlopen(request, timeout=self.timeout_seconds) as resp:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py", line 215, in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py", line 515, in open
+    response = self._open(req, data)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py", line 532, in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py", line 492, in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py", line 1373, in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py", line 1348, in do_open
+    r = h.getresponse()
+        ^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/http/client.py", line 1411, in getresponse
+    response.begin()
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/http/client.py", line 324, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/http/client.py", line 285, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/socket.py", line 707, in readinto
+    return self._sock.recv_into(b)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out

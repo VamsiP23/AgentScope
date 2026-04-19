@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_bad_env_checkoutservice_email",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "compact_one_shot",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": true,
+  "submitted_fault_family": "dependency_configuration_regression",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": true,
+  "tool_calls_to_solution": 8,
+  "time_to_diagnosis_seconds": 0.008,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "Checkoutservice is configured to connect to emailservice on port 5999 via EMAIL_SERVICE_ADDR environment variable, but emailservice is actually exposing port 5000. This port mismatch causes connection timeouts when checkoutservice attempts to send order confirmations.",
+  "submitted_action": "Update checkoutservice EMAIL_SERVICE_ADDR environment variable from 'emailservice:5999' to 'emailservice:5000' to match the actual service port",
+  "submitted_fault_class": "native_dependency_bad_endpoint",
+  "expected_fault_class": "native_bad_env",
+  "submitted_affected_service": "checkoutservice",
+  "expected_affected_service": "checkoutservice",
+  "submitted_action_type": "rollout_undo",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

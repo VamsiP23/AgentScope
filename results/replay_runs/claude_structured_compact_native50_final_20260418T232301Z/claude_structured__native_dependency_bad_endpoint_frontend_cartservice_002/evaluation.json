@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_dependency_bad_endpoint_frontend_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "structured_compact",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": true,
+  "submitted_fault_family": "dependency_configuration_regression",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": true,
+  "tool_calls_to_solution": 10,
+  "time_to_diagnosis_seconds": 0.01,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "Frontend service is configured with incorrect CART_SERVICE_ADDR environment variable pointing to 'cartservice:1' (port 1) instead of the correct port 7070 as used by checkoutservice, causing cart functionality failures with 'Field Quantity/ProductID is invalid: required' errors in POST /cart requests",
+  "submitted_action": "Rollback frontend deployment to restore correct cart service address configuration",
+  "submitted_fault_class": "native_bad_env",
+  "expected_fault_class": "native_dependency_bad_endpoint",
+  "submitted_affected_service": "frontend",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "rollout_undo",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

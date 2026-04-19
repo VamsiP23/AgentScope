@@ -1,0 +1,2713 @@
+{
+  "families": {
+    "native_bad_env": [
+      {
+        "dataset": "datasets/episodes/native_bad_env_checkoutservice_email/native_bad_env_checkoutservice_email_001.json",
+        "evidence_by_channel": {
+          "dependency_traces": [
+            {
+              "anomalies": [],
+              "inputs": {
+                "entry_service": "frontend",
+                "service": "checkoutservice"
+              },
+              "key_facts": [
+                "Entry service: frontend.",
+                "Trace count: 0.",
+                "Top downstream candidate: paymentservice avg_duration=10.4ms pct=0.0787.",
+                "Bottleneck service: paymentservice (0 of total when available)."
+              ],
+              "negative_evidence": [
+                "No error spans were returned."
+              ],
+              "observability_gaps": [
+                "No traces returned in the lookback window."
+              ],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-17T05:27:58.784195Z",
+                  "tool": "get_dependency_traces"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "25dd063e-2c54-4db1-bac4-8ead6751ff2f",
+                  "timestamp": "2026-04-17T05:27:58.784195Z",
+                  "tool": "get_dependency_traces"
+                }
+              ],
+              "service": "checkoutservice",
+              "status": "ok",
+              "summary": "Trace evidence for checkoutservice has no returned error span or dominant downstream bottleneck.",
+              "tool": "get_dependency_traces"
+            }
+          ],
+          "k8s_state": [
+            {
+              "anomalies": [
+                {
+                  "pods": [
+                    {
+                      "phase": "Running",
+                      "pod": "checkoutservice-57fc567f88-9tzc4",
+                      "ready": false,
+                      "restarts": 0
+                    }
+                  ],
+                  "type": "pod_not_fully_healthy"
+                },
+                {
+                  "rollout_progressing": true,
+                  "type": "rollout_in_progress_or_stalled"
+                },
+                {
+                  "events": [
+                    {
+                      "message": "Liveness probe failed: timeout: failed to connect service \"10.244.1.43:5050\" within 10s: context deadline exceeded",
+                      "object": "checkoutservice-548d9bc67b-4ccd7",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Deleted pod: checkoutservice-548d9bc67b-4ccd7",
+                      "object": "checkoutservice-548d9bc67b",
+                      "reason": "SuccessfulDelete",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Stopping container server",
+                      "object": "checkoutservice-548d9bc67b-4ccd7",
+                      "reason": "Killing",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Created pod: checkoutservice-57fc567f88-9tzc4",
+                      "object": "checkoutservice-57fc567f88",
+                      "reason": "SuccessfulCreate",
+                      "stale": false,
+                      "type": "Normal"
+                    }
+                  ],
+                  "type": "meaningful_kubernetes_events"
+                }
+              ],
+              "inputs": {
+                "service": "checkoutservice"
+              },
+              "key_facts": [
+                "Replicas available/desired: 1/1.",
+                "Rollout progressing: True; total restart count: 0.",
+                "Pods ready/total: 1/2; phases: {'Running': 2}.",
+                "Service selector: {'app': 'checkoutservice'}.",
+                "Service-selected pods/deployment pods: 2/2.",
+                "Service ports/targetPorts: port=5050 targetPort=5050 name=grpc.",
+                "Selected pod container ports: container=server port=5050 name=.",
+                "Effective endpoints ready/not-ready: 1/1.",
+                "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+                "Deployment containers: [{'name': 'server', 'image': 'us-central1-docker.pkg.dev/google-samples/microservices-demo/checkoutservice:v0.10.4', 'ports': [{'name': '', 'containerPort': 5050, 'protocol': 'TCP'}], 'resources': {'limits': {'cpu': '600m', 'memory': '256Mi'}, 'requests': {'cpu': '250m', 'memory': '128Mi'}}, 'readinessProbe': True, 'livenessProbe': True}]."
+              ],
+              "negative_evidence": [
+                "No replica availability gap is visible.",
+                "Service targetPort values align with exposed selected-pod container ports."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-17T05:25:42.872451Z",
+                  "tool": "get_k8s_state"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "efa30a8d-e78b-4d16-81bc-269cac3f8189",
+                  "timestamp": "2026-04-17T05:25:42.872451Z",
+                  "tool": "get_k8s_state"
+                }
+              ],
+              "service": "checkoutservice",
+              "status": "anomalous",
+              "summary": "Kubernetes evidence for checkoutservice has 3 anomaly group(s).",
+              "tool": "get_k8s_state"
+            },
+            {
+              "anomalies": [
+                {
+                  "pods": [
+                    {
+                      "phase": "Running",
+                      "pod": "paymentservice-85c5665997-lnpvc",
+                      "ready": true,
+                      "restarts": 1
+                    }
+                  ],
+                  "type": "pod_not_fully_healthy"
+                },
+                {
+                  "events": [
+                    {
+                      "message": "Liveness probe failed: timeout: failed to connect service \"10.244.1.9:50051\" within 10s: context deadline exceeded",
+                      "object": "paymentservice-85c5665997-lnpvc",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Container created",
+                      "object": "paymentservice-85c5665997-lnpvc",
+                      "reason": "Created",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Container image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/paymentservice:v0.10.4\" already present on machine and can be accessed by the pod",
+                      "object": "paymentservice-85c5665997-lnpvc",
+                      "reason": "Pulled",
+                      "stale": false,
+                      "type": "Normal"
+                    }
+                  ],
+                  "type": "meaningful_kubernetes_events"
+                }
+              ],
+              "inputs": {
+                "service": "paymentservice"
+              },
+              "key_facts": [
+                "Replicas available/desired: 1/1.",
+                "Rollout progressing: False; total restart count: 1.",
+                "Pods ready/total: 1/1; phases: {'Running': 1}.",
+                "Service selector: {'app': 'paymentservice'}.",
+                "Service-selected pods/deployment pods: 1/1.",
+                "Service ports/targetPorts: port=50051 targetPort=50051 name=grpc.",
+                "Selected pod container ports: container=server port=50051 name=.",
+                "Effective endpoints ready/not-ready: 1/0.",
+                "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+                "Deployment containers: [{'name': 'server', 'image': 'us-central1-docker.pkg.dev/google-samples/microservices-demo/paymentservice:v0.10.4', 'ports': [{'name': '', 'containerPort': 50051, 'protocol': 'TCP'}], 'resources': {'limits': {'cpu': '500m', 'memory': '256Mi'}, 'requests': {'cpu': '200m', 'memory': '128Mi'}}, 'readinessProbe': True, 'livenessProbe': True}]."
+              ],
+              "negative_evidence": [
+                "No replica availability gap is visible.",
+                "Service targetPort values align with exposed selected-pod container ports."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-17T05:28:07.382254Z",
+                  "tool": "get_k8s_state"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "cb7a7ffc-1493-4d37-a1c7-a99b104cade3",
+                  "timestamp": "2026-04-17T05:28:07.382254Z",
+                  "tool": "get_k8s_state"
+                }
+              ],
+              "service": "paymentservice",
+              "status": "anomalous",
+              "summary": "Kubernetes evidence for paymentservice has 2 anomaly group(s).",
+              "tool": "get_k8s_state"
+            },
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "productcatalogservice"
+              },
+              "key_facts": [
+                "Replicas available/desired: 1/1.",
+                "Rollout progressing: False; total restart count: 0.",
+                "Pods ready/total: 1/1; phases: {'Running': 1}.",
+                "Service selector: {'app': 'productcatalogservice'}.",
+                "Service-selected pods/deployment pods: 1/1.",
+                "Service ports/targetPorts: port=3550 targetPort=3550 name=grpc.",
+                "Selected pod container ports: container=server port=3550 name=.",
+                "Effective endpoints ready/not-ready: 1/0.",
+                "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+                "Deployment containers: [{'name': 'server', 'image': 'us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:v0.10.4', 'ports': [{'name': '', 'containerPort': 3550, 'protocol': 'TCP'}], 'resources': {'limits': {'cpu': '500m', 'memory': '256Mi'}, 'requests': {'cpu': '200m', 'memory': '128Mi'}}, 'readinessProbe': True, 'livenessProbe': True}]."
+              ],
+              "negative_evidence": [
+                "All listed pods are Running, ready, and have no restarts.",
+                "No replica availability gap is visible.",
+                "Service targetPort values align with exposed selected-pod container ports.",
+                "No recent Kubernetes events were returned."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-17T05:28:05.861669Z",
+                  "tool": "get_k8s_state"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "f03dc622-5e4d-4a53-9290-47e6dccbf126",
+                  "timestamp": "2026-04-17T05:28:05.861669Z",
+                  "tool": "get_k8s_state"
+                }
+              ],
+              "service": "productcatalogservice",
+              "status": "ok",
+              "summary": "Kubernetes workload and Service evidence for productcatalogservice shows no obvious anomaly.",
+              "tool": "get_k8s_state"
+            },
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "cartservice"
+              },
+              "key_facts": [
+                "Replicas available/desired: 1/1.",
+                "Rollout progressing: False; total restart count: 0.",
+                "Pods ready/total: 1/1; phases: {'Running': 1}.",
+                "Service selector: {'app': 'cartservice'}.",
+                "Service-selected pods/deployment pods: 1/1.",
+                "Service ports/targetPorts: port=7070 targetPort=7070 name=grpc.",
+                "Selected pod container ports: container=server port=7070 name=.",
+                "Effective endpoints ready/not-ready: 1/0.",
+                "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+                "Deployment containers: [{'name': 'server', 'image': 'us-central1-docker.pkg.dev/google-samples/microservices-demo/cartservice:v0.10.4', 'ports': [{'name': '', 'containerPort': 7070, 'protocol': 'TCP'}], 'resources': {'limits': {'cpu': '1', 'memory': '512Mi'}, 'requests': {'cpu': '250m', 'memory': '128Mi'}}, 'readinessProbe': True, 'livenessProbe': True}]."
+              ],
+              "negative_evidence": [
+                "All listed pods are Running, ready, and have no restarts.",
+                "No replica availability gap is visible.",
+                "Service targetPort values align with exposed selected-pod container ports.",
+                "No recent Kubernetes events were returned."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-17T05:28:03.805244Z",
+                  "tool": "get_k8s_state"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "516ee2e1-5a71-479d-bf47-d70a15071888",
+                  "timestamp": "2026-04-17T05:28:03.805244Z",
+                  "tool": "get_k8s_state"
+                }
+              ],
+              "service": "cartservice",
+              "status": "ok",
+              "summary": "Kubernetes workload and Service evidence for cartservice shows no obvious anomaly.",
+              "tool": "get_k8s_state"
+            }
+          ],
+          "logs": [
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "checkoutservice"
+              },
+              "key_facts": [
+                "Log signal groups: {'informational': 4}.",
+                {
+                  "representative_snippets": [
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"message\":\"Tracing enabled.\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:25:26.800272959Z\"}"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"message\":\"Profiling disabled.\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:25:26.997081334Z\"}"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"message\":\"service config: \\u0026{UnimplementedCheckoutServiceServer:{} productCatalogSvcAddr:productcatalogservice:3550 productCatalogSvcConn:0xc00052c408 cartSvcAddr:cartservice:7070 cartSvcConn:0xc000468008 currencySvcAddr:currencyse..."
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"message\":\"starting to listen on tcp: \\\"[::]:5050\\\"\",\"severity\":\"info\",\"timestamp\":\"2026-04-17T05:25:27.319423335Z\"}"
+                    }
+                  ]
+                }
+              ],
+              "negative_evidence": [
+                "No error, timeout, OOM, throttling, or connection-failure log pattern was grouped."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-17T05:25:43.954765Z",
+                  "tool": "get_logs"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "b245a033-5152-47d8-93d2-16bbeeb4a955",
+                  "timestamp": "2026-04-17T05:25:43.954765Z",
+                  "tool": "get_logs"
+                }
+              ],
+              "service": "checkoutservice",
+              "status": "ok",
+              "summary": "Logs for checkoutservice contain only informational sampled lines.",
+              "tool": "get_logs"
+            },
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "paymentservice"
+              },
+              "key_facts": [
+                "Log signal groups: {'informational': 8}.",
+                {
+                  "representative_snippets": [
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"severity\":\"info\",\"time\":1776403687464,\"pid\":1,\"hostname\":\"paymentservice-85c5665997-lnpvc\",\"name\":\"paymentservice-server\",\"message\":\"PaymentService#Charge invoked with request {\\\"amount\\\":{\\\"currency_code\\\":\\\"USD\\\",\\\"units\\\":\\\"14\\\",\\\"n..."
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"severity\":\"info\",\"time\":1776403687465,\"pid\":1,\"hostname\":\"paymentservice-85c5665997-lnpvc\",\"name\":\"paymentservice-charge\",\"message\":\"Transaction processed: visa ending 0454 Amount: USD14.480000000\"}"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"severity\":\"info\",\"time\":1776403687473,\"pid\":1,\"hostname\":\"paymentservice-85c5665997-lnpvc\",\"name\":\"paymentservice-server\",\"message\":\"PaymentService#Charge invoked with request {\\\"amount\\\":{\\\"currency_code\\\":\\\"USD\\\",\\\"units\\\":\\\"118\\\",\\\"..."
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"severity\":\"info\",\"time\":1776403687476,\"pid\":1,\"hostname\":\"paymentservice-85c5665997-lnpvc\",\"name\":\"paymentservice-server\",\"message\":\"PaymentService#Charge invoked with request {\\\"amount\\\":{\\\"currency_code\\\":\\\"USD\\\",\\\"units\\\":\\\"14\\\",\\\"n..."
+                    }
+                  ]
+                }
+              ],
+              "negative_evidence": [
+                "No error, timeout, OOM, throttling, or connection-failure log pattern was grouped."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-17T05:28:08.067286Z",
+                  "tool": "get_logs"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "6adea4e5-9e1d-48bc-9b34-07654a6832d8",
+                  "timestamp": "2026-04-17T05:28:08.067286Z",
+                  "tool": "get_logs"
+                }
+              ],
+              "service": "paymentservice",
+              "status": "ok",
+              "summary": "Logs for paymentservice contain only informational sampled lines.",
+              "tool": "get_logs"
+            },
+            {
+              "anomalies": [
+                {
+                  "groups": {
+                    "timeout": 8
+                  },
+                  "type": "log_signal_patterns"
+                }
+              ],
+              "inputs": {
+                "service": "productcatalogservice"
+              },
+              "key_facts": [
+                "Log signal groups: {'timeout': 8}.",
+                {
+                  "representative_snippets": [
+                    {
+                      "signal_class": "timeout",
+                      "snippet": "2026/04/16 16:27:40 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\""
+                    },
+                    {
+                      "signal_class": "timeout",
+                      "snippet": "2026/04/16 16:27:57 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\""
+                    },
+                    {
+                      "signal_class": "timeout",
+                      "snippet": "2026/04/16 16:28:13 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\""
+                    },
+                    {
+                      "signal_class": "timeout",
+                      "snippet": "2026/04/16 16:28:23 traces export: context deadline exceeded: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 10.96.106.17:4317: connect: connection refused\""
+                    }
+                  ]
+                }
+              ],
+              "negative_evidence": [],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-17T05:28:06.922956Z",
+                  "tool": "get_logs"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "9bf7a1da-9029-401a-a344-3d54fdf02313",
+                  "timestamp": "2026-04-17T05:28:06.922956Z",
+                  "tool": "get_logs"
+                }
+              ],
+              "service": "productcatalogservice",
+              "status": "anomalous",
+              "summary": "Logs for productcatalogservice contain 8 signal line(s) across 1 group(s).",
+              "tool": "get_logs"
+            }
+          ],
+          "metrics": [
+            {
+              "anomalies": [
+                {
+                  "p99_latency_ms": 726.060606060613,
+                  "type": "latency_elevated"
+                },
+                {
+                  "cpu_throttling_ratio": 0.53901,
+                  "type": "cpu_throttling_elevated"
+                }
+              ],
+              "inputs": {
+                "service": "checkoutservice"
+              },
+              "key_facts": [
+                "Traffic health: rps=37.8, error_rate=0%, p95=244ms, p99=726ms.",
+                "CPU: limit_util=10.2%, request_util=0%, throttling=53.9%.",
+                "Memory: limit_util=23.2%, request_util=0%."
+              ],
+              "negative_evidence": [],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-17T05:25:43.573290Z",
+                  "tool": "get_metrics"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "18e3ed22-0e70-40bc-853f-8c363f6a01de",
+                  "timestamp": "2026-04-17T05:25:43.573290Z",
+                  "tool": "get_metrics"
+                }
+              ],
+              "service": "checkoutservice",
+              "status": "anomalous",
+              "summary": "Metrics for checkoutservice show 2 health/resource anomaly group(s).",
+              "tool": "get_metrics"
+            },
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "paymentservice"
+              },
+              "key_facts": [
+                "Traffic health: rps=3.26, error_rate=0%, p95=19.6ms, p99=47.3ms.",
+                "CPU: limit_util=24.7%, request_util=0%, throttling=8.2%.",
+                "Memory: limit_util=63.5%, request_util=0%."
+              ],
+              "negative_evidence": [
+                "No elevated error rate, latency breach, throttling, CPU pressure, or memory pressure in metrics."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-17T05:28:08.011698Z",
+                  "tool": "get_metrics"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "83d4834a-2080-4933-ac47-7905aca4311e",
+                  "timestamp": "2026-04-17T05:28:08.011698Z",
+                  "tool": "get_metrics"
+                }
+              ],
+              "service": "paymentservice",
+              "status": "ok",
+              "summary": "Metrics for paymentservice show low error rate, bounded latency, and no resource saturation signal.",
+              "tool": "get_metrics"
+            },
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "productcatalogservice"
+              },
+              "key_facts": [
+                "Traffic health: rps=50.8, error_rate=0%, p95=4.79ms, p99=4.99ms.",
+                "CPU: limit_util=23.6%, request_util=0%, throttling=1.75%.",
+                "Memory: limit_util=28.5%, request_util=0%."
+              ],
+              "negative_evidence": [
+                "No elevated error rate, latency breach, throttling, CPU pressure, or memory pressure in metrics."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-17T05:28:06.864916Z",
+                  "tool": "get_metrics"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "4e8ffea3-23eb-4e2f-919c-7a84ca48100a",
+                  "timestamp": "2026-04-17T05:28:06.864916Z",
+                  "tool": "get_metrics"
+                }
+              ],
+              "service": "productcatalogservice",
+              "status": "ok",
+              "summary": "Metrics for productcatalogservice show low error rate, bounded latency, and no resource saturation signal.",
+              "tool": "get_metrics"
+            }
+          ],
+          "traces": [
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "checkoutservice"
+              },
+              "key_facts": [
+                "Trace count: 0.",
+                "Bottleneck service: checkoutservice (0 of total when available)."
+              ],
+              "negative_evidence": [
+                "No error spans were returned."
+              ],
+              "observability_gaps": [
+                "No traces returned in the lookback window."
+              ],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-17T05:27:54.833752Z",
+                  "tool": "get_traces"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "acc6d1f7-145b-4dd2-b409-2b678351be23",
+                  "timestamp": "2026-04-17T05:27:54.833752Z",
+                  "tool": "get_traces"
+                }
+              ],
+              "service": "checkoutservice",
+              "status": "ok",
+              "summary": "Trace evidence for checkoutservice has no returned error span or dominant downstream bottleneck.",
+              "tool": "get_traces"
+            }
+          ]
+        },
+        "initial_context": {
+          "summary": "PagerDuty alert: an incident has been detected affecting checkoutservice. The monitoring pipeline observed request failures or degraded dependency behavior. Investigate and recommend the most appropriate remediation action.",
+          "suspicious_services": [
+            "checkoutservice"
+          ]
+        }
+      },
+      {
+        "dataset": "datasets/episodes/native_bad_env_checkoutservice_email/native_bad_env_checkoutservice_email_005.json",
+        "evidence_by_channel": {
+          "dependency_traces": [
+            {
+              "anomalies": [],
+              "inputs": {
+                "entry_service": "frontend",
+                "service": "checkoutservice"
+              },
+              "key_facts": [
+                "Entry service: frontend.",
+                "Trace count: 0."
+              ],
+              "negative_evidence": [
+                "No error spans were returned."
+              ],
+              "observability_gaps": [
+                "Trace quality is weak.",
+                "No traces returned in the lookback window."
+              ],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:44:23.161065Z",
+                  "tool": "get_dependency_traces"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "a518a20a-4e05-4fcf-abcc-de36da710e78",
+                  "timestamp": "2026-04-18T05:44:23.161065Z",
+                  "tool": "get_dependency_traces"
+                }
+              ],
+              "service": "checkoutservice",
+              "status": "ok",
+              "summary": "Trace evidence for checkoutservice has no returned error span or dominant downstream bottleneck.",
+              "tool": "get_dependency_traces"
+            }
+          ],
+          "k8s_state": [
+            {
+              "anomalies": [
+                {
+                  "pods": [
+                    {
+                      "phase": "Running",
+                      "pod": "checkoutservice-7d6745d544-qjnfq",
+                      "ready": false,
+                      "restarts": 0
+                    }
+                  ],
+                  "type": "pod_not_fully_healthy"
+                },
+                {
+                  "rollout_progressing": true,
+                  "type": "rollout_in_progress_or_stalled"
+                },
+                {
+                  "events": [
+                    {
+                      "message": "Readiness probe failed: timeout: failed to connect service \"10.244.1.93:5050\" within 5s: context deadline exceeded",
+                      "object": "checkoutservice-7d6745d544-qnlc6",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Container created",
+                      "object": "checkoutservice-c6b5d46b5-p74js",
+                      "reason": "Created",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Deleted pod: checkoutservice-c6b5d46b5-p74js",
+                      "object": "checkoutservice-c6b5d46b5",
+                      "reason": "SuccessfulDelete",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Successfully assigned default/checkoutservice-7d6745d544-qjnfq to agentscope-collection-worker",
+                      "object": "checkoutservice-7d6745d544-qjnfq",
+                      "reason": "Scheduled",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Created pod: checkoutservice-7d6745d544-qjnfq",
+                      "object": "checkoutservice-7d6745d544",
+                      "reason": "SuccessfulCreate",
+                      "stale": false,
+                      "type": "Normal"
+                    }
+                  ],
+                  "type": "meaningful_kubernetes_events"
+                }
+              ],
+              "inputs": {
+                "service": "checkoutservice"
+              },
+              "key_facts": [
+                "Replicas available/desired: 2/2.",
+                "Rollout progressing: True; total restart count: 0.",
+                "Pods ready/total: 2/3; phases: {'Running': 3}.",
+                "Service selector: {'app': 'checkoutservice'}.",
+                "Service-selected pods/deployment pods: 3/3.",
+                "Service ports/targetPorts: port=5050 targetPort=5050 name=grpc.",
+                "Selected pod container ports: container=server port=5050 name=.",
+                "Effective endpoints ready/not-ready: 2/1.",
+                "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+                "Deployment containers: [{'name': 'server', 'image': 'us-central1-docker.pkg.dev/google-samples/microservices-demo/checkoutservice:v0.10.4', 'ports': [{'name': '', 'containerPort': 5050, 'protocol': 'TCP'}], 'resources': {'limits': {'cpu': '600m', 'memory': '256Mi'}, 'requests': {'cpu': '250m', 'memory': '128Mi'}}, 'readinessProbe': True, 'livenessProbe': True}]."
+              ],
+              "negative_evidence": [
+                "No replica availability gap is visible.",
+                "Service targetPort values align with exposed selected-pod container ports."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:43:54.046724Z",
+                  "tool": "get_k8s_state"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "383b9b0b-9780-4576-b959-9444099d7e90",
+                  "timestamp": "2026-04-18T05:43:54.046724Z",
+                  "tool": "get_k8s_state"
+                }
+              ],
+              "service": "checkoutservice",
+              "status": "anomalous",
+              "summary": "Kubernetes evidence for checkoutservice has 3 anomaly group(s).",
+              "tool": "get_k8s_state"
+            },
+            {
+              "anomalies": [
+                {
+                  "events": [
+                    {
+                      "message": "Readiness probe failed: dial tcp 10.244.1.89:1: connect: connection refused",
+                      "object": "cartservice-ccd548847-rs4qz",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Readiness probe failed: timeout: health rpc did not complete within 10s",
+                      "object": "cartservice-596766c6b8-zxld9",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Readiness probe failed: timeout: failed to connect service \"10.244.1.86:7070\" within 10s: context deadline exceeded",
+                      "object": "cartservice-596766c6b8-fh7fl",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Created pod: cartservice-ccd548847-rs4qz",
+                      "object": "cartservice-ccd548847",
+                      "reason": "SuccessfulCreate",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Successfully assigned default/cartservice-ccd548847-rs4qz to agentscope-collection-worker",
+                      "object": "cartservice-ccd548847-rs4qz",
+                      "reason": "Scheduled",
+                      "stale": false,
+                      "type": "Normal"
+                    }
+                  ],
+                  "type": "meaningful_kubernetes_events"
+                }
+              ],
+              "inputs": {
+                "service": "cartservice"
+              },
+              "key_facts": [
+                "Replicas available/desired: 2/2.",
+                "Rollout progressing: False; total restart count: 0.",
+                "Pods ready/total: 2/2; phases: {'Running': 2}.",
+                "Service selector: {'app': 'cartservice'}.",
+                "Service-selected pods/deployment pods: 2/2.",
+                "Service ports/targetPorts: port=7070 targetPort=7070 name=grpc.",
+                "Selected pod container ports: container=server port=7070 name=.",
+                "Effective endpoints ready/not-ready: 2/0.",
+                "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+                "Deployment containers: [{'name': 'server', 'image': 'us-central1-docker.pkg.dev/google-samples/microservices-demo/cartservice:v0.10.4', 'ports': [{'name': '', 'containerPort': 7070, 'protocol': 'TCP'}], 'resources': {'limits': {'cpu': '1', 'memory': '512Mi'}, 'requests': {'cpu': '300m', 'memory': '128Mi'}}, 'readinessProbe': True, 'livenessProbe': False}]."
+              ],
+              "negative_evidence": [
+                "All listed pods are Running, ready, and have no restarts.",
+                "No replica availability gap is visible.",
+                "Service targetPort values align with exposed selected-pod container ports."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:45:57.788624Z",
+                  "tool": "get_k8s_state"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "b1bcfee0-e652-43b6-a466-ef0e3bf97ef3",
+                  "timestamp": "2026-04-18T05:45:57.788624Z",
+                  "tool": "get_k8s_state"
+                }
+              ],
+              "service": "cartservice",
+              "status": "anomalous",
+              "summary": "Kubernetes evidence for cartservice has 1 anomaly group(s).",
+              "tool": "get_k8s_state"
+            },
+            {
+              "anomalies": [
+                {
+                  "events": [
+                    {
+                      "message": "Error: ErrImagePull",
+                      "object": "productcatalogservice-57d9b54d64-bq6r7",
+                      "reason": "Failed",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Failed to pull image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing\": rpc error: code = NotFound desc = failed to pull an...",
+                      "object": "productcatalogservice-57d9b54d64-bq6r7",
+                      "reason": "Failed",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Error: ImagePullBackOff",
+                      "object": "productcatalogservice-57d9b54d64-bq6r7",
+                      "reason": "Failed",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Liveness probe failed: timeout: health rpc did not complete within 5s",
+                      "object": "productcatalogservice-5cc45cf549-r7vhr",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Liveness probe failed: timeout: health rpc did not complete within 5s",
+                      "object": "productcatalogservice-5cc45cf549-7bpkc",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Readiness probe failed: timeout: health rpc did not complete within 5s",
+                      "object": "productcatalogservice-5cc45cf549-r7vhr",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    }
+                  ],
+                  "type": "meaningful_kubernetes_events"
+                }
+              ],
+              "inputs": {
+                "service": "productcatalogservice"
+              },
+              "key_facts": [
+                "Replicas available/desired: 2/2.",
+                "Rollout progressing: False; total restart count: 0.",
+                "Pods ready/total: 2/2; phases: {'Running': 2}.",
+                "Service selector: {'app': 'productcatalogservice'}.",
+                "Service-selected pods/deployment pods: 2/2.",
+                "Service ports/targetPorts: port=3550 targetPort=3550 name=grpc.",
+                "Selected pod container ports: container=server port=3550 name=.",
+                "Effective endpoints ready/not-ready: 2/0.",
+                "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+                "Deployment containers: [{'name': 'server', 'image': 'us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:v0.10.4', 'ports': [{'name': '', 'containerPort': 3550, 'protocol': 'TCP'}], 'resources': {'limits': {'cpu': '500m', 'memory': '256Mi'}, 'requests': {'cpu': '200m', 'memory': '128Mi'}}, 'readinessProbe': True, 'livenessProbe': True}]."
+              ],
+              "negative_evidence": [
+                "All listed pods are Running, ready, and have no restarts.",
+                "No replica availability gap is visible.",
+                "Service targetPort values align with exposed selected-pod container ports."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:46:06.302830Z",
+                  "tool": "get_k8s_state"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "a99c3462-3183-4530-a2f4-73e3afb00a35",
+                  "timestamp": "2026-04-18T05:46:06.302830Z",
+                  "tool": "get_k8s_state"
+                }
+              ],
+              "service": "productcatalogservice",
+              "status": "anomalous",
+              "summary": "Kubernetes evidence for productcatalogservice has 1 anomaly group(s).",
+              "tool": "get_k8s_state"
+            },
+            {
+              "anomalies": [
+                {
+                  "events": [
+                    {
+                      "message": "Readiness probe failed: timeout: failed to connect service \"10.244.1.77:50051\" within 5s: context deadline exceeded",
+                      "object": "paymentservice-785cd66579-g26j5",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Liveness probe failed: timeout: failed to connect service \"10.244.1.77:50051\" within 5s: context deadline exceeded",
+                      "object": "paymentservice-785cd66579-g26j5",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Readiness probe failed: timeout: health rpc did not complete within 5s",
+                      "object": "paymentservice-785cd66579-g26j5",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Liveness probe failed: timeout: health rpc did not complete within 5s",
+                      "object": "paymentservice-785cd66579-g26j5",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Container image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/paymentservice:v0.10.4\" already present on machine and can be accessed by the pod",
+                      "object": "paymentservice-785cd66579-g26j5",
+                      "reason": "Pulled",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Container created",
+                      "object": "paymentservice-785cd66579-g26j5",
+                      "reason": "Created",
+                      "stale": false,
+                      "type": "Normal"
+                    }
+                  ],
+                  "type": "meaningful_kubernetes_events"
+                }
+              ],
+              "inputs": {
+                "service": "paymentservice"
+              },
+              "key_facts": [
+                "Replicas available/desired: 1/1.",
+                "Rollout progressing: False; total restart count: 0.",
+                "Pods ready/total: 1/1; phases: {'Running': 1}.",
+                "Service selector: {'app': 'paymentservice'}.",
+                "Service-selected pods/deployment pods: 1/1.",
+                "Service ports/targetPorts: port=50051 targetPort=50051 name=grpc.",
+                "Selected pod container ports: container=server port=50051 name=.",
+                "Effective endpoints ready/not-ready: 1/0.",
+                "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+                "Deployment containers: [{'name': 'server', 'image': 'us-central1-docker.pkg.dev/google-samples/microservices-demo/paymentservice:v0.10.4', 'ports': [{'name': '', 'containerPort': 50051, 'protocol': 'TCP'}], 'resources': {'limits': {'cpu': '500m', 'memory': '256Mi'}, 'requests': {'cpu': '200m', 'memory': '128Mi'}}, 'readinessProbe': True, 'livenessProbe': True}]."
+              ],
+              "negative_evidence": [
+                "All listed pods are Running, ready, and have no restarts.",
+                "No replica availability gap is visible.",
+                "Service targetPort values align with exposed selected-pod container ports."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:46:16.061315Z",
+                  "tool": "get_k8s_state"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "5028122a-8b8b-4378-9fb7-7ebdfbe30e9c",
+                  "timestamp": "2026-04-18T05:46:16.061315Z",
+                  "tool": "get_k8s_state"
+                }
+              ],
+              "service": "paymentservice",
+              "status": "anomalous",
+              "summary": "Kubernetes evidence for paymentservice has 1 anomaly group(s).",
+              "tool": "get_k8s_state"
+            }
+          ],
+          "logs": [
+            {
+              "anomalies": [
+                {
+                  "groups": {
+                    "timeout": 8
+                  },
+                  "type": "log_signal_patterns"
+                }
+              ],
+              "inputs": {
+                "service": "checkoutservice"
+              },
+              "key_facts": [
+                "Log signal groups: {'timeout': 8}.",
+                {
+                  "representative_snippets": [
+                    {
+                      "signal_class": "timeout",
+                      "snippet": "{\"message\":\"failed to send order confirmation to \\\"someone@example.com\\\": rpc error: code = Unavailable desc = connection error: desc = \\\"transport: Error while dialing: dial tcp 10.96.84.80:5999: i/o timeout\\\"\",\"severity\":\"warning\",\"tim..."
+                    },
+                    {
+                      "signal_class": "timeout",
+                      "snippet": "{\"message\":\"failed to send order confirmation to \\\"someone@example.com\\\": rpc error: code = Unavailable desc = connection error: desc = \\\"transport: Error while dialing: dial tcp 10.96.84.80:5999: i/o timeout\\\"\",\"severity\":\"warning\",\"tim..."
+                    },
+                    {
+                      "signal_class": "timeout",
+                      "snippet": "{\"message\":\"failed to send order confirmation to \\\"someone@example.com\\\": rpc error: code = Unavailable desc = connection error: desc = \\\"transport: Error while dialing: dial tcp 10.96.84.80:5999: i/o timeout\\\"\",\"severity\":\"warning\",\"tim..."
+                    },
+                    {
+                      "signal_class": "timeout",
+                      "snippet": "{\"message\":\"failed to send order confirmation to \\\"someone@example.com\\\": rpc error: code = Unavailable desc = connection error: desc = \\\"transport: Error while dialing: dial tcp 10.96.84.80:5999: i/o timeout\\\"\",\"severity\":\"warning\",\"tim..."
+                    }
+                  ]
+                }
+              ],
+              "negative_evidence": [],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:43:59.296157Z",
+                  "tool": "get_logs"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "d0af92d1-b448-4c8d-8f7b-c6f989f78d0f",
+                  "timestamp": "2026-04-18T05:43:59.296157Z",
+                  "tool": "get_logs"
+                }
+              ],
+              "service": "checkoutservice",
+              "status": "anomalous",
+              "summary": "Logs for checkoutservice contain 8 signal line(s) across 1 group(s).",
+              "tool": "get_logs"
+            },
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "cartservice"
+              },
+              "key_facts": [
+                "Log signal groups: {'informational': 8}.",
+                {
+                  "representative_snippets": [
+                    {
+                      "signal_class": "informational",
+                      "snippet": "Checking CartService Health"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "Checking CartService Health"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "Checking CartService Health"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "Checking CartService Health"
+                    }
+                  ]
+                }
+              ],
+              "negative_evidence": [
+                "No error, timeout, OOM, throttling, or connection-failure log pattern was grouped."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:46:04.401065Z",
+                  "tool": "get_logs"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "2a6049b2-ec3e-4188-ad90-99c0a6d371b7",
+                  "timestamp": "2026-04-18T05:46:04.401065Z",
+                  "tool": "get_logs"
+                }
+              ],
+              "service": "cartservice",
+              "status": "ok",
+              "summary": "Logs for cartservice contain only informational sampled lines.",
+              "tool": "get_logs"
+            },
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "productcatalogservice"
+              },
+              "key_facts": [
+                "Log signal groups: {'informational': 5}.",
+                {
+                  "representative_snippets": [
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"message\":\"Tracing disabled.\",\"severity\":\"info\",\"timestamp\":\"2026-04-18T04:47:31.693429128Z\"}"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"message\":\"Profiling disabled.\",\"severity\":\"info\",\"timestamp\":\"2026-04-18T04:47:31.707208419Z\"}"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"message\":\"starting grpc server at :3550\",\"severity\":\"info\",\"timestamp\":\"2026-04-18T04:47:31.725853086Z\"}"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"message\":\"loading catalog from local products.json file...\",\"severity\":\"info\",\"timestamp\":\"2026-04-18T04:47:31.774105669Z\"}"
+                    }
+                  ]
+                }
+              ],
+              "negative_evidence": [
+                "No error, timeout, OOM, throttling, or connection-failure log pattern was grouped."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:46:11.864185Z",
+                  "tool": "get_logs"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "93ac591c-3c24-409b-a111-daf6e0de196f",
+                  "timestamp": "2026-04-18T05:46:11.864185Z",
+                  "tool": "get_logs"
+                }
+              ],
+              "service": "productcatalogservice",
+              "status": "ok",
+              "summary": "Logs for productcatalogservice contain only informational sampled lines.",
+              "tool": "get_logs"
+            }
+          ],
+          "metrics": [
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "checkoutservice"
+              },
+              "key_facts": [
+                "Traffic health: rps=0, error_rate=0%, p95=0ms, p99=0ms.",
+                "CPU: limit_util=9.58%, request_util=0%, throttling=2.44%.",
+                "Memory: limit_util=20.6%, request_util=0%."
+              ],
+              "negative_evidence": [
+                "No elevated error rate, latency breach, throttling, CPU pressure, or memory pressure in metrics."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:43:58.725528Z",
+                  "tool": "get_metrics"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "a224517e-ca49-45c5-ac7a-be0d25ad6554",
+                  "timestamp": "2026-04-18T05:43:58.725528Z",
+                  "tool": "get_metrics"
+                }
+              ],
+              "service": "checkoutservice",
+              "status": "ok",
+              "summary": "Metrics for checkoutservice show low error rate, bounded latency, and no resource saturation signal.",
+              "tool": "get_metrics"
+            },
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "cartservice"
+              },
+              "key_facts": [
+                "Traffic health: rps=0, error_rate=0%, p95=0ms, p99=0ms.",
+                "CPU: limit_util=12.7%, request_util=0%, throttling=0.178%.",
+                "Memory: limit_util=58.8%, request_util=0%."
+              ],
+              "negative_evidence": [
+                "No elevated error rate, latency breach, throttling, CPU pressure, or memory pressure in metrics."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:46:03.446267Z",
+                  "tool": "get_metrics"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "818e1a85-d792-4623-9115-c9c765c37a48",
+                  "timestamp": "2026-04-18T05:46:03.446267Z",
+                  "tool": "get_metrics"
+                }
+              ],
+              "service": "cartservice",
+              "status": "ok",
+              "summary": "Metrics for cartservice show low error rate, bounded latency, and no resource saturation signal.",
+              "tool": "get_metrics"
+            },
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "productcatalogservice"
+              },
+              "key_facts": [
+                "Traffic health: rps=0, error_rate=0%, p95=0ms, p99=0ms.",
+                "CPU: limit_util=14.5%, request_util=0%, throttling=1.78%.",
+                "Memory: limit_util=18.8%, request_util=0%."
+              ],
+              "negative_evidence": [
+                "No elevated error rate, latency breach, throttling, CPU pressure, or memory pressure in metrics."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:46:11.048621Z",
+                  "tool": "get_metrics"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "1d9422f8-0ea1-416e-833a-f76f0c37f32b",
+                  "timestamp": "2026-04-18T05:46:11.048621Z",
+                  "tool": "get_metrics"
+                }
+              ],
+              "service": "productcatalogservice",
+              "status": "ok",
+              "summary": "Metrics for productcatalogservice show low error rate, bounded latency, and no resource saturation signal.",
+              "tool": "get_metrics"
+            }
+          ],
+          "traces": [
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "checkoutservice"
+              },
+              "key_facts": [
+                "Trace count: 0."
+              ],
+              "negative_evidence": [
+                "No error spans were returned."
+              ],
+              "observability_gaps": [
+                "Trace quality is weak.",
+                "No traces returned in the lookback window."
+              ],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:44:21.592918Z",
+                  "tool": "get_traces"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "bec5687b-3670-4b8b-a16a-a3f76527c735",
+                  "timestamp": "2026-04-18T05:44:21.592918Z",
+                  "tool": "get_traces"
+                }
+              ],
+              "service": "checkoutservice",
+              "status": "ok",
+              "summary": "Trace evidence for checkoutservice has no returned error span or dominant downstream bottleneck.",
+              "tool": "get_traces"
+            }
+          ]
+        },
+        "initial_context": {
+          "summary": "PagerDuty alert: an incident has been detected affecting checkoutservice. The monitoring pipeline observed request failures or degraded dependency behavior. Investigate and recommend the most appropriate remediation action.",
+          "suspicious_services": [
+            "checkoutservice"
+          ]
+        }
+      }
+    ],
+    "native_dependency_bad_endpoint": [
+      {
+        "dataset": "datasets/episodes/native_dependency_bad_endpoint_frontend_cartservice/native_dependency_bad_endpoint_frontend_cartservice_002.json",
+        "evidence_by_channel": {
+          "dependency_traces": [
+            {
+              "anomalies": [
+                {
+                  "edges": [
+                    {
+                      "avg_duration_ms": 36.535,
+                      "avg_pct_of_total": 0.42001011657048254,
+                      "count": 1,
+                      "service": "checkoutservice"
+                    },
+                    {
+                      "avg_duration_ms": 31.569,
+                      "avg_pct_of_total": 0.3629204699606833,
+                      "count": 1,
+                      "service": "recommendationservice"
+                    },
+                    {
+                      "avg_duration_ms": 11.959499999999998,
+                      "avg_pct_of_total": 0.3192394701491588,
+                      "count": 12,
+                      "service": "currencyservice"
+                    }
+                  ],
+                  "type": "slow_or_dominant_downstream_edges"
+                }
+              ],
+              "inputs": {
+                "entry_service": "frontend",
+                "service": "frontend"
+              },
+              "key_facts": [
+                "Entry service: frontend.",
+                "Trace count: 0.",
+                "Top downstream candidate: checkoutservice avg_duration=36.5ms pct=0.42.",
+                "Bottleneck service: checkoutservice (0 of total when available)."
+              ],
+              "negative_evidence": [
+                "No error spans were returned."
+              ],
+              "observability_gaps": [
+                "No traces returned in the lookback window."
+              ],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-16T22:39:00.484155Z",
+                  "tool": "get_dependency_traces"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "15c239e7-263a-4ec2-88ce-56e4680680be",
+                  "timestamp": "2026-04-16T22:39:00.484155Z",
+                  "tool": "get_dependency_traces"
+                }
+              ],
+              "service": "frontend",
+              "status": "anomalous",
+              "summary": "Trace evidence for frontend has 1 slow/error signal group(s).",
+              "tool": "get_dependency_traces"
+            }
+          ],
+          "k8s_state": [
+            {
+              "anomalies": [
+                {
+                  "pods": [
+                    {
+                      "phase": "Running",
+                      "pod": "frontend-85fc88d46c-pcj7j",
+                      "ready": false,
+                      "restarts": 0
+                    }
+                  ],
+                  "type": "pod_not_fully_healthy"
+                },
+                {
+                  "rollout_progressing": true,
+                  "type": "rollout_in_progress_or_stalled"
+                },
+                {
+                  "events": [
+                    {
+                      "message": "Readiness probe failed: Get \"http://10.244.1.30:8080/_healthz\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)",
+                      "object": "frontend-d5f45cf8-csrcl",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Stopping container server",
+                      "object": "frontend-85fc88d46c-d59sg",
+                      "reason": "Killing",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Deleted pod: frontend-85fc88d46c-d59sg",
+                      "object": "frontend-85fc88d46c",
+                      "reason": "SuccessfulDelete",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Created pod: frontend-85fc88d46c-pcj7j",
+                      "object": "frontend-85fc88d46c",
+                      "reason": "SuccessfulCreate",
+                      "stale": false,
+                      "type": "Normal"
+                    }
+                  ],
+                  "type": "meaningful_kubernetes_events"
+                }
+              ],
+              "inputs": {
+                "service": "frontend"
+              },
+              "key_facts": [
+                "Replicas available/desired: 1/1.",
+                "Rollout progressing: True; total restart count: 0.",
+                "Pods ready/total: 1/2; phases: {'Running': 2}.",
+                "Service selector: {'app': 'frontend'}.",
+                "Service-selected pods/deployment pods: 2/2.",
+                "Service ports/targetPorts: port=80 targetPort=8080 name=http.",
+                "Selected pod container ports: container=server port=8080 name=.",
+                "Effective endpoints ready/not-ready: 1/1.",
+                "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+                "Deployment containers: [{'name': 'server', 'image': 'us-central1-docker.pkg.dev/google-samples/microservices-demo/frontend:v0.10.4', 'ports': [{'name': '', 'containerPort': 8080, 'protocol': 'TCP'}], 'resources': {'limits': {'cpu': '600m', 'memory': '256Mi'}, 'requests': {'cpu': '250m', 'memory': '128Mi'}}, 'readinessProbe': True, 'livenessProbe': True}]."
+              ],
+              "negative_evidence": [
+                "No replica availability gap is visible.",
+                "Service targetPort values align with exposed selected-pod container ports."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-16T22:38:21.971349Z",
+                  "tool": "get_k8s_state"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "25e01b96-97b9-4ce0-8817-3b727089025d",
+                  "timestamp": "2026-04-16T22:38:21.971349Z",
+                  "tool": "get_k8s_state"
+                }
+              ],
+              "service": "frontend",
+              "status": "anomalous",
+              "summary": "Kubernetes evidence for frontend has 3 anomaly group(s).",
+              "tool": "get_k8s_state"
+            },
+            {
+              "anomalies": [
+                {
+                  "events": [
+                    {
+                      "message": "Readiness probe failed: timeout: failed to connect service \"10.244.1.27:8080\" within 10s: context deadline exceeded",
+                      "object": "recommendationservice-595c546755-rp4dn",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    }
+                  ],
+                  "type": "meaningful_kubernetes_events"
+                }
+              ],
+              "inputs": {
+                "service": "recommendationservice"
+              },
+              "key_facts": [
+                "Replicas available/desired: 1/1.",
+                "Rollout progressing: False; total restart count: 0.",
+                "Pods ready/total: 1/1; phases: {'Running': 1}.",
+                "Service selector: {'app': 'recommendationservice'}.",
+                "Service-selected pods/deployment pods: 1/1.",
+                "Service ports/targetPorts: port=8080 targetPort=8080 name=grpc.",
+                "Selected pod container ports: container=server port=8080 name=.",
+                "Effective endpoints ready/not-ready: 1/0.",
+                "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+                "Deployment containers: [{'name': 'server', 'image': 'us-central1-docker.pkg.dev/google-samples/microservices-demo/recommendationservice:v0.10.4', 'ports': [{'name': '', 'containerPort': 8080, 'protocol': 'TCP'}], 'resources': {'limits': {'cpu': '500m', 'memory': '512Mi'}, 'requests': {'cpu': '200m', 'memory': '256Mi'}}, 'readinessProbe': True, 'livenessProbe': True}]."
+              ],
+              "negative_evidence": [
+                "All listed pods are Running, ready, and have no restarts.",
+                "No replica availability gap is visible.",
+                "Service targetPort values align with exposed selected-pod container ports."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-16T22:39:30.914094Z",
+                  "tool": "get_k8s_state"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "bf675fbf-f687-45de-ae90-760dc5c1ea7a",
+                  "timestamp": "2026-04-16T22:39:30.914094Z",
+                  "tool": "get_k8s_state"
+                }
+              ],
+              "service": "recommendationservice",
+              "status": "anomalous",
+              "summary": "Kubernetes evidence for recommendationservice has 1 anomaly group(s).",
+              "tool": "get_k8s_state"
+            },
+            {
+              "anomalies": [
+                {
+                  "events": [
+                    {
+                      "message": "Liveness probe failed: timeout: failed to connect service \"10.244.1.34:5050\" within 10s: context deadline exceeded",
+                      "object": "checkoutservice-b87cb859c-fk4nr",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Readiness probe failed: timeout: health rpc did not complete within 10s",
+                      "object": "checkoutservice-b87cb859c-fk4nr",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Stopping container server",
+                      "object": "checkoutservice-b87cb859c-d9pd2",
+                      "reason": "Killing",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Successfully assigned default/checkoutservice-b87cb859c-fk4nr to agentscope-collection-worker",
+                      "object": "checkoutservice-b87cb859c-fk4nr",
+                      "reason": "Scheduled",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Created pod: checkoutservice-b87cb859c-fk4nr",
+                      "object": "checkoutservice-b87cb859c",
+                      "reason": "SuccessfulCreate",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Container created",
+                      "object": "checkoutservice-b87cb859c-fk4nr",
+                      "reason": "Created",
+                      "stale": false,
+                      "type": "Normal"
+                    }
+                  ],
+                  "type": "meaningful_kubernetes_events"
+                }
+              ],
+              "inputs": {
+                "service": "checkoutservice"
+              },
+              "key_facts": [
+                "Replicas available/desired: 1/1.",
+                "Rollout progressing: False; total restart count: 0.",
+                "Pods ready/total: 1/1; phases: {'Running': 1}.",
+                "Service selector: {'app': 'checkoutservice'}.",
+                "Service-selected pods/deployment pods: 1/1.",
+                "Service ports/targetPorts: port=5050 targetPort=5050 name=grpc.",
+                "Selected pod container ports: container=server port=5050 name=.",
+                "Effective endpoints ready/not-ready: 1/0.",
+                "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+                "Deployment containers: [{'name': 'server', 'image': 'us-central1-docker.pkg.dev/google-samples/microservices-demo/checkoutservice:v0.10.4', 'ports': [{'name': '', 'containerPort': 5050, 'protocol': 'TCP'}], 'resources': {'limits': {'cpu': '600m', 'memory': '256Mi'}, 'requests': {'cpu': '250m', 'memory': '128Mi'}}, 'readinessProbe': True, 'livenessProbe': True}]."
+              ],
+              "negative_evidence": [
+                "All listed pods are Running, ready, and have no restarts.",
+                "No replica availability gap is visible.",
+                "Service targetPort values align with exposed selected-pod container ports."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-16T22:39:29.418379Z",
+                  "tool": "get_k8s_state"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "abb3375a-c618-4a53-8f5d-1d779e3c84c8",
+                  "timestamp": "2026-04-16T22:39:29.418379Z",
+                  "tool": "get_k8s_state"
+                }
+              ],
+              "service": "checkoutservice",
+              "status": "anomalous",
+              "summary": "Kubernetes evidence for checkoutservice has 1 anomaly group(s).",
+              "tool": "get_k8s_state"
+            },
+            {
+              "anomalies": [
+                {
+                  "events": [
+                    {
+                      "message": "Readiness probe failed: timeout: health rpc did not complete within 10s",
+                      "object": "currencyservice-54dc68fc95-mqfbm",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Liveness probe failed: timeout: failed to connect service \"10.244.1.2:7000\" within 10s: context deadline exceeded",
+                      "object": "currencyservice-54dc68fc95-mqfbm",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    }
+                  ],
+                  "type": "meaningful_kubernetes_events"
+                }
+              ],
+              "inputs": {
+                "service": "currencyservice"
+              },
+              "key_facts": [
+                "Replicas available/desired: 1/1.",
+                "Rollout progressing: False; total restart count: 0.",
+                "Pods ready/total: 1/1; phases: {'Running': 1}.",
+                "Service selector: {'app': 'currencyservice'}.",
+                "Service-selected pods/deployment pods: 1/1.",
+                "Service ports/targetPorts: port=7000 targetPort=7000 name=grpc.",
+                "Selected pod container ports: container=server port=7000 name=grpc.",
+                "Effective endpoints ready/not-ready: 1/0.",
+                "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+                "Deployment containers: [{'name': 'server', 'image': 'us-central1-docker.pkg.dev/google-samples/microservices-demo/currencyservice:v0.10.4', 'ports': [{'name': 'grpc', 'containerPort': 7000, 'protocol': 'TCP'}], 'resources': {'limits': {'cpu': '500m', 'memory': '256Mi'}, 'requests': {'cpu': '200m', 'memory': '128Mi'}}, 'readinessProbe': True, 'livenessProbe': True}]."
+              ],
+              "negative_evidence": [
+                "All listed pods are Running, ready, and have no restarts.",
+                "No replica availability gap is visible.",
+                "Service targetPort values align with exposed selected-pod container ports."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-16T22:39:32.221748Z",
+                  "tool": "get_k8s_state"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "d3c43e22-b538-4c1f-8c4a-81ade6b3d305",
+                  "timestamp": "2026-04-16T22:39:32.221748Z",
+                  "tool": "get_k8s_state"
+                }
+              ],
+              "service": "currencyservice",
+              "status": "anomalous",
+              "summary": "Kubernetes evidence for currencyservice has 1 anomaly group(s).",
+              "tool": "get_k8s_state"
+            }
+          ],
+          "logs": [
+            {
+              "anomalies": [
+                {
+                  "groups": {
+                    "application_error": 8
+                  },
+                  "type": "log_signal_patterns"
+                }
+              ],
+              "inputs": {
+                "service": "frontend"
+              },
+              "key_facts": [
+                "Log signal groups: {'application_error': 8}.",
+                {
+                  "representative_snippets": [
+                    {
+                      "signal_class": "application_error",
+                      "snippet": "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"e592826c-8f1f-40d0-88d3-f9d48a105574\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"ed7a1d4..."
+                    },
+                    {
+                      "signal_class": "application_error",
+                      "snippet": "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"d0652525-f787-459e-8dd9-8c1dc1a02839\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"98d8694..."
+                    },
+                    {
+                      "signal_class": "application_error",
+                      "snippet": "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"f21a37ae-c38f-4b0d-88fe-6fab849fb36f\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"183538e..."
+                    },
+                    {
+                      "signal_class": "application_error",
+                      "snippet": "{\"error\":\"Field 'Quantity' is invalid: required\\nField 'ProductID' is invalid: required\\n\",\"http.req.id\":\"6245d6e8-ff9d-4ee8-8d8e-eb47b8ac901f\",\"http.req.method\":\"POST\",\"http.req.path\":\"/cart\",\"message\":\"request error\",\"session\":\"2e64127..."
+                    }
+                  ]
+                }
+              ],
+              "negative_evidence": [],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-16T22:38:23.245732Z",
+                  "tool": "get_logs"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "5e2d708c-d009-41f1-9233-e54bc624527a",
+                  "timestamp": "2026-04-16T22:38:23.245732Z",
+                  "tool": "get_logs"
+                }
+              ],
+              "service": "frontend",
+              "status": "anomalous",
+              "summary": "Logs for frontend contain 8 signal line(s) across 1 group(s).",
+              "tool": "get_logs"
+            },
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "recommendationservice"
+              },
+              "key_facts": [
+                "Log signal groups: {'informational': 8}.",
+                {
+                  "representative_snippets": [
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"timestamp\": 1776379115.1738167, \"severity\": \"INFO\", \"name\": \"recommendationservice-server\", \"message\": \"[Recv ListRecommendations] product_ids=['LS4PSXUNUM', '6E92ZMYYFZ', '66VCHSJNUP', '2ZYFJ3GM2N', '9SIQT8TOJO']\", \"taskName\": null}"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"timestamp\": 1776379115.4090533, \"severity\": \"INFO\", \"name\": \"recommendationservice-server\", \"message\": \"[Recv ListRecommendations] product_ids=['9SIQT8TOJO', '66VCHSJNUP', '1YMWWN1N4O', 'OLJCESPC7Z', '6E92ZMYYFZ']\", \"taskName\": null}"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"timestamp\": 1776379115.526451, \"severity\": \"INFO\", \"name\": \"recommendationservice-server\", \"message\": \"[Recv ListRecommendations] product_ids=['1YMWWN1N4O', '9SIQT8TOJO', '6E92ZMYYFZ', '2ZYFJ3GM2N', 'OLJCESPC7Z']\", \"taskName\": null}"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"timestamp\": 1776379115.7417305, \"severity\": \"INFO\", \"name\": \"recommendationservice-server\", \"message\": \"[Recv ListRecommendations] product_ids=['2ZYFJ3GM2N', 'OLJCESPC7Z', 'LS4PSXUNUM', '0PUK6V6EV0', '9SIQT8TOJO']\", \"taskName\": null}"
+                    }
+                  ]
+                }
+              ],
+              "negative_evidence": [
+                "No error, timeout, OOM, throttling, or connection-failure log pattern was grouped."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-16T22:39:31.892057Z",
+                  "tool": "get_logs"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "515a95ca-201a-4358-94f0-018f523bbf1e",
+                  "timestamp": "2026-04-16T22:39:31.892057Z",
+                  "tool": "get_logs"
+                }
+              ],
+              "service": "recommendationservice",
+              "status": "ok",
+              "summary": "Logs for recommendationservice contain only informational sampled lines.",
+              "tool": "get_logs"
+            },
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "checkoutservice"
+              },
+              "key_facts": [
+                "Log signal groups: {'informational': 8}.",
+                {
+                  "representative_snippets": [
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"message\":\"[PlaceOrder] user_id=\\\"2ddc5126-fcff-4e49-8aaf-e5c8063f052d\\\" user_currency=\\\"USD\\\"\",\"severity\":\"info\",\"timestamp\":\"2026-04-16T22:38:33.200625918Z\"}"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"message\":\"payment went through (transaction_id: 6755e7b0-2e88-4219-9811-ac19cdd0368f)\",\"severity\":\"info\",\"timestamp\":\"2026-04-16T22:38:33.23326496Z\"}"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"message\":\"payment went through (transaction_id: 801c85ad-e3c6-47e7-98d1-2163310bd2a8)\",\"severity\":\"info\",\"timestamp\":\"2026-04-16T22:38:33.233478418Z\"}"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"message\":\"order confirmation email sent to \\\"someone@example.com\\\"\",\"severity\":\"info\",\"timestamp\":\"2026-04-16T22:38:33.253202043Z\"}"
+                    }
+                  ]
+                }
+              ],
+              "negative_evidence": [
+                "No error, timeout, OOM, throttling, or connection-failure log pattern was grouped."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-16T22:39:30.167622Z",
+                  "tool": "get_logs"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "2a65f433-b93e-4c02-936b-ecd1c0baed4e",
+                  "timestamp": "2026-04-16T22:39:30.167622Z",
+                  "tool": "get_logs"
+                }
+              ],
+              "service": "checkoutservice",
+              "status": "ok",
+              "summary": "Logs for checkoutservice contain only informational sampled lines.",
+              "tool": "get_logs"
+            }
+          ],
+          "metrics": [
+            {
+              "anomalies": [
+                {
+                  "p99_latency_ms": 327.07446808510844,
+                  "type": "latency_elevated"
+                }
+              ],
+              "inputs": {
+                "service": "frontend"
+              },
+              "key_facts": [
+                "Traffic health: rps=20.4, error_rate=0.122%, p95=89.7ms, p99=327ms.",
+                "CPU: limit_util=5.26%, request_util=0%, throttling=5.67%.",
+                "Memory: limit_util=18.7%, request_util=0%."
+              ],
+              "negative_evidence": [],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-16T22:38:23.162671Z",
+                  "tool": "get_metrics"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "bdfeea39-9e07-47ba-8086-ac20bc2dc446",
+                  "timestamp": "2026-04-16T22:38:23.162671Z",
+                  "tool": "get_metrics"
+                }
+              ],
+              "service": "frontend",
+              "status": "anomalous",
+              "summary": "Metrics for frontend show 1 health/resource anomaly group(s).",
+              "tool": "get_metrics"
+            },
+            {
+              "anomalies": [
+                {
+                  "p99_latency_ms": 379.89583333333337,
+                  "type": "latency_elevated"
+                }
+              ],
+              "inputs": {
+                "service": "recommendationservice"
+              },
+              "key_facts": [
+                "Traffic health: rps=3.96, error_rate=0%, p95=94.3ms, p99=380ms.",
+                "CPU: limit_util=13.6%, request_util=0%, throttling=5.81%.",
+                "Memory: limit_util=27.1%, request_util=0%."
+              ],
+              "negative_evidence": [],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-16T22:39:31.717596Z",
+                  "tool": "get_metrics"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "d59e97e7-9042-47f7-b3e7-ca9a84595c51",
+                  "timestamp": "2026-04-16T22:39:31.717596Z",
+                  "tool": "get_metrics"
+                }
+              ],
+              "service": "recommendationservice",
+              "status": "anomalous",
+              "summary": "Metrics for recommendationservice show 1 health/resource anomaly group(s).",
+              "tool": "get_metrics"
+            },
+            {
+              "anomalies": [
+                {
+                  "p99_latency_ms": 358.33333333333064,
+                  "type": "latency_elevated"
+                }
+              ],
+              "inputs": {
+                "service": "checkoutservice"
+              },
+              "key_facts": [
+                "Traffic health: rps=1.6, error_rate=0%, p95=89ms, p99=358ms.",
+                "CPU: limit_util=2.2%, request_util=0%, throttling=0.342%.",
+                "Memory: limit_util=17%, request_util=0%."
+              ],
+              "negative_evidence": [],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-16T22:39:30.028238Z",
+                  "tool": "get_metrics"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "95dbb782-9851-49e7-a31d-72f38233ffe4",
+                  "timestamp": "2026-04-16T22:39:30.028238Z",
+                  "tool": "get_metrics"
+                }
+              ],
+              "service": "checkoutservice",
+              "status": "anomalous",
+              "summary": "Metrics for checkoutservice show 1 health/resource anomaly group(s).",
+              "tool": "get_metrics"
+            }
+          ],
+          "traces": [
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "frontend"
+              },
+              "key_facts": [
+                "Trace count: 0.",
+                "Bottleneck service: recommendationservice (0 of total when available)."
+              ],
+              "negative_evidence": [
+                "No error spans were returned."
+              ],
+              "observability_gaps": [
+                "No traces returned in the lookback window."
+              ],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-16T22:38:41.239687Z",
+                  "tool": "get_traces"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "841a5c1f-7d0e-43fc-b7e9-c6b3fc411be2",
+                  "timestamp": "2026-04-16T22:38:41.239687Z",
+                  "tool": "get_traces"
+                }
+              ],
+              "service": "frontend",
+              "status": "ok",
+              "summary": "Trace evidence for frontend has no returned error span or dominant downstream bottleneck.",
+              "tool": "get_traces"
+            }
+          ]
+        },
+        "initial_context": {
+          "summary": "PagerDuty alert: an incident has been detected affecting frontend. The monitoring pipeline observed request failures or degraded dependency behavior. Investigate and recommend the most appropriate remediation action.",
+          "suspicious_services": [
+            "frontend"
+          ]
+        }
+      },
+      {
+        "dataset": "datasets/episodes/native_dependency_bad_endpoint_frontend_cartservice/native_dependency_bad_endpoint_frontend_cartservice_006.json",
+        "evidence_by_channel": {
+          "dependency_traces": [
+            {
+              "anomalies": [
+                {
+                  "edges": [
+                    {
+                      "avg_duration_ms": 427.638,
+                      "avg_pct_of_total": 0.1279685098559315,
+                      "count": 1,
+                      "service": "cartservice"
+                    },
+                    {
+                      "avg_duration_ms": 220.18560000000008,
+                      "avg_pct_of_total": 0.06588942779578569,
+                      "count": 10,
+                      "service": "currencyservice"
+                    },
+                    {
+                      "avg_duration_ms": 178.496,
+                      "avg_pct_of_total": 0.05341402573027736,
+                      "count": 1,
+                      "service": "productcatalogservice"
+                    },
+                    {
+                      "avg_duration_ms": 126.784,
+                      "avg_pct_of_total": 0.03793947112645373,
+                      "count": 1,
+                      "service": "adservice"
+                    }
+                  ],
+                  "type": "slow_or_dominant_downstream_edges"
+                }
+              ],
+              "inputs": {
+                "entry_service": "frontend",
+                "service": "frontend"
+              },
+              "key_facts": [
+                "Entry service: frontend.",
+                "Trace count: 0.",
+                "Top downstream candidate: cartservice avg_duration=428ms pct=0.128.",
+                "Bottleneck service: cartservice (0 of total when available)."
+              ],
+              "negative_evidence": [
+                "No error spans were returned."
+              ],
+              "observability_gaps": [
+                "No traces returned in the lookback window."
+              ],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:57:06.496011Z",
+                  "tool": "get_dependency_traces"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "b4cf63fd-2eea-467a-93d7-51a08d5e5354",
+                  "timestamp": "2026-04-18T05:57:06.496011Z",
+                  "tool": "get_dependency_traces"
+                }
+              ],
+              "service": "frontend",
+              "status": "anomalous",
+              "summary": "Trace evidence for frontend has 1 slow/error signal group(s).",
+              "tool": "get_dependency_traces"
+            }
+          ],
+          "k8s_state": [
+            {
+              "anomalies": [
+                {
+                  "pods": [
+                    {
+                      "phase": "Running",
+                      "pod": "frontend-6965587bf-8vht7",
+                      "ready": false,
+                      "restarts": 0
+                    }
+                  ],
+                  "type": "pod_not_fully_healthy"
+                },
+                {
+                  "rollout_progressing": true,
+                  "type": "rollout_in_progress_or_stalled"
+                },
+                {
+                  "events": [
+                    {
+                      "message": "Container created",
+                      "object": "frontend-d5887b656-tdvdm",
+                      "reason": "Created",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Successfully assigned default/frontend-6965587bf-8vht7 to agentscope-collection-worker",
+                      "object": "frontend-6965587bf-8vht7",
+                      "reason": "Scheduled",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Container image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/frontend:v0.10.4\" already present on machine and can be accessed by the pod",
+                      "object": "frontend-d5887b656-tdvdm",
+                      "reason": "Pulled",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Deleted pod: frontend-d5887b656-tdvdm",
+                      "object": "frontend-d5887b656",
+                      "reason": "SuccessfulDelete",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Created pod: frontend-6965587bf-8vht7",
+                      "object": "frontend-6965587bf",
+                      "reason": "SuccessfulCreate",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Stopping container server",
+                      "object": "frontend-d5887b656-tdvdm",
+                      "reason": "Killing",
+                      "stale": false,
+                      "type": "Normal"
+                    }
+                  ],
+                  "type": "meaningful_kubernetes_events"
+                }
+              ],
+              "inputs": {
+                "service": "frontend"
+              },
+              "key_facts": [
+                "Replicas available/desired: 2/2.",
+                "Rollout progressing: True; total restart count: 0.",
+                "Pods ready/total: 2/3; phases: {'Running': 3}.",
+                "Service selector: {'app': 'frontend'}.",
+                "Service-selected pods/deployment pods: 3/3.",
+                "Service ports/targetPorts: port=80 targetPort=8080 name=http.",
+                "Selected pod container ports: container=server port=8080 name=.",
+                "Effective endpoints ready/not-ready: 3/0.",
+                "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+                "Deployment containers: [{'name': 'server', 'image': 'us-central1-docker.pkg.dev/google-samples/microservices-demo/frontend:v0.10.4', 'ports': [{'name': '', 'containerPort': 8080, 'protocol': 'TCP'}], 'resources': {'limits': {'cpu': '600m', 'memory': '256Mi'}, 'requests': {'cpu': '250m', 'memory': '128Mi'}}, 'readinessProbe': True, 'livenessProbe': True}]."
+              ],
+              "negative_evidence": [
+                "No replica availability gap is visible.",
+                "Service targetPort values align with exposed selected-pod container ports."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:56:24.616939Z",
+                  "tool": "get_k8s_state"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "404c3e34-9745-4f69-8c17-88482d6be641",
+                  "timestamp": "2026-04-18T05:56:24.616939Z",
+                  "tool": "get_k8s_state"
+                }
+              ],
+              "service": "frontend",
+              "status": "anomalous",
+              "summary": "Kubernetes evidence for frontend has 3 anomaly group(s).",
+              "tool": "get_k8s_state"
+            },
+            {
+              "anomalies": [
+                {
+                  "events": [
+                    {
+                      "message": "Readiness probe failed: dial tcp 10.244.1.89:1: connect: connection refused",
+                      "object": "cartservice-ccd548847-rs4qz",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Readiness probe failed: timeout: health rpc did not complete within 10s",
+                      "object": "cartservice-596766c6b8-zxld9",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Readiness probe failed: timeout: failed to connect service \"10.244.1.86:7070\" within 10s: context deadline exceeded",
+                      "object": "cartservice-596766c6b8-fh7fl",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Successfully assigned default/cartservice-ccd548847-rs4qz to agentscope-collection-worker",
+                      "object": "cartservice-ccd548847-rs4qz",
+                      "reason": "Scheduled",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Created pod: cartservice-ccd548847-rs4qz",
+                      "object": "cartservice-ccd548847",
+                      "reason": "SuccessfulCreate",
+                      "stale": false,
+                      "type": "Normal"
+                    }
+                  ],
+                  "type": "meaningful_kubernetes_events"
+                }
+              ],
+              "inputs": {
+                "service": "cartservice"
+              },
+              "key_facts": [
+                "Replicas available/desired: 2/2.",
+                "Rollout progressing: False; total restart count: 0.",
+                "Pods ready/total: 2/2; phases: {'Running': 2}.",
+                "Service selector: {'app': 'cartservice'}.",
+                "Service-selected pods/deployment pods: 2/2.",
+                "Service ports/targetPorts: port=7070 targetPort=7070 name=grpc.",
+                "Selected pod container ports: container=server port=7070 name=.",
+                "Effective endpoints ready/not-ready: 2/0.",
+                "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+                "Deployment containers: [{'name': 'server', 'image': 'us-central1-docker.pkg.dev/google-samples/microservices-demo/cartservice:v0.10.4', 'ports': [{'name': '', 'containerPort': 7070, 'protocol': 'TCP'}], 'resources': {'limits': {'cpu': '1', 'memory': '512Mi'}, 'requests': {'cpu': '300m', 'memory': '128Mi'}}, 'readinessProbe': True, 'livenessProbe': False}]."
+              ],
+              "negative_evidence": [
+                "All listed pods are Running, ready, and have no restarts.",
+                "No replica availability gap is visible.",
+                "Service targetPort values align with exposed selected-pod container ports."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:57:46.560296Z",
+                  "tool": "get_k8s_state"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "0fd4c330-33b7-406c-8d06-a27ec84acfcb",
+                  "timestamp": "2026-04-18T05:57:46.560296Z",
+                  "tool": "get_k8s_state"
+                }
+              ],
+              "service": "cartservice",
+              "status": "anomalous",
+              "summary": "Kubernetes evidence for cartservice has 1 anomaly group(s).",
+              "tool": "get_k8s_state"
+            },
+            {
+              "anomalies": [
+                {
+                  "events": [
+                    {
+                      "message": "Readiness probe failed: timeout: failed to connect service \"10.244.1.72:7000\" within 5s: context deadline exceeded",
+                      "object": "currencyservice-f877d79f5-58xz5",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Readiness probe failed: timeout: health rpc did not complete within 5s",
+                      "object": "currencyservice-f877d79f5-58xz5",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Liveness probe failed: timeout: health rpc did not complete within 5s",
+                      "object": "currencyservice-f877d79f5-58xz5",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Liveness probe failed: timeout: failed to connect service \"10.244.1.72:7000\" within 5s: context deadline exceeded",
+                      "object": "currencyservice-f877d79f5-58xz5",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Container image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/currencyservice:v0.10.4\" already present on machine and can be accessed by the pod",
+                      "object": "currencyservice-f877d79f5-58xz5",
+                      "reason": "Pulled",
+                      "stale": false,
+                      "type": "Normal"
+                    },
+                    {
+                      "message": "Container created",
+                      "object": "currencyservice-f877d79f5-58xz5",
+                      "reason": "Created",
+                      "stale": false,
+                      "type": "Normal"
+                    }
+                  ],
+                  "type": "meaningful_kubernetes_events"
+                }
+              ],
+              "inputs": {
+                "service": "currencyservice"
+              },
+              "key_facts": [
+                "Replicas available/desired: 1/1.",
+                "Rollout progressing: False; total restart count: 0.",
+                "Pods ready/total: 1/1; phases: {'Running': 1}.",
+                "Service selector: {'app': 'currencyservice'}.",
+                "Service-selected pods/deployment pods: 1/1.",
+                "Service ports/targetPorts: port=7000 targetPort=7000 name=grpc.",
+                "Selected pod container ports: container=server port=7000 name=grpc.",
+                "Effective endpoints ready/not-ready: 1/0.",
+                "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+                "Deployment containers: [{'name': 'server', 'image': 'us-central1-docker.pkg.dev/google-samples/microservices-demo/currencyservice:v0.10.4', 'ports': [{'name': 'grpc', 'containerPort': 7000, 'protocol': 'TCP'}], 'resources': {'limits': {'cpu': '500m', 'memory': '256Mi'}, 'requests': {'cpu': '200m', 'memory': '128Mi'}}, 'readinessProbe': True, 'livenessProbe': True}]."
+              ],
+              "negative_evidence": [
+                "All listed pods are Running, ready, and have no restarts.",
+                "No replica availability gap is visible.",
+                "Service targetPort values align with exposed selected-pod container ports."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:57:59.286735Z",
+                  "tool": "get_k8s_state"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "fc98b363-c8c7-4c17-8d47-0f1e87e55a42",
+                  "timestamp": "2026-04-18T05:57:59.286735Z",
+                  "tool": "get_k8s_state"
+                }
+              ],
+              "service": "currencyservice",
+              "status": "anomalous",
+              "summary": "Kubernetes evidence for currencyservice has 1 anomaly group(s).",
+              "tool": "get_k8s_state"
+            },
+            {
+              "anomalies": [
+                {
+                  "events": [
+                    {
+                      "message": "Failed to pull image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing\": rpc error: code = NotFound desc = failed to pull an...",
+                      "object": "productcatalogservice-57d9b54d64-bq6r7",
+                      "reason": "Failed",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Error: ErrImagePull",
+                      "object": "productcatalogservice-57d9b54d64-bq6r7",
+                      "reason": "Failed",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Error: ImagePullBackOff",
+                      "object": "productcatalogservice-57d9b54d64-bq6r7",
+                      "reason": "Failed",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Liveness probe failed: timeout: health rpc did not complete within 5s",
+                      "object": "productcatalogservice-5cc45cf549-r7vhr",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Liveness probe failed: timeout: health rpc did not complete within 5s",
+                      "object": "productcatalogservice-5cc45cf549-7bpkc",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    },
+                    {
+                      "message": "Readiness probe failed: timeout: health rpc did not complete within 5s",
+                      "object": "productcatalogservice-5cc45cf549-r7vhr",
+                      "reason": "Unhealthy",
+                      "stale": false,
+                      "type": "Warning"
+                    }
+                  ],
+                  "type": "meaningful_kubernetes_events"
+                }
+              ],
+              "inputs": {
+                "service": "productcatalogservice"
+              },
+              "key_facts": [
+                "Replicas available/desired: 2/2.",
+                "Rollout progressing: False; total restart count: 0.",
+                "Pods ready/total: 2/2; phases: {'Running': 2}.",
+                "Service selector: {'app': 'productcatalogservice'}.",
+                "Service-selected pods/deployment pods: 2/2.",
+                "Service ports/targetPorts: port=3550 targetPort=3550 name=grpc.",
+                "Selected pod container ports: container=server port=3550 name=.",
+                "Effective endpoints ready/not-ready: 2/0.",
+                "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+                "Deployment containers: [{'name': 'server', 'image': 'us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:v0.10.4', 'ports': [{'name': '', 'containerPort': 3550, 'protocol': 'TCP'}], 'resources': {'limits': {'cpu': '500m', 'memory': '256Mi'}, 'requests': {'cpu': '200m', 'memory': '128Mi'}}, 'readinessProbe': True, 'livenessProbe': True}]."
+              ],
+              "negative_evidence": [
+                "All listed pods are Running, ready, and have no restarts.",
+                "No replica availability gap is visible.",
+                "Service targetPort values align with exposed selected-pod container ports."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:57:49.779291Z",
+                  "tool": "get_k8s_state"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "b5ddcc13-bc36-457e-a118-95ff892cfea0",
+                  "timestamp": "2026-04-18T05:57:49.779291Z",
+                  "tool": "get_k8s_state"
+                }
+              ],
+              "service": "productcatalogservice",
+              "status": "anomalous",
+              "summary": "Kubernetes evidence for productcatalogservice has 1 anomaly group(s).",
+              "tool": "get_k8s_state"
+            }
+          ],
+          "logs": [
+            {
+              "anomalies": [
+                {
+                  "groups": {
+                    "timeout": 8
+                  },
+                  "type": "log_signal_patterns"
+                }
+              ],
+              "inputs": {
+                "service": "frontend"
+              },
+              "key_facts": [
+                "Log signal groups: {'timeout': 8}.",
+                {
+                  "representative_snippets": [
+                    {
+                      "signal_class": "timeout",
+                      "snippet": "{\"error\":\"could not retrieve cart: rpc error: code = Unavailable desc = connection error: desc = \\\"transport: Error while dialing: dial tcp 10.96.161.13:1: i/o timeout\\\"\",\"http.req.id\":\"6629dd64-e94b-4f53-bdf1-858730ccb301\",\"http.req.met..."
+                    },
+                    {
+                      "signal_class": "timeout",
+                      "snippet": "{\"error\":\"could not retrieve cart: rpc error: code = Unavailable desc = connection error: desc = \\\"transport: Error while dialing: dial tcp 10.96.161.13:1: i/o timeout\\\"\",\"http.req.id\":\"71c6b7fb-32a3-4833-a4be-d7f5dd9a5fa4\",\"http.req.met..."
+                    },
+                    {
+                      "signal_class": "timeout",
+                      "snippet": "{\"error\":\"could not retrieve cart: rpc error: code = Unavailable desc = connection error: desc = \\\"transport: Error while dialing: dial tcp 10.96.161.13:1: i/o timeout\\\"\",\"http.req.id\":\"87bf3f68-7db0-4fd3-b66f-aa560182d620\",\"http.req.met..."
+                    },
+                    {
+                      "signal_class": "timeout",
+                      "snippet": "{\"error\":\"could not retrieve cart: rpc error: code = Unavailable desc = connection error: desc = \\\"transport: Error while dialing: dial tcp 10.96.161.13:1: i/o timeout\\\"\",\"http.req.id\":\"d45a07ed-dacd-4ac7-beb6-b0a07956ae18\",\"http.req.met..."
+                    }
+                  ]
+                }
+              ],
+              "negative_evidence": [],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:56:35.676393Z",
+                  "tool": "get_logs"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "9151333f-b1b3-4322-84ed-083381cee20f",
+                  "timestamp": "2026-04-18T05:56:35.676393Z",
+                  "tool": "get_logs"
+                }
+              ],
+              "service": "frontend",
+              "status": "anomalous",
+              "summary": "Logs for frontend contain 8 signal line(s) across 1 group(s).",
+              "tool": "get_logs"
+            },
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "cartservice"
+              },
+              "key_facts": [
+                "Log signal groups: {'informational': 8}.",
+                {
+                  "representative_snippets": [
+                    {
+                      "signal_class": "informational",
+                      "snippet": "Checking CartService Health"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "Checking CartService Health"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "Checking CartService Health"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "Checking CartService Health"
+                    }
+                  ]
+                }
+              ],
+              "negative_evidence": [
+                "No error, timeout, OOM, throttling, or connection-failure log pattern was grouped."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:57:49.210046Z",
+                  "tool": "get_logs"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "1da4d335-55a8-4fce-9155-90a874c7363c",
+                  "timestamp": "2026-04-18T05:57:49.210046Z",
+                  "tool": "get_logs"
+                }
+              ],
+              "service": "cartservice",
+              "status": "ok",
+              "summary": "Logs for cartservice contain only informational sampled lines.",
+              "tool": "get_logs"
+            },
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "currencyservice"
+              },
+              "key_facts": [
+                "Log signal groups: {'informational': 8}.",
+                {
+                  "representative_snippets": [
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"severity\":\"info\",\"time\":1776491879953,\"pid\":1,\"hostname\":\"currencyservice-f877d79f5-58xz5\",\"name\":\"currencyservice-server\",\"message\":\"Getting supported currencies...\"}"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"severity\":\"info\",\"time\":1776491879969,\"pid\":1,\"hostname\":\"currencyservice-f877d79f5-58xz5\",\"name\":\"currencyservice-server\",\"message\":\"Getting supported currencies...\"}"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"severity\":\"info\",\"time\":1776491879990,\"pid\":1,\"hostname\":\"currencyservice-f877d79f5-58xz5\",\"name\":\"currencyservice-server\",\"message\":\"Getting supported currencies...\"}"
+                    },
+                    {
+                      "signal_class": "informational",
+                      "snippet": "{\"severity\":\"info\",\"time\":1776491879992,\"pid\":1,\"hostname\":\"currencyservice-f877d79f5-58xz5\",\"name\":\"currencyservice-server\",\"message\":\"Getting supported currencies...\"}"
+                    }
+                  ]
+                }
+              ],
+              "negative_evidence": [
+                "No error, timeout, OOM, throttling, or connection-failure log pattern was grouped."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:58:01.317416Z",
+                  "tool": "get_logs"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "4286ba7a-4c3a-4d20-96db-294fba1c0dd7",
+                  "timestamp": "2026-04-18T05:58:01.317416Z",
+                  "tool": "get_logs"
+                }
+              ],
+              "service": "currencyservice",
+              "status": "ok",
+              "summary": "Logs for currencyservice contain only informational sampled lines.",
+              "tool": "get_logs"
+            }
+          ],
+          "metrics": [
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "frontend"
+              },
+              "key_facts": [
+                "Traffic health: rps=0, error_rate=0%, p95=0ms, p99=0ms.",
+                "CPU: limit_util=12%, request_util=0%, throttling=2.88%.",
+                "Memory: limit_util=20.3%, request_util=0%."
+              ],
+              "negative_evidence": [
+                "No elevated error rate, latency breach, throttling, CPU pressure, or memory pressure in metrics."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:56:32.437740Z",
+                  "tool": "get_metrics"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "62db480b-18dd-4f4d-99c7-e5d757328f6a",
+                  "timestamp": "2026-04-18T05:56:32.437740Z",
+                  "tool": "get_metrics"
+                }
+              ],
+              "service": "frontend",
+              "status": "ok",
+              "summary": "Metrics for frontend show low error rate, bounded latency, and no resource saturation signal.",
+              "tool": "get_metrics"
+            },
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "cartservice"
+              },
+              "key_facts": [
+                "Traffic health: rps=0, error_rate=0%, p95=0ms, p99=0ms.",
+                "CPU: limit_util=5.6%, request_util=0%, throttling=0.171%.",
+                "Memory: limit_util=59.3%, request_util=0%."
+              ],
+              "negative_evidence": [
+                "No elevated error rate, latency breach, throttling, CPU pressure, or memory pressure in metrics."
+              ],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:57:49.097649Z",
+                  "tool": "get_metrics"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "b7459d08-95a6-42a8-b271-3f10c231d699",
+                  "timestamp": "2026-04-18T05:57:49.097649Z",
+                  "tool": "get_metrics"
+                }
+              ],
+              "service": "cartservice",
+              "status": "ok",
+              "summary": "Metrics for cartservice show low error rate, bounded latency, and no resource saturation signal.",
+              "tool": "get_metrics"
+            },
+            {
+              "anomalies": [
+                {
+                  "cpu_throttling_ratio": 0.10153000000000001,
+                  "type": "cpu_throttling_elevated"
+                }
+              ],
+              "inputs": {
+                "service": "currencyservice"
+              },
+              "key_facts": [
+                "Traffic health: rps=0, error_rate=0%, p95=0ms, p99=0ms.",
+                "CPU: limit_util=28.7%, request_util=0%, throttling=10.2%.",
+                "Memory: limit_util=66.6%, request_util=0%."
+              ],
+              "negative_evidence": [],
+              "observability_gaps": [],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:58:01.263574Z",
+                  "tool": "get_metrics"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "4e5fec74-0364-400e-b052-4579a041b28c",
+                  "timestamp": "2026-04-18T05:58:01.263574Z",
+                  "tool": "get_metrics"
+                }
+              ],
+              "service": "currencyservice",
+              "status": "anomalous",
+              "summary": "Metrics for currencyservice show 1 health/resource anomaly group(s).",
+              "tool": "get_metrics"
+            }
+          ],
+          "traces": [
+            {
+              "anomalies": [],
+              "inputs": {
+                "service": "frontend"
+              },
+              "key_facts": [
+                "Trace count: 0.",
+                "Bottleneck service: frontend (0 of total when available)."
+              ],
+              "negative_evidence": [
+                "No error spans were returned."
+              ],
+              "observability_gaps": [
+                "No traces returned in the lookback window."
+              ],
+              "raw_refs": [
+                {
+                  "call_id": "",
+                  "timestamp": "2026-04-18T05:56:57.308691Z",
+                  "tool": "get_traces"
+                },
+                {
+                  "artifact": "packaged_raw_payload",
+                  "call_id": "9e98e730-5595-4387-b9d5-06040d7955aa",
+                  "timestamp": "2026-04-18T05:56:57.308691Z",
+                  "tool": "get_traces"
+                }
+              ],
+              "service": "frontend",
+              "status": "ok",
+              "summary": "Trace evidence for frontend has no returned error span or dominant downstream bottleneck.",
+              "tool": "get_traces"
+            }
+          ]
+        },
+        "initial_context": {
+          "summary": "PagerDuty alert: an incident has been detected affecting frontend. The monitoring pipeline observed request failures or degraded dependency behavior. Investigate and recommend the most appropriate remediation action.",
+          "suspicious_services": [
+            "frontend"
+          ]
+        }
+      }
+    ]
+  },
+  "notes": [
+    "Both families expose downstream timeout/connection evidence and deployed env/dependency address evidence.",
+    "The compact evidence strongly supports dependency_configuration_regression as a shared family.",
+    "The exact distinction between native_bad_env and native_dependency_bad_endpoint is not crisply encoded as a neutral discriminator today.",
+    "A non-leaky next improvement would add derived fields such as dependency_address_source and dependency_target_mismatch_type when inferable from env/config/log evidence."
+  ]
+}

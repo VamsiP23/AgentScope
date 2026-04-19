@@ -1,0 +1,31 @@
+{
+  "problem_id": "native_bad_env_checkoutservice_email",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "bounded_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_cpu_limit_throttle",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": false,
+  "tool_calls_to_solution": 4,
+  "time_to_diagnosis_seconds": 171.01,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 0.667,
+  "missing_required_evidence": [
+    "get_dependency_traces(checkoutservice)"
+  ],
+  "submitted_root_cause": "checkoutservice is experiencing severe CPU throttling (53.9%) due to insufficient CPU limit (600m), causing application unresponsiveness and liveness probe timeout failures",
+  "submitted_action": "patch_resources(checkoutservice, cpu_limit=\"1000m\")",
+  "submitted_fault_class": "native_cpu_limit_throttle",
+  "expected_fault_class": "native_bad_env",
+  "submitted_affected_service": "checkoutservice",
+  "expected_affected_service": "checkoutservice",
+  "submitted_action_type": "patch_resources",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

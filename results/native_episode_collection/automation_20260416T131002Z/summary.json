@@ -1,0 +1,92 @@
+{
+  "run_id": "automation_20260416T131002Z",
+  "timestamp_utc": "2026-04-16T13:10:02Z",
+  "workspace": "/Users/aarnavsawant/Documents/CS6365/AgentScope",
+  "automation_id": "overnight-agentscope",
+  "goal": "Collect benchmark-ready native Kubernetes AgentScope episodes without ChaosMesh or LitmusChaos.",
+  "result": {
+    "new_packaged_episodes": 0,
+    "benchmark_ready_counted_episodes": 0,
+    "failed_collection_attempts": 0,
+    "native_faults_applied": 0,
+    "bulk_collection_started": false
+  },
+  "preflight": {
+    "memory_read": true,
+    "workspace_preserved": true,
+    "destructive_cleanup_used": false,
+    "py_compile_passed": true,
+    "native_fault_backend_present": true,
+    "structured_submit_fields_present": true,
+    "fixed_label_evaluator_present": true,
+    "diagnosis_only_replay_present": true,
+    "auto_increment_capture_output_present": true,
+    "non_leaky_initial_context_generation_present": true,
+    "service_config_evidence_layer_present": true
+  },
+  "mapping_status": {
+    "easy_and_medium_requested_ids_present": true,
+    "easy_and_medium_experiment_files_exist": true,
+    "missing_hard_ids": [
+      "native_noisy_rollout_plus_service_port_mismatch_productcatalogservice",
+      "native_trace_dependency_bad_endpoint_frontend_cartservice"
+    ]
+  },
+  "observability_access": {
+    "repair_command": "python3 scripts/repair_observability_access.py --namespace default",
+    "ok": false,
+    "checks": {
+      "prometheus_access": "local access for prometheus at http://localhost:9090 is not reachable even after refreshing the managed forward; see .runtime/port_forwards/prometheus.log",
+      "jaeger_access": "local access for jaeger at http://localhost:16686 is not reachable even after refreshing the managed forward; see .runtime/port_forwards/jaeger.log",
+      "frontend_access": "local access for frontend-external at http://localhost:8080 is not reachable even after refreshing the managed forward; see .runtime/port_forwards/frontend-external.log"
+    },
+    "port_forward_error": "Unable to connect to the server: dial tcp 127.0.0.1:6443: connect: operation not permitted"
+  },
+  "cluster_health_observed": {
+    "kubectl_get_pods_succeeded_once": true,
+    "workloads_running": true,
+    "service_config_read_succeeded": false,
+    "service_config_read_error": "Unable to connect to the server: dial tcp 127.0.0.1:6443: connect: operation not permitted"
+  },
+  "existing_packaged_episode_audit": {
+    "native_service_port_mismatch_productcatalogservice_001": {
+      "initial_context_non_leaky": true,
+      "service_config_in_replay": false,
+      "counted": false,
+      "reason": "Packaged before replay-visible Service/config evidence was available; decisive targetPort evidence is missing from agent-callable replay outputs."
+    },
+    "native_scale_zero_recommendationservice_001": {
+      "initial_context_non_leaky": true,
+      "service_config_in_replay": false,
+      "counted": false,
+      "reason": "Not freshly recollected or revalidated under the current evidence contract because observability and Kubernetes API access are blocked."
+    }
+  },
+  "scenario_counts": {
+    "native_service_port_mismatch_productcatalogservice": {"target": 3, "collected_this_run": 0, "benchmark_ready_total_counted_this_run": 0, "reason_if_below_target": "Blocked by observability repair and Kubernetes API/port-forward denial."},
+    "native_service_selector_mismatch_cartservice": {"target": 3, "collected_this_run": 0, "benchmark_ready_total_counted_this_run": 0, "reason_if_below_target": "Blocked by observability repair and Kubernetes API/port-forward denial."},
+    "native_bad_image_productcatalogservice": {"target": 3, "collected_this_run": 0, "benchmark_ready_total_counted_this_run": 0, "reason_if_below_target": "Blocked by observability repair and Kubernetes API/port-forward denial."},
+    "native_bad_probe_cartservice": {"target": 3, "collected_this_run": 0, "benchmark_ready_total_counted_this_run": 0, "reason_if_below_target": "Blocked by observability repair and Kubernetes API/port-forward denial."},
+    "native_scale_zero_recommendationservice": {"target": 3, "collected_this_run": 0, "benchmark_ready_total_counted_this_run": 0, "reason_if_below_target": "Blocked by observability repair and Kubernetes API/port-forward denial."},
+    "native_pod_delete_cartservice": {"target": 3, "collected_this_run": 0, "benchmark_ready_total_counted_this_run": 0, "reason_if_below_target": "Blocked by observability repair and Kubernetes API/port-forward denial."},
+    "native_dependency_bad_endpoint_frontend_cartservice": {"target": 3, "collected_this_run": 0, "benchmark_ready_total_counted_this_run": 0, "reason_if_below_target": "Blocked by observability repair and Kubernetes API/port-forward denial."},
+    "native_cpu_limit_throttle_checkoutservice": {"target": 3, "collected_this_run": 0, "benchmark_ready_total_counted_this_run": 0, "reason_if_below_target": "Blocked by observability repair and Kubernetes API/port-forward denial."},
+    "native_memory_limit_oom_cartservice": {"target": 3, "collected_this_run": 0, "benchmark_ready_total_counted_this_run": 0, "reason_if_below_target": "Blocked by observability repair and Kubernetes API/port-forward denial."},
+    "native_cpu_pressure_stress_job": {"target": 3, "collected_this_run": 0, "benchmark_ready_total_counted_this_run": 0, "reason_if_below_target": "Blocked by observability repair and Kubernetes API/port-forward denial."},
+    "native_memory_pressure_stress_job": {"target": 3, "collected_this_run": 0, "benchmark_ready_total_counted_this_run": 0, "reason_if_below_target": "Blocked by observability repair and Kubernetes API/port-forward denial."},
+    "native_bad_env_checkoutservice_email": {"target": 3, "collected_this_run": 0, "benchmark_ready_total_counted_this_run": 0, "reason_if_below_target": "Blocked by observability repair and Kubernetes API/port-forward denial."},
+    "native_noisy_rollout_plus_service_port_mismatch_productcatalogservice": {"target": 3, "collected_this_run": 0, "benchmark_ready_total_counted_this_run": 0, "reason_if_below_target": "Hard scenario mapping/backend implementation is still missing and live validation is blocked."},
+    "native_trace_dependency_bad_endpoint_frontend_cartservice": {"target": 3, "collected_this_run": 0, "benchmark_ready_total_counted_this_run": 0, "reason_if_below_target": "Hard scenario mapping/backend implementation is still missing and live validation is blocked."}
+  },
+  "cleanup_status": {
+    "native_fault_resources_checked": false,
+    "reason": "Kubernetes Service/resource reads are denied from this sandbox; no native fault was applied during this run.",
+    "known_left_active_by_this_run": false
+  },
+  "replay_and_evaluation": {
+    "replay_smoke_runs": [],
+    "gemini_runs": [],
+    "reason_not_run": "No newly collected benchmark-ready packaged episode was available."
+  },
+  "next_highest_value_step": "Run from an environment where kubectl Service/config reads and port-forward are permitted; recollect native_service_port_mismatch_productcatalogservice and native_service_selector_mismatch_cartservice first, then audit replay get_k8s_state outputs for decisive Service/config evidence before counting packages."
+}

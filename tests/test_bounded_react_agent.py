@@ -91,29 +91,6 @@ def test_bounded_react_allows_dependency_submit_after_trace() -> None:
     assert violation is None
 
 
-def test_bounded_react_blocks_incoherent_dependency_action() -> None:
-    agent = bounded_agent(
-        [
-            {"tool_called": "get_k8s_state", "inputs": {"service": "frontend"}, "output": {}},
-            {"tool_called": "get_dependency_traces", "inputs": {"service": "frontend"}, "output": {}},
-            {"tool_called": "get_metrics", "inputs": {"service": "frontend"}, "output": {}},
-        ]
-    )
-
-    violation = agent._bounded_submit_violation(
-        {
-            "tool": "submit_solution",
-            "fault_class": "native_dependency_bad_endpoint",
-            "root_cause": "frontend dependency endpoint is misconfigured",
-            "action_type": "patch_resources",
-        }
-    )
-
-    assert violation is not None
-    assert violation["type"] == "bounded_submit_incoherent_action"
-    assert violation["expected_action_type"] == "rollout_undo"
-
-
 def test_bounded_react_blocks_resource_submit_without_metrics() -> None:
     agent = bounded_agent(
         [

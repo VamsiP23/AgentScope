@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_memory_pressure_stress_job",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "pure_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "runtime_failure",
+  "expected_fault_family": "native_memory_pressure_stress_job",
+  "action_correct": false,
+  "tool_calls_to_solution": 7,
+  "time_to_diagnosis_seconds": 227.765,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "Frontend is experiencing elevated p99 latency (1.83 seconds) and error rate (0.284%) due to application-level validation failures on POST /cart requests where required fields (Quantity, ProductID) are missing from incoming requests",
+  "submitted_action": "Investigate client-side applications or API consumers sending POST /cart requests to ensure they include required fields (Quantity, ProductID). This is an application/API contract issue rather than an infrastructure problem requiring Kubernetes remediation.",
+  "submitted_fault_class": "runtime_failure",
+  "expected_fault_class": "native_memory_pressure_stress_job",
+  "submitted_affected_service": "frontend",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "wait_and_monitor",
+  "expected_action_types": [
+    "delete_stress_job"
+  ]
+}

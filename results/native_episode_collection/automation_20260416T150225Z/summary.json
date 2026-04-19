@@ -1,0 +1,92 @@
+{
+  "run_id": "automation_20260416T150225Z",
+  "timestamp_utc": "2026-04-16T15:02:25Z",
+  "workspace": "/Users/aarnavsawant/Documents/CS6365/AgentScope",
+  "automation_id": "overnight-agentscope",
+  "target_per_scenario": 3,
+  "result": {
+    "new_packaged_episodes": 0,
+    "benchmark_ready_episodes_counted": 0,
+    "native_fault_applied": false,
+    "failed_artifacts_deleted": false,
+    "destructive_cleanup_used": false
+  },
+  "preflight": {
+    "memory_read": true,
+    "workspace_preserved": true,
+    "py_compile_passed": true,
+    "native_fault_backend_present": true,
+    "structured_submit_fields_present": true,
+    "fixed_label_evaluator_present": true,
+    "auto_increment_capture_output_present": true,
+    "non_leaky_initial_context_generation_present": true,
+    "replay_diagnosis_only_present": true,
+    "service_config_evidence_layer_present": true,
+    "easy_and_medium_mappings_present": true,
+    "hard_mappings_missing": [
+      "native_noisy_rollout_plus_service_port_mismatch_productcatalogservice",
+      "native_trace_dependency_bad_endpoint_frontend_cartservice"
+    ]
+  },
+  "observability_access": {
+    "repair_command": "python3 scripts/repair_observability_access.py --namespace default",
+    "ok": false,
+    "checks": {
+      "prometheus_access": "local access for prometheus at http://localhost:9090 is not reachable even after refreshing the managed forward; see .runtime/port_forwards/prometheus.log",
+      "jaeger_access": "local access for jaeger at http://localhost:16686 is not reachable even after refreshing the managed forward; see .runtime/port_forwards/jaeger.log",
+      "frontend_access": "local access for frontend-external at http://localhost:8080 is not reachable even after refreshing the managed forward; see .runtime/port_forwards/frontend-external.log"
+    },
+    "api_symptom": "kubectl get pods succeeded once, then subsequent service/deployment/endpointslice reads and managed port-forward setup failed with: Unable to connect to the server: dial tcp 127.0.0.1:6443: connect: operation not permitted",
+    "cluster_health_sample": "Initial pod listing showed workload, Prometheus, Jaeger, kube-state-metrics, and OpenTelemetry collector pods Running in namespace default."
+  },
+  "collection": {
+    "attempted_live_collection": false,
+    "reason_not_attempted": "Stable Kubernetes API and observability access were unavailable. Running evidence probes would risk partial or misleading artifacts and could not satisfy full-evidence or evidence-sufficiency gates.",
+    "scenarios": {
+      "native_service_port_mismatch_productcatalogservice": {"target": 3, "collected": 0, "failed": 0, "reason": "blocked by Kubernetes API/port-forward access; existing _001 lacks replay-visible service_config and is evidence-insufficient"},
+      "native_service_selector_mismatch_cartservice": {"target": 3, "collected": 0, "failed": 0, "reason": "blocked by Kubernetes API/port-forward access"},
+      "native_bad_image_productcatalogservice": {"target": 3, "collected": 0, "failed": 0, "reason": "blocked by Kubernetes API/port-forward access"},
+      "native_bad_probe_cartservice": {"target": 3, "collected": 0, "failed": 0, "reason": "blocked by Kubernetes API/port-forward access"},
+      "native_scale_zero_recommendationservice": {"target": 3, "collected": 0, "failed": 0, "reason": "blocked by Kubernetes API/port-forward access; existing _001 lacks replay-visible service_config and was not freshly revalidated"},
+      "native_pod_delete_cartservice": {"target": 3, "collected": 0, "failed": 0, "reason": "blocked by Kubernetes API/port-forward access"},
+      "native_dependency_bad_endpoint_frontend_cartservice": {"target": 3, "collected": 0, "failed": 0, "reason": "blocked by Kubernetes API/port-forward access"},
+      "native_cpu_limit_throttle_checkoutservice": {"target": 3, "collected": 0, "failed": 0, "reason": "blocked by Kubernetes API/port-forward access"},
+      "native_memory_limit_oom_cartservice": {"target": 3, "collected": 0, "failed": 0, "reason": "blocked by Kubernetes API/port-forward access"},
+      "native_cpu_pressure_stress_job": {"target": 3, "collected": 0, "failed": 0, "reason": "blocked by Kubernetes API/port-forward access"},
+      "native_memory_pressure_stress_job": {"target": 3, "collected": 0, "failed": 0, "reason": "blocked by Kubernetes API/port-forward access"},
+      "native_bad_env_checkoutservice_email": {"target": 3, "collected": 0, "failed": 0, "reason": "blocked by Kubernetes API/port-forward access"},
+      "native_noisy_rollout_plus_service_port_mismatch_productcatalogservice": {"target": 3, "collected": 0, "failed": 0, "reason": "mapping/backend implementation still missing; live access blocked before hard-scenario work"},
+      "native_trace_dependency_bad_endpoint_frontend_cartservice": {"target": 3, "collected": 0, "failed": 0, "reason": "mapping/backend implementation still missing; live access blocked before hard-scenario work"}
+    }
+  },
+  "existing_packages_audit": [
+    {
+      "path": "/Users/aarnavsawant/Documents/CS6365/AgentScope/datasets/episodes/native_service_port_mismatch_productcatalogservice/native_service_port_mismatch_productcatalogservice_001.json",
+      "initial_context_clean": true,
+      "replay_visible_service_config": false,
+      "benchmark_ready": false,
+      "reason": "Decisive Service targetPort/container-port evidence is absent from the packaged replay outputs."
+    },
+    {
+      "path": "/Users/aarnavsawant/Documents/CS6365/AgentScope/datasets/episodes/native_scale_zero_recommendationservice/native_scale_zero_recommendationservice_001.json",
+      "initial_context_clean": true,
+      "replay_visible_service_config": false,
+      "benchmark_ready": false,
+      "reason": "Not freshly regenerated or replay-audited after the evidence-layer change; do not count this run."
+    }
+  ],
+  "replay_evaluation": {
+    "run": false,
+    "reason": "No newly collected benchmark-ready episode existed to replay. Existing packages remain uncounted."
+  },
+  "cleanup_status": {
+    "faults_applied_this_run": false,
+    "cleanup_needed": false,
+    "cleanup_verification": "No native fault was applied. Full Kubernetes cleanup verification could not be completed after API access became denied."
+  },
+  "artifact_paths": {
+    "summary_json": "/Users/aarnavsawant/Documents/CS6365/AgentScope/results/native_episode_collection/automation_20260416T150225Z/summary.json",
+    "summary_md": "/Users/aarnavsawant/Documents/CS6365/AgentScope/results/native_episode_collection/automation_20260416T150225Z/summary.md"
+  },
+  "next_highest_value_step": "Run collection from a context with stable access to https://127.0.0.1:6443 and managed port-forward support, then recollect native_service_port_mismatch_productcatalogservice and native_service_selector_mismatch_cartservice first so packaged replay outputs include decisive Service/config evidence."
+}

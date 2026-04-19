@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_memory_limit_oom_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "diagnostic_controller",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_cpu_limit_throttle",
+  "expected_fault_family": "native_memory_limit_oom",
+  "action_correct": true,
+  "tool_calls_to_solution": 6,
+  "time_to_diagnosis_seconds": 32.79,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "cartservice is experiencing CPU throttling (13.9%) and high memory pressure (87% of limit) due to insufficient CPU and memory resource limits. The current limits of 300m CPU and 48Mi memory are too restrictive, causing the application to be throttled and unable to respond to health probes within the 10-second timeout, resulting in pod replacement cycles.",
+  "submitted_action": "Increase CPU and memory resource limits for cartservice deployment to provide adequate resources and eliminate throttling",
+  "submitted_fault_class": "native_cpu_limit_throttle",
+  "expected_fault_class": "native_memory_limit_oom",
+  "submitted_affected_service": "cartservice",
+  "expected_affected_service": "cartservice",
+  "submitted_action_type": "patch_resources",
+  "expected_action_types": [
+    "patch_resources"
+  ]
+}

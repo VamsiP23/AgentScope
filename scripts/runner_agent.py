@@ -87,9 +87,9 @@ def build_agent_cmd(
     problem: ProblemSpec | None = None,
 ) -> List[str]:
     agent_type = str_value(agent.get("type"), "pipeline").strip().lower()
-    if agent_type not in {"react", "bounded_react"}:
+    if agent_type not in {"react", "bounded_react", "diagnostic"}:
         raise RuntimeError(
-            f"unsupported agent type '{agent_type}'. Use type=react or type=bounded_react."
+            f"unsupported agent type '{agent_type}'. Use type=react, type=bounded_react, or type=diagnostic."
         )
 
     cmd = [

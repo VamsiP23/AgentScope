@@ -1,0 +1,26 @@
+{
+  "problem_id": "native_dependency_bad_endpoint_frontend_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "compact_one_shot",
+  "model": "gemini-2.5-flash",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "action_correct": true,
+  "tool_calls_to_solution": 5,
+  "time_to_diagnosis_seconds": 0.005,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "The frontend service has an incorrect environment variable, CART_SERVICE_ADDR, set to 'cartservice:1' instead of a valid port, causing connection timeouts when trying to reach the cartservice. This misconfiguration was introduced during a recent rollout, leading to an unhealthy pod.",
+  "submitted_action": "Undo the recent rollout for the frontend service to revert the misconfigured CART_SERVICE_ADDR environment variable to a correct value.",
+  "submitted_fault_class": "native_bad_env",
+  "expected_fault_class": "native_dependency_bad_endpoint",
+  "submitted_affected_service": "frontend",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "rollout_undo",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

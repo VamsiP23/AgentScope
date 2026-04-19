@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_bad_env_checkoutservice_email",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "compact_one_shot",
+  "model": "claude-sonnet-4-20250514",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": true,
+  "submitted_fault_family": "dependency_configuration_regression",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": false,
+  "tool_calls_to_solution": 8,
+  "time_to_diagnosis_seconds": 0.008,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "The checkoutservice is experiencing connectivity issues with the emailservice dependency. Logs show repeated timeout errors when trying to connect to emailservice at 10.96.84.80:5999 (i/o timeout), and the service configuration shows EMAIL_SERVICE_ADDR pointing to 'emailservice:5999'. While the checkoutservice pods are being rolled out (2/3 pods ready), the readiness probe failures and timeout logs indicate the primary issue is with the emailservice dependency endpoint being unreachable.",
+  "submitted_action": "Wait and monitor the emailservice dependency recovery while the ongoing rollout completes naturally.",
+  "submitted_fault_class": "native_dependency_bad_endpoint",
+  "expected_fault_class": "native_bad_env",
+  "submitted_affected_service": "checkoutservice",
+  "expected_affected_service": "checkoutservice",
+  "submitted_action_type": "wait_and_monitor",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

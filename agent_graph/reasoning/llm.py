@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from http.client import RemoteDisconnected
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 from urllib.error import HTTPError, URLError
@@ -64,7 +65,7 @@ class BaseJSONClient(ABC):
                     continue
                 detail = exc.read().decode("utf-8", errors="replace")
                 raise RuntimeError(f"HTTP {exc.code} from LLM provider: {detail}") from exc
-            except URLError as exc:
+            except (URLError, RemoteDisconnected, ConnectionResetError, OSError) as exc:
                 last_error = exc
                 if attempt < self.max_retries:
                     time.sleep(backoff_seconds)

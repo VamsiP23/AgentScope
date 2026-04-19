@@ -1,0 +1,804 @@
+{
+  "agent_type": "benchmark",
+  "timestamp_utc": "2026-04-18T23:46:50Z",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-0",
+  "agent_variant": "structured_compact",
+  "backend": "replay",
+  "diagnosis_only": true,
+  "evidence_view": "compact",
+  "replay_dataset": "/Users/aarnavsawant/Documents/CS6365/AgentScope/datasets/episodes/native_pod_delete_cartservice/native_pod_delete_cartservice_002.json",
+  "problem": {
+    "id": "native_pod_delete_cartservice",
+    "status": "candidate",
+    "category": "pod_disturbance",
+    "experiment_file": "/Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/native_pod_delete_cartservice_baseline.yaml",
+    "target_service": "cartservice",
+    "detector_gate": {
+      "require_incident_detected": true,
+      "target_deployment": "cartservice",
+      "primary_signal": "deployment_availability"
+    },
+    "ground_truth": {
+      "acceptable_root_causes": [
+        "cartservice pod was deleted and recreated",
+        "cartservice pod disturbance"
+      ],
+      "acceptable_actions": [
+        "wait_and_monitor"
+      ],
+      "required_evidence": [
+        "get_k8s_state(cartservice)",
+        "get_logs(cartservice)"
+      ],
+      "traces_required": false
+    },
+    "task_family": "native_pod_delete",
+    "scenario": "one cartservice pod is deleted and Kubernetes recreates it",
+    "entry_service": "frontend",
+    "telemetry_contract": {
+      "required_validation_checks": [
+        "otel_spanmetrics_up",
+        "kube_state_metrics_up",
+        "jaeger_services"
+      ],
+      "required_services": [
+        "frontend",
+        "cartservice"
+      ],
+      "fail_open": false,
+      "notes": "Pod lifecycle episode; Kubernetes pod events and readiness are decisive."
+    },
+    "notes": "Medium native lifecycle task; correct action is to verify recovery rather than mutate healthy resources."
+  },
+  "seeded_detection": {},
+  "guardrail_events": [],
+  "steps": [
+    {
+      "step": 1,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_k8s_state",
+      "call_id": "",
+      "inputs": {
+        "service": "cartservice"
+      },
+      "output": {
+        "status": "anomalous",
+        "summary": "Kubernetes evidence for cartservice has 6 anomaly group(s).",
+        "key_facts": [
+          "Replicas available/desired: 0/1.",
+          "Rollout progressing: True; total restart count: 0.",
+          "Pods ready/total: 0/1; phases: {'Running': 1}.",
+          "Service selector: {'app': 'cartservice'}.",
+          "Service-selected pods/deployment pods: 1/1.",
+          "Service ports/targetPorts: port=7070 targetPort=7070 name=grpc.",
+          "Selected pod container ports: container=server port=7070 name=.",
+          "Effective endpoints ready/not-ready: 0/1.",
+          "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+        ],
+        "anomalies": [
+          {
+            "type": "pod_not_fully_healthy",
+            "pods": [
+              {
+                "pod": "cartservice-6d57458d89-4jfxf",
+                "phase": "Running",
+                "ready": false,
+                "restarts": 0
+              }
+            ]
+          },
+          {
+            "type": "availability_gap",
+            "available": 0,
+            "desired": 1
+          },
+          {
+            "type": "rollout_in_progress_or_stalled",
+            "rollout_progressing": true
+          },
+          {
+            "type": "service_config_signal",
+            "scope": "service",
+            "count": 1
+          },
+          {
+            "type": "pod_lifecycle_replacement_events",
+            "deleted_or_killed": 1,
+            "created_or_scheduled": 2,
+            "rollout_progressing": true,
+            "events": [
+              {
+                "reason": "Killing",
+                "object": "cartservice-6d57458d89-s98rw",
+                "type": "Normal",
+                "message": "Stopping container server",
+                "stale": false
+              },
+              {
+                "reason": "Scheduled",
+                "object": "cartservice-6d57458d89-s98rw",
+                "type": "Normal",
+                "message": "Successfully assigned default/cartservice-6d57458d89-s98rw to agentscope-collection-worker",
+                "stale": false
+              },
+              {
+                "reason": "SuccessfulCreate",
+                "object": "cartservice-6d57458d89",
+                "type": "Normal",
+                "message": "Created pod: cartservice-6d57458d89-4jfxf",
+                "stale": false
+              }
+            ]
+          },
+          {
+            "type": "meaningful_kubernetes_events",
+            "events": [
+              {
+                "reason": "Scheduled",
+                "object": "cartservice-6d57458d89-s98rw",
+                "type": "Normal",
+                "message": "Successfully assigned default/cartservice-6d57458d89-s98rw to agentscope-collection-worker",
+                "stale": false
+              },
+              {
+                "reason": "Created",
+                "object": "cartservice-6d57458d89-s98rw",
+                "type": "Normal",
+                "message": "Container created",
+                "stale": false
+              },
+              {
+                "reason": "Pulled",
+                "object": "cartservice-6d57458d89-s98rw",
+                "type": "Normal",
+                "message": "Container image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/cartservice:v0.10.4\" already present on machine and can be accessed by the pod",
+                "stale": false
+              },
+              {
+                "reason": "SuccessfulCreate",
+                "object": "cartservice-6d57458d89",
+                "type": "Normal",
+                "message": "Created pod: cartservice-6d57458d89-4jfxf",
+                "stale": false
+              },
+              {
+                "reason": "Killing",
+                "object": "cartservice-6d57458d89-s98rw",
+                "type": "Normal",
+                "message": "Stopping container server",
+                "stale": false
+              }
+            ]
+          }
+        ],
+        "negative_evidence": [
+          "Service targetPort values align with exposed selected-pod container ports.",
+          "Pod replacement events were returned without image-pull failure events.",
+          "Pod replacement events were returned without probe-failure warning events."
+        ],
+        "observability_gaps": [],
+        "tool": "get_k8s_state",
+        "call_id": "",
+        "timestamp": "2026-04-16T20:03:19.880998Z",
+        "service": "cartservice",
+        "raw_refs": [
+          {
+            "tool": "get_k8s_state",
+            "call_id": "",
+            "timestamp": "2026-04-16T20:03:19.880998Z"
+          },
+          {
+            "tool": "get_k8s_state",
+            "call_id": "40bc8531-5991-48b7-bc5c-43f20871c360",
+            "timestamp": "2026-04-16T20:03:19.880998Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776556010.259353
+    },
+    {
+      "step": 2,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_metrics",
+      "call_id": "",
+      "inputs": {
+        "service": "cartservice"
+      },
+      "output": {
+        "status": "ok",
+        "summary": "Metrics for cartservice show low error rate, bounded latency, and no resource saturation signal.",
+        "key_facts": [
+          "Traffic health: rps=0, error_rate=0%, p95=0ms, p99=0ms.",
+          "CPU: limit_util=2.16%, request_util=0%, throttling=0%.",
+          "Memory: limit_util=58%, request_util=0%."
+        ],
+        "anomalies": [],
+        "negative_evidence": [
+          "No elevated error rate, latency breach, throttling, CPU pressure, or memory pressure in metrics."
+        ],
+        "observability_gaps": [],
+        "tool": "get_metrics",
+        "call_id": "",
+        "timestamp": "2026-04-16T20:03:22.154815Z",
+        "service": "cartservice",
+        "raw_refs": [
+          {
+            "tool": "get_metrics",
+            "call_id": "",
+            "timestamp": "2026-04-16T20:03:22.154815Z"
+          },
+          {
+            "tool": "get_metrics",
+            "call_id": "eefd74bb-1dae-4db2-b53f-63cb7d1649d1",
+            "timestamp": "2026-04-16T20:03:22.154815Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776556010.260353
+    },
+    {
+      "step": 3,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_logs",
+      "call_id": "",
+      "inputs": {
+        "service": "cartservice"
+      },
+      "output": {
+        "status": "ok",
+        "summary": "Logs for cartservice contain only informational sampled lines.",
+        "key_facts": [
+          "Log signal groups: {'informational': 8}.",
+          {
+            "representative_snippets": [
+              {
+                "signal_class": "informational",
+                "snippet": "info: Microsoft.Hosting.Lifetime[14]"
+              },
+              {
+                "signal_class": "informational",
+                "snippet": "Now listening on: http://[::]:7070"
+              },
+              {
+                "signal_class": "informational",
+                "snippet": "info: Microsoft.Hosting.Lifetime[0]"
+              },
+              {
+                "signal_class": "informational",
+                "snippet": "Application started. Press Ctrl+C to shut down."
+              }
+            ]
+          }
+        ],
+        "anomalies": [],
+        "negative_evidence": [
+          "No error, timeout, OOM, throttling, or connection-failure log pattern was grouped."
+        ],
+        "observability_gaps": [],
+        "tool": "get_logs",
+        "call_id": "",
+        "timestamp": "2026-04-16T20:03:31.325664Z",
+        "service": "cartservice",
+        "raw_refs": [
+          {
+            "tool": "get_logs",
+            "call_id": "",
+            "timestamp": "2026-04-16T20:03:31.325664Z"
+          },
+          {
+            "tool": "get_logs",
+            "call_id": "eb12145f-bf71-4583-989f-2465c0b1db68",
+            "timestamp": "2026-04-16T20:03:31.325664Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776556010.261353
+    },
+    {
+      "step": 4,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_traces",
+      "call_id": "",
+      "inputs": {
+        "service": "cartservice"
+      },
+      "output": {
+        "status": "ok",
+        "summary": "Trace evidence for cartservice has no returned error span or dominant downstream bottleneck.",
+        "key_facts": [
+          "Trace count: 0."
+        ],
+        "anomalies": [],
+        "negative_evidence": [
+          "No error spans were returned."
+        ],
+        "observability_gaps": [
+          "Trace quality is missing.",
+          "No traces returned in the lookback window."
+        ],
+        "tool": "get_traces",
+        "call_id": "",
+        "timestamp": "2026-04-16T20:03:49.998586Z",
+        "service": "cartservice",
+        "raw_refs": [
+          {
+            "tool": "get_traces",
+            "call_id": "",
+            "timestamp": "2026-04-16T20:03:49.998586Z"
+          },
+          {
+            "tool": "get_traces",
+            "call_id": "24f6ee47-8819-4388-8a8c-33b80ca43f6a",
+            "timestamp": "2026-04-16T20:03:49.998586Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776556010.262353
+    },
+    {
+      "step": 5,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_k8s_state",
+      "call_id": "",
+      "inputs": {
+        "service": "redis-cart"
+      },
+      "output": {
+        "status": "anomalous",
+        "summary": "Kubernetes evidence for redis-cart has 1 anomaly group(s).",
+        "key_facts": [
+          "Replicas available/desired: 1/1.",
+          "Rollout progressing: False; total restart count: 2.",
+          "Pods ready/total: 1/1; phases: {'Running': 1}.",
+          "Service selector: {'app': 'redis-cart'}.",
+          "Service-selected pods/deployment pods: 1/1.",
+          "Service ports/targetPorts: port=6379 targetPort=6379 name=tcp-redis.",
+          "Selected pod container ports: container=redis port=6379 name=.",
+          "Effective endpoints ready/not-ready: 1/0.",
+          "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+        ],
+        "anomalies": [
+          {
+            "type": "pod_not_fully_healthy",
+            "pods": [
+              {
+                "pod": "redis-cart-6899b65948-q5mxh",
+                "phase": "Running",
+                "ready": true,
+                "restarts": 2
+              }
+            ]
+          }
+        ],
+        "negative_evidence": [
+          "No replica availability gap is visible.",
+          "Service targetPort values align with exposed selected-pod container ports.",
+          "No recent Kubernetes events were returned."
+        ],
+        "observability_gaps": [],
+        "tool": "get_k8s_state",
+        "call_id": "",
+        "timestamp": "2026-04-16T20:04:25.621427Z",
+        "service": "redis-cart",
+        "raw_refs": [
+          {
+            "tool": "get_k8s_state",
+            "call_id": "",
+            "timestamp": "2026-04-16T20:04:25.621427Z"
+          },
+          {
+            "tool": "get_k8s_state",
+            "call_id": "1017244a-2d3c-4445-8d34-6c721d86325c",
+            "timestamp": "2026-04-16T20:04:25.621427Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776556010.263353
+    },
+    {
+      "step": 6,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_metrics",
+      "call_id": "",
+      "inputs": {
+        "service": "redis-cart"
+      },
+      "output": {
+        "status": "ok",
+        "summary": "Metrics for redis-cart show low error rate, bounded latency, and no resource saturation signal.",
+        "key_facts": [
+          "Traffic health: rps=0, error_rate=0%, p95=0ms, p99=0ms.",
+          "CPU: limit_util=0%, request_util=0%, throttling=0%.",
+          "Memory: limit_util=0%, request_util=0%."
+        ],
+        "anomalies": [],
+        "negative_evidence": [
+          "No elevated error rate, latency breach, throttling, CPU pressure, or memory pressure in metrics."
+        ],
+        "observability_gaps": [],
+        "tool": "get_metrics",
+        "call_id": "",
+        "timestamp": "2026-04-16T20:04:26.260936Z",
+        "service": "redis-cart",
+        "raw_refs": [
+          {
+            "tool": "get_metrics",
+            "call_id": "",
+            "timestamp": "2026-04-16T20:04:26.260936Z"
+          },
+          {
+            "tool": "get_metrics",
+            "call_id": "e3c49f47-b20a-4e5f-a61f-ca4c15551671",
+            "timestamp": "2026-04-16T20:04:26.260936Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776556010.264353
+    },
+    {
+      "step": 7,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_logs",
+      "call_id": "",
+      "inputs": {
+        "service": "redis-cart"
+      },
+      "output": {
+        "status": "ok",
+        "summary": "Logs for redis-cart contain only informational sampled lines.",
+        "key_facts": [
+          "Log signal groups: {'informational': 8}.",
+          {
+            "representative_snippets": [
+              {
+                "signal_class": "informational",
+                "snippet": "42:C 16 Apr 2026 19:54:22.384 * Fork CoW for RDB: current 1 MB, peak 1 MB, average 0 MB"
+              },
+              {
+                "signal_class": "informational",
+                "snippet": "1:M 16 Apr 2026 19:54:22.478 * Background saving terminated with success"
+              },
+              {
+                "signal_class": "informational",
+                "snippet": "1:M 16 Apr 2026 20:02:41.746 * 100 changes in 300 seconds. Saving..."
+              },
+              {
+                "signal_class": "informational",
+                "snippet": "1:M 16 Apr 2026 20:02:41.837 * Background saving started by pid 43"
+              }
+            ]
+          }
+        ],
+        "anomalies": [],
+        "negative_evidence": [
+          "No error, timeout, OOM, throttling, or connection-failure log pattern was grouped."
+        ],
+        "observability_gaps": [],
+        "tool": "get_logs",
+        "call_id": "",
+        "timestamp": "2026-04-16T20:04:56.462948Z",
+        "service": "redis-cart",
+        "raw_refs": [
+          {
+            "tool": "get_logs",
+            "call_id": "",
+            "timestamp": "2026-04-16T20:04:56.462948Z"
+          },
+          {
+            "tool": "get_logs",
+            "call_id": "19b18c51-7967-41cd-9e6f-7a478039e9a7",
+            "timestamp": "2026-04-16T20:04:56.462948Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776556010.265353
+    },
+    {
+      "step": 8,
+      "thought": "Structured compact structured_triage.",
+      "tool_called": "structured_triage",
+      "call_id": "b552cf26-0bd2-4b80-91bb-3d38e6a3f725",
+      "inputs": {},
+      "output": {
+        "suspected_categories": [
+          "availability_rollout"
+        ],
+        "needed_evidence": [
+          "k8s_state",
+          "logs"
+        ],
+        "key_observations": [
+          "Cartservice has 0/1 replicas available with rollout in progress",
+          "Pod cartservice-6d57458d89-4jfxf is Running but not ready",
+          "Pod lifecycle replacement events show killing of old pod and creation of new pod",
+          "No error logs visible in cartservice logs - only informational messages",
+          "Metrics show no traffic (0 rps) and no resource saturation",
+          "No traces available for analysis"
+        ],
+        "why": "The primary issue is an availability problem during a rollout. The cartservice has 0 available replicas out of 1 desired, with a rollout in progress. The current pod is Running but not ready, indicating the pod started but failed to pass readiness checks. The pod lifecycle events show normal replacement activity (killing old pod, creating new pod) but the new pod is not becoming ready. This is clearly an availability_rollout issue where a deployment rollout has resulted in unavailable service."
+      },
+      "timestamp": 1776556010.266353
+    },
+    {
+      "step": 9,
+      "thought": "Structured compact structured_candidate_analysis.",
+      "tool_called": "structured_candidate_analysis",
+      "call_id": "f6d9db19-0509-4b28-836e-92615e38e166",
+      "inputs": {},
+      "output": {
+        "positive_facts": [
+          "Cartservice has 0/1 replicas available with rollout in progress",
+          "Pod cartservice-6d57458d89-4jfxf is Running but not ready",
+          "Pod lifecycle replacement events show killing of old pod and creation of new pod",
+          "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+          "No error logs visible in cartservice logs - only informational messages",
+          "Metrics show no traffic (0 rps) and no resource saturation",
+          "No traces available for analysis",
+          "Container image was already present on machine and accessible",
+          "Normal pod creation and scheduling events occurred",
+          "Redis-cart dependency is healthy with 1/1 replicas available"
+        ],
+        "anomalies": [
+          "Pod not fully healthy: cartservice-6d57458d89-4jfxf Running but not ready",
+          "Availability gap: 0 available out of 1 desired replicas",
+          "Rollout in progress or stalled",
+          "Pod lifecycle replacement events during rollout"
+        ],
+        "negative_evidence": [
+          "No image-pull failure events during pod replacement",
+          "No probe-failure warning events during pod replacement",
+          "No error, timeout, OOM, throttling, or connection-failure log patterns",
+          "No elevated error rate, latency breach, throttling, CPU pressure, or memory pressure",
+          "Service targetPort values align with selected-pod container ports",
+          "Container image successfully pulled and accessible"
+        ],
+        "observability_gaps": [
+          "No traces returned in the lookback window",
+          "Specific readiness probe failure details not available",
+          "Detailed probe configuration not visible"
+        ],
+        "candidates": [
+          {
+            "fault_class": "native_bad_probe_rollout",
+            "affected_service": "cartservice",
+            "action_type": "rollout_undo",
+            "supporting_evidence": [
+              "Pod is Running but not ready after rollout",
+              "Rollout in progress with 0/1 available replicas",
+              "No image-pull failures or container startup errors",
+              "Normal pod creation and container startup",
+              "No application errors in logs",
+              "Pod lifecycle shows normal replacement during rollout"
+            ],
+            "contradicting_evidence": [
+              "No explicit probe-failure warning events visible",
+              "No error logs indicating application issues"
+            ],
+            "score": 0.85
+          },
+          {
+            "fault_class": "native_bad_image_rollout",
+            "affected_service": "cartservice",
+            "action_type": "rollout_undo",
+            "supporting_evidence": [
+              "Pod Running but not ready after rollout",
+              "Rollout in progress with availability gap",
+              "Pod replacement events during rollout"
+            ],
+            "contradicting_evidence": [
+              "Container image successfully pulled and accessible",
+              "No image-pull failure events",
+              "Application logs show normal startup messages",
+              "No container startup errors"
+            ],
+            "score": 0.15
+          },
+          {
+            "fault_class": "native_bad_env",
+            "affected_service": "cartservice",
+            "action_type": "rollout_undo",
+            "supporting_evidence": [
+              "Pod Running but not ready after rollout",
+              "Normal container startup but readiness failure",
+              "Rollout context suggests configuration change"
+            ],
+            "contradicting_evidence": [
+              "No error logs indicating env/config issues",
+              "Application started successfully per logs",
+              "Redis-cart dependency is healthy"
+            ],
+            "score": 0.25
+          }
+        ],
+        "rejected_candidates": [
+          "native_service_selector_mismatch - Service selector evidence shows no mismatch",
+          "native_service_port_mismatch - Service targetPort values align with container ports",
+          "native_scale_zero - Desired replicas is 1, not 0",
+          "native_pod_delete - This is a rollout issue, not isolated pod failure",
+          "native_dependency_bad_endpoint - Redis-cart dependency is healthy",
+          "native_cpu_limit_throttle - No CPU throttling in metrics",
+          "native_memory_limit_oom - No memory pressure or OOM evidence",
+          "Resource pressure faults - Metrics show no saturation",
+          "Stress job faults - No evidence of external stress workloads"
+        ]
+      },
+      "timestamp": 1776556010.267353
+    },
+    {
+      "step": 10,
+      "thought": "Submit structured compact diagnosis.",
+      "tool_called": "submit_solution",
+      "call_id": "9aedbf8c-b6c1-4cf9-9350-098312e758bb",
+      "inputs": {},
+      "output": {
+        "call_id": "9aedbf8c-b6c1-4cf9-9350-098312e758bb",
+        "solution_logged": true,
+        "evidence_valid": true,
+        "invalid_evidence": [],
+        "error": null,
+        "root_cause": "The cartservice deployment rollout has resulted in a pod that starts successfully but fails readiness checks, causing 0/1 replicas to be available. The pod is Running but not ready, indicating the container started normally but the readiness probe is failing, preventing the service from becoming available.",
+        "action_taken": "Undo the deployment rollout to restore the previous working version",
+        "fault_class": "native_bad_probe_rollout",
+        "affected_service": "cartservice",
+        "action_type": "rollout_undo",
+        "confidence": 0.85,
+        "evidence": [
+          "get_k8s_state(cartservice): Pod cartservice-6d57458d89-4jfxf is Running but not ready",
+          "get_k8s_state(cartservice): Replicas available/desired: 0/1",
+          "get_k8s_state(cartservice): Rollout progressing: True",
+          "get_k8s_state(cartservice): Pod replacement events during rollout with normal container creation",
+          "get_k8s_state(cartservice): No image-pull failure events during pod replacement",
+          "get_k8s_state(cartservice): No probe-failure warning events during pod replacement",
+          "get_logs(cartservice): Only informational messages, no error logs",
+          "get_metrics(cartservice): No resource saturation or elevated error rates"
+        ]
+      },
+      "timestamp": 1776556010.268353
+    }
+  ],
+  "structured_trace": {
+    "triage": {
+      "suspected_categories": [
+        "availability_rollout"
+      ],
+      "needed_evidence": [
+        "k8s_state",
+        "logs"
+      ],
+      "key_observations": [
+        "Cartservice has 0/1 replicas available with rollout in progress",
+        "Pod cartservice-6d57458d89-4jfxf is Running but not ready",
+        "Pod lifecycle replacement events show killing of old pod and creation of new pod",
+        "No error logs visible in cartservice logs - only informational messages",
+        "Metrics show no traffic (0 rps) and no resource saturation",
+        "No traces available for analysis"
+      ],
+      "why": "The primary issue is an availability problem during a rollout. The cartservice has 0 available replicas out of 1 desired, with a rollout in progress. The current pod is Running but not ready, indicating the pod started but failed to pass readiness checks. The pod lifecycle events show normal replacement activity (killing old pod, creating new pod) but the new pod is not becoming ready. This is clearly an availability_rollout issue where a deployment rollout has resulted in unavailable service."
+    },
+    "candidate_analysis": {
+      "positive_facts": [
+        "Cartservice has 0/1 replicas available with rollout in progress",
+        "Pod cartservice-6d57458d89-4jfxf is Running but not ready",
+        "Pod lifecycle replacement events show killing of old pod and creation of new pod",
+        "Service selector, endpoint, and targetPort evidence has no obvious mismatch",
+        "No error logs visible in cartservice logs - only informational messages",
+        "Metrics show no traffic (0 rps) and no resource saturation",
+        "No traces available for analysis",
+        "Container image was already present on machine and accessible",
+        "Normal pod creation and scheduling events occurred",
+        "Redis-cart dependency is healthy with 1/1 replicas available"
+      ],
+      "anomalies": [
+        "Pod not fully healthy: cartservice-6d57458d89-4jfxf Running but not ready",
+        "Availability gap: 0 available out of 1 desired replicas",
+        "Rollout in progress or stalled",
+        "Pod lifecycle replacement events during rollout"
+      ],
+      "negative_evidence": [
+        "No image-pull failure events during pod replacement",
+        "No probe-failure warning events during pod replacement",
+        "No error, timeout, OOM, throttling, or connection-failure log patterns",
+        "No elevated error rate, latency breach, throttling, CPU pressure, or memory pressure",
+        "Service targetPort values align with selected-pod container ports",
+        "Container image successfully pulled and accessible"
+      ],
+      "observability_gaps": [
+        "No traces returned in the lookback window",
+        "Specific readiness probe failure details not available",
+        "Detailed probe configuration not visible"
+      ],
+      "candidates": [
+        {
+          "fault_class": "native_bad_probe_rollout",
+          "affected_service": "cartservice",
+          "action_type": "rollout_undo",
+          "supporting_evidence": [
+            "Pod is Running but not ready after rollout",
+            "Rollout in progress with 0/1 available replicas",
+            "No image-pull failures or container startup errors",
+            "Normal pod creation and container startup",
+            "No application errors in logs",
+            "Pod lifecycle shows normal replacement during rollout"
+          ],
+          "contradicting_evidence": [
+            "No explicit probe-failure warning events visible",
+            "No error logs indicating application issues"
+          ],
+          "score": 0.85
+        },
+        {
+          "fault_class": "native_bad_image_rollout",
+          "affected_service": "cartservice",
+          "action_type": "rollout_undo",
+          "supporting_evidence": [
+            "Pod Running but not ready after rollout",
+            "Rollout in progress with availability gap",
+            "Pod replacement events during rollout"
+          ],
+          "contradicting_evidence": [
+            "Container image successfully pulled and accessible",
+            "No image-pull failure events",
+            "Application logs show normal startup messages",
+            "No container startup errors"
+          ],
+          "score": 0.15
+        },
+        {
+          "fault_class": "native_bad_env",
+          "affected_service": "cartservice",
+          "action_type": "rollout_undo",
+          "supporting_evidence": [
+            "Pod Running but not ready after rollout",
+            "Normal container startup but readiness failure",
+            "Rollout context suggests configuration change"
+          ],
+          "contradicting_evidence": [
+            "No error logs indicating env/config issues",
+            "Application started successfully per logs",
+            "Redis-cart dependency is healthy"
+          ],
+          "score": 0.25
+        }
+      ],
+      "rejected_candidates": [
+        "native_service_selector_mismatch - Service selector evidence shows no mismatch",
+        "native_service_port_mismatch - Service targetPort values align with container ports",
+        "native_scale_zero - Desired replicas is 1, not 0",
+        "native_pod_delete - This is a rollout issue, not isolated pod failure",
+        "native_dependency_bad_endpoint - Redis-cart dependency is healthy",
+        "native_cpu_limit_throttle - No CPU throttling in metrics",
+        "native_memory_limit_oom - No memory pressure or OOM evidence",
+        "Resource pressure faults - Metrics show no saturation",
+        "Stress job faults - No evidence of external stress workloads"
+      ]
+    }
+  },
+  "solution": {
+    "root_cause": "The cartservice deployment rollout has resulted in a pod that starts successfully but fails readiness checks, causing 0/1 replicas to be available. The pod is Running but not ready, indicating the container started normally but the readiness probe is failing, preventing the service from becoming available.",
+    "action_taken": "Undo the deployment rollout to restore the previous working version",
+    "fault_class": "native_bad_probe_rollout",
+    "affected_service": "cartservice",
+    "action_type": "rollout_undo",
+    "confidence": 0.85,
+    "evidence": [
+      "get_k8s_state(cartservice): Pod cartservice-6d57458d89-4jfxf is Running but not ready",
+      "get_k8s_state(cartservice): Replicas available/desired: 0/1",
+      "get_k8s_state(cartservice): Rollout progressing: True",
+      "get_k8s_state(cartservice): Pod replacement events during rollout with normal container creation",
+      "get_k8s_state(cartservice): No image-pull failure events during pod replacement",
+      "get_k8s_state(cartservice): No probe-failure warning events during pod replacement",
+      "get_logs(cartservice): Only informational messages, no error logs",
+      "get_metrics(cartservice): No resource saturation or elevated error rates"
+    ]
+  },
+  "verification": {},
+  "error": null
+}

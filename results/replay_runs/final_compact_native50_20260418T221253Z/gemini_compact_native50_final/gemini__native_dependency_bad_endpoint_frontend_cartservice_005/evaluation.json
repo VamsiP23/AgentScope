@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_dependency_bad_endpoint_frontend_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "compact_one_shot",
+  "model": "gemini-2.5-flash",
+  "incident_detected": false,
+  "diagnosis_correct": true,
+  "diagnosis_family_correct": true,
+  "submitted_fault_family": "dependency_configuration_regression",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": true,
+  "tool_calls_to_solution": 8,
+  "time_to_diagnosis_seconds": 0.008,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "The frontend service is configured with an incorrect port for its CART_SERVICE_ADDR dependency, attempting to connect to cartservice on port 1 instead of the correct port 7070. This misconfiguration leads to connection failures, causing frontend's own health probes to fail and contributing to overall service degradation.",
+  "submitted_action": "Undo the recent rollout or configuration change for the frontend service that introduced the incorrect CART_SERVICE_ADDR environment variable. This will revert the dependency address for cartservice to the correct port (7070), allowing frontend to establish proper communication.",
+  "submitted_fault_class": "native_dependency_bad_endpoint",
+  "expected_fault_class": "native_dependency_bad_endpoint",
+  "submitted_affected_service": "frontend",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "rollout_undo",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

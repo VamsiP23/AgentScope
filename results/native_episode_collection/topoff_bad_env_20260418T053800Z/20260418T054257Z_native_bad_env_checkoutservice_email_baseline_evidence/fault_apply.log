@@ -1,0 +1,50 @@
+COMMAND: python3 -m faults.native apply --namespace default --spec-json '{"container": "server", "deployment": "checkoutservice", "env_name": "EMAIL_SERVICE_ADDR", "env_value": "emailservice:5999", "id": "bad-env-checkoutservice-email", "type": "deployment_env"}'
+
+STDOUT:
+{
+  "container": "server",
+  "container_index": 0,
+  "deployment": "checkoutservice",
+  "fault_spec": {
+    "container": "server",
+    "deployment": "checkoutservice",
+    "env_name": "EMAIL_SERVICE_ADDR",
+    "env_value": "emailservice:5999",
+    "id": "bad-env-checkoutservice-email",
+    "type": "deployment_env"
+  },
+  "original_env": [
+    {
+      "name": "PORT",
+      "value": "5050"
+    },
+    {
+      "name": "PRODUCT_CATALOG_SERVICE_ADDR",
+      "value": "productcatalogservice:3550"
+    },
+    {
+      "name": "SHIPPING_SERVICE_ADDR",
+      "value": "shippingservice:50051"
+    },
+    {
+      "name": "PAYMENT_SERVICE_ADDR",
+      "value": "paymentservice:50051"
+    },
+    {
+      "name": "EMAIL_SERVICE_ADDR",
+      "value": "emailservice:5000"
+    },
+    {
+      "name": "CURRENCY_SERVICE_ADDR",
+      "value": "currencyservice:7000"
+    },
+    {
+      "name": "CART_SERVICE_ADDR",
+      "value": "cartservice:7070"
+    }
+  ],
+  "state_name": "agentscope-native-bad-env-checkoutservice-email",
+  "type": "deployment_env"
+}
+
+STDERR:

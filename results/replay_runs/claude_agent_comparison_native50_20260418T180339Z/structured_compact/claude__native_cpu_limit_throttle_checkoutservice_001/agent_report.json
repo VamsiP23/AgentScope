@@ -1,0 +1,797 @@
+{
+  "agent_type": "benchmark",
+  "timestamp_utc": "2026-04-18T18:58:27Z",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-20250514",
+  "agent_variant": "structured_compact",
+  "backend": "replay",
+  "diagnosis_only": true,
+  "evidence_view": "compact",
+  "replay_dataset": "/Users/aarnavsawant/Documents/CS6365/AgentScope/datasets/episodes/native_cpu_limit_throttle_checkoutservice/native_cpu_limit_throttle_checkoutservice_001.json",
+  "problem": {
+    "id": "native_cpu_limit_throttle_checkoutservice",
+    "status": "candidate",
+    "category": "resource_latency",
+    "experiment_file": "/Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/native_cpu_limit_throttle_checkoutservice_baseline.yaml",
+    "target_service": "checkoutservice",
+    "detector_gate": {
+      "require_incident_detected": true,
+      "target_deployment": "checkoutservice",
+      "primary_signal": "service_latency"
+    },
+    "ground_truth": {
+      "acceptable_root_causes": [
+        "checkoutservice CPU limit throttling",
+        "checkoutservice CPU limit too low"
+      ],
+      "acceptable_actions": [
+        "patch_resources(checkoutservice, cpu)"
+      ],
+      "required_evidence": [
+        "get_k8s_state(checkoutservice)",
+        "get_metrics(checkoutservice)",
+        "get_logs(checkoutservice)"
+      ],
+      "traces_required": false
+    },
+    "task_family": "native_cpu_limit_throttle",
+    "scenario": "checkoutservice CPU limit is reduced enough to cause throttling under checkout traffic",
+    "entry_service": "frontend",
+    "telemetry_contract": {
+      "required_validation_checks": [
+        "otel_spanmetrics_up",
+        "kube_state_metrics_up",
+        "cadvisor_up",
+        "cpu_series_present",
+        "cpu_limit_series_present",
+        "jaeger_services"
+      ],
+      "required_services": [
+        "frontend",
+        "checkoutservice"
+      ],
+      "fail_open": false,
+      "notes": "CPU/throttling metrics are required decisive evidence."
+    },
+    "notes": "Medium native resource-limit task."
+  },
+  "seeded_detection": {},
+  "guardrail_events": [],
+  "steps": [
+    {
+      "step": 1,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_k8s_state",
+      "call_id": "",
+      "inputs": {
+        "service": "checkoutservice"
+      },
+      "output": {
+        "status": "anomalous",
+        "summary": "Kubernetes evidence for checkoutservice has 3 anomaly group(s).",
+        "key_facts": [
+          "Replicas available/desired: 1/1.",
+          "Rollout progressing: True; total restart count: 0.",
+          "Pods ready/total: 1/2; phases: {'Running': 2}.",
+          "Service selector: {'app': 'checkoutservice'}.",
+          "Service-selected pods/deployment pods: 2/2.",
+          "Service ports/targetPorts: port=5050 targetPort=5050 name=grpc.",
+          "Selected pod container ports: container=server port=5050 name=.",
+          "Effective endpoints ready/not-ready: 1/1.",
+          "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+        ],
+        "anomalies": [
+          {
+            "type": "pod_not_fully_healthy",
+            "pods": [
+              {
+                "pod": "checkoutservice-548d9bc67b-hdhxb",
+                "phase": "Running",
+                "ready": false,
+                "restarts": 0
+              }
+            ]
+          },
+          {
+            "type": "rollout_in_progress_or_stalled",
+            "rollout_progressing": true
+          },
+          {
+            "type": "meaningful_kubernetes_events",
+            "events": [
+              {
+                "reason": "SuccessfulCreate",
+                "object": "checkoutservice-548d9bc67b",
+                "type": "Normal",
+                "message": "Created pod: checkoutservice-548d9bc67b-hdhxb",
+                "stale": false
+              },
+              {
+                "reason": "Scheduled",
+                "object": "checkoutservice-548d9bc67b-hdhxb",
+                "type": "Normal",
+                "message": "Successfully assigned default/checkoutservice-548d9bc67b-hdhxb to agentscope-collection-worker",
+                "stale": false
+              },
+              {
+                "reason": "Created",
+                "object": "checkoutservice-548d9bc67b-hdhxb",
+                "type": "Normal",
+                "message": "Container created",
+                "stale": false
+              },
+              {
+                "reason": "Pulled",
+                "object": "checkoutservice-548d9bc67b-hdhxb",
+                "type": "Normal",
+                "message": "Container image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/checkoutservice:v0.10.4\" already present on machine and can be accessed by the pod",
+                "stale": false
+              }
+            ]
+          }
+        ],
+        "negative_evidence": [
+          "No replica availability gap is visible.",
+          "Service targetPort values align with exposed selected-pod container ports."
+        ],
+        "observability_gaps": [],
+        "tool": "get_k8s_state",
+        "call_id": "",
+        "timestamp": "2026-04-16T19:44:27.876463Z",
+        "service": "checkoutservice",
+        "raw_refs": [
+          {
+            "tool": "get_k8s_state",
+            "call_id": "",
+            "timestamp": "2026-04-16T19:44:27.876463Z"
+          },
+          {
+            "tool": "get_k8s_state",
+            "call_id": "3da994c1-0f69-45ba-a915-e6420fafa037",
+            "timestamp": "2026-04-16T19:44:27.876463Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776538707.455625
+    },
+    {
+      "step": 2,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_metrics",
+      "call_id": "",
+      "inputs": {
+        "service": "checkoutservice"
+      },
+      "output": {
+        "status": "anomalous",
+        "summary": "Metrics for checkoutservice show 2 health/resource anomaly group(s).",
+        "key_facts": [
+          "Traffic health: rps=2.3, error_rate=0%, p95=213ms, p99=622ms.",
+          "CPU: limit_util=4.77%, request_util=0%, throttling=27.4%.",
+          "Memory: limit_util=13.3%, request_util=0%."
+        ],
+        "anomalies": [
+          {
+            "type": "latency_elevated",
+            "p99_latency_ms": 622.4999999999978
+          },
+          {
+            "type": "cpu_throttling_elevated",
+            "cpu_throttling_ratio": 0.27365
+          }
+        ],
+        "negative_evidence": [],
+        "observability_gaps": [],
+        "tool": "get_metrics",
+        "call_id": "",
+        "timestamp": "2026-04-16T19:44:28.543583Z",
+        "service": "checkoutservice",
+        "raw_refs": [
+          {
+            "tool": "get_metrics",
+            "call_id": "",
+            "timestamp": "2026-04-16T19:44:28.543583Z"
+          },
+          {
+            "tool": "get_metrics",
+            "call_id": "3b935bd6-9275-4e5c-8bf0-24321b62d9cc",
+            "timestamp": "2026-04-16T19:44:28.543583Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776538707.4566252
+    },
+    {
+      "step": 3,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_logs",
+      "call_id": "",
+      "inputs": {
+        "service": "checkoutservice"
+      },
+      "output": {
+        "status": "ok",
+        "summary": "Logs for checkoutservice contain only informational sampled lines.",
+        "key_facts": [
+          "Log signal groups: {'informational': 1}.",
+          {
+            "representative_snippets": [
+              {
+                "signal_class": "informational",
+                "snippet": "{\"message\":\"Tracing enabled.\",\"severity\":\"info\",\"timestamp\":\"2026-04-16T19:44:27.51597547Z\"}"
+              }
+            ]
+          }
+        ],
+        "anomalies": [],
+        "negative_evidence": [
+          "No error, timeout, OOM, throttling, or connection-failure log pattern was grouped."
+        ],
+        "observability_gaps": [],
+        "tool": "get_logs",
+        "call_id": "",
+        "timestamp": "2026-04-16T19:44:28.638841Z",
+        "service": "checkoutservice",
+        "raw_refs": [
+          {
+            "tool": "get_logs",
+            "call_id": "",
+            "timestamp": "2026-04-16T19:44:28.638841Z"
+          },
+          {
+            "tool": "get_logs",
+            "call_id": "5ac70180-a9de-47fd-9e58-139d4d6ddb07",
+            "timestamp": "2026-04-16T19:44:28.638841Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776538707.4576252
+    },
+    {
+      "step": 4,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_traces",
+      "call_id": "",
+      "inputs": {
+        "service": "checkoutservice"
+      },
+      "output": {
+        "status": "ok",
+        "summary": "Trace evidence for checkoutservice has no returned error span or dominant downstream bottleneck.",
+        "key_facts": [
+          "Trace count: 0.",
+          "Bottleneck service: frontend (0 of total when available)."
+        ],
+        "anomalies": [],
+        "negative_evidence": [
+          "No error spans were returned."
+        ],
+        "observability_gaps": [
+          "No traces returned in the lookback window."
+        ],
+        "tool": "get_traces",
+        "call_id": "",
+        "timestamp": "2026-04-16T19:44:46.648965Z",
+        "service": "checkoutservice",
+        "raw_refs": [
+          {
+            "tool": "get_traces",
+            "call_id": "",
+            "timestamp": "2026-04-16T19:44:46.648965Z"
+          },
+          {
+            "tool": "get_traces",
+            "call_id": "cce5f0d2-f347-427f-a483-4464916e3c55",
+            "timestamp": "2026-04-16T19:44:46.648965Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776538707.458625
+    },
+    {
+      "step": 5,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_traces",
+      "call_id": "",
+      "inputs": {
+        "service": "frontend"
+      },
+      "output": {
+        "status": "ok",
+        "summary": "Trace evidence for frontend has no returned error span or dominant downstream bottleneck.",
+        "key_facts": [
+          "Trace count: 0.",
+          "Bottleneck service: frontend (0 of total when available)."
+        ],
+        "anomalies": [],
+        "negative_evidence": [
+          "No error spans were returned."
+        ],
+        "observability_gaps": [
+          "No traces returned in the lookback window."
+        ],
+        "tool": "get_traces",
+        "call_id": "",
+        "timestamp": "2026-04-16T19:44:57.601831Z",
+        "service": "frontend",
+        "raw_refs": [
+          {
+            "tool": "get_traces",
+            "call_id": "",
+            "timestamp": "2026-04-16T19:44:57.601831Z"
+          },
+          {
+            "tool": "get_traces",
+            "call_id": "ee7b42ab-5a88-4ef0-a5d5-71730b00e5bc",
+            "timestamp": "2026-04-16T19:44:57.601831Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776538707.4596252
+    },
+    {
+      "step": 6,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_dependency_traces",
+      "call_id": "",
+      "inputs": {
+        "service": "checkoutservice",
+        "entry_service": "frontend"
+      },
+      "output": {
+        "status": "ok",
+        "summary": "Trace evidence for checkoutservice has no returned error span or dominant downstream bottleneck.",
+        "key_facts": [
+          "Entry service: frontend.",
+          "Trace count: 0.",
+          "Top downstream candidate: paymentservice avg_duration=20.1ms pct=0.181.",
+          "Bottleneck service: paymentservice (0 of total when available)."
+        ],
+        "anomalies": [],
+        "negative_evidence": [
+          "No error spans were returned."
+        ],
+        "observability_gaps": [
+          "No traces returned in the lookback window."
+        ],
+        "tool": "get_dependency_traces",
+        "call_id": "",
+        "timestamp": "2026-04-16T19:45:10.871230Z",
+        "service": "checkoutservice",
+        "raw_refs": [
+          {
+            "tool": "get_dependency_traces",
+            "call_id": "",
+            "timestamp": "2026-04-16T19:45:10.871230Z"
+          },
+          {
+            "tool": "get_dependency_traces",
+            "call_id": "6c65e2f3-d36f-4a5b-8fdd-894c7edc97b3",
+            "timestamp": "2026-04-16T19:45:10.871230Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776538707.4606252
+    },
+    {
+      "step": 7,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_k8s_state",
+      "call_id": "",
+      "inputs": {
+        "service": "frontend"
+      },
+      "output": {
+        "status": "anomalous",
+        "summary": "Kubernetes evidence for frontend has 1 anomaly group(s).",
+        "key_facts": [
+          "Replicas available/desired: 1/1.",
+          "Rollout progressing: False; total restart count: 0.",
+          "Pods ready/total: 1/1; phases: {'Running': 1}.",
+          "Service selector: {'app': 'frontend'}.",
+          "Service-selected pods/deployment pods: 1/1.",
+          "Service ports/targetPorts: port=80 targetPort=8080 name=http.",
+          "Selected pod container ports: container=server port=8080 name=.",
+          "Effective endpoints ready/not-ready: 1/0.",
+          "Service selector, endpoint, and targetPort evidence has no obvious mismatch"
+        ],
+        "anomalies": [
+          {
+            "type": "meaningful_kubernetes_events",
+            "events": [
+              {
+                "reason": "Scheduled",
+                "object": "frontend-d5f45cf8-csrcl",
+                "type": "Normal",
+                "message": "Successfully assigned default/frontend-d5f45cf8-csrcl to agentscope-collection-worker",
+                "stale": false
+              },
+              {
+                "reason": "SuccessfulCreate",
+                "object": "frontend-d5f45cf8",
+                "type": "Normal",
+                "message": "Created pod: frontend-d5f45cf8-csrcl",
+                "stale": false
+              },
+              {
+                "reason": "Pulled",
+                "object": "frontend-d5f45cf8-csrcl",
+                "type": "Normal",
+                "message": "Container image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/frontend:v0.10.4\" already present on machine and can be accessed by the pod",
+                "stale": false
+              },
+              {
+                "reason": "Created",
+                "object": "frontend-d5f45cf8-csrcl",
+                "type": "Normal",
+                "message": "Container created",
+                "stale": false
+              }
+            ]
+          }
+        ],
+        "negative_evidence": [
+          "All listed pods are Running, ready, and have no restarts.",
+          "No replica availability gap is visible.",
+          "Service targetPort values align with exposed selected-pod container ports."
+        ],
+        "observability_gaps": [],
+        "tool": "get_k8s_state",
+        "call_id": "",
+        "timestamp": "2026-04-16T19:45:18.244560Z",
+        "service": "frontend",
+        "raw_refs": [
+          {
+            "tool": "get_k8s_state",
+            "call_id": "",
+            "timestamp": "2026-04-16T19:45:18.244560Z"
+          },
+          {
+            "tool": "get_k8s_state",
+            "call_id": "6a5de0b3-d927-4d46-9ae3-90893c8ed5fa",
+            "timestamp": "2026-04-16T19:45:18.244560Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776538707.461625
+    },
+    {
+      "step": 8,
+      "thought": "Compact evidence supplied to structured diagnosis.",
+      "tool_called": "get_metrics",
+      "call_id": "",
+      "inputs": {
+        "service": "frontend"
+      },
+      "output": {
+        "status": "anomalous",
+        "summary": "Metrics for frontend show 2 health/resource anomaly group(s).",
+        "key_facts": [
+          "Traffic health: rps=29.4, error_rate=29.3%, p95=150ms, p99=469ms.",
+          "CPU: limit_util=12.3%, request_util=0%, throttling=4.33%.",
+          "Memory: limit_util=44.4%, request_util=0%."
+        ],
+        "anomalies": [
+          {
+            "type": "error_rate_elevated",
+            "error_rate": 0.29278
+          },
+          {
+            "type": "latency_elevated",
+            "p99_latency_ms": 469.1776315789479
+          }
+        ],
+        "negative_evidence": [],
+        "observability_gaps": [],
+        "tool": "get_metrics",
+        "call_id": "",
+        "timestamp": "2026-04-16T19:45:18.935297Z",
+        "service": "frontend",
+        "raw_refs": [
+          {
+            "tool": "get_metrics",
+            "call_id": "",
+            "timestamp": "2026-04-16T19:45:18.935297Z"
+          },
+          {
+            "tool": "get_metrics",
+            "call_id": "56d3e0fe-9ae2-4483-807e-910b9a388be8",
+            "timestamp": "2026-04-16T19:45:18.935297Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776538707.462625
+    },
+    {
+      "step": 9,
+      "thought": "Structured compact structured_triage.",
+      "tool_called": "structured_triage",
+      "call_id": "9b057b97-70fb-4837-b691-1723e163a0a7",
+      "inputs": {},
+      "output": {
+        "key_observations": [
+          "checkoutservice has 1 pod not ready out of 2 total pods running",
+          "checkoutservice shows elevated CPU throttling at 27.4%",
+          "checkoutservice exhibits elevated p99 latency at 622ms",
+          "checkoutservice rollout is in progress",
+          "frontend shows high error rate at 29.3%",
+          "No traces available for either checkoutservice or frontend",
+          "No error logs found in checkoutservice"
+        ],
+        "needed_evidence": [
+          "logs",
+          "service_config"
+        ],
+        "suspected_categories": [
+          "resource_performance",
+          "availability_rollout"
+        ],
+        "why": "[\"The primary evidence points to resource issues: checkoutservice has significant CPU throttling (27.4%) and elevated latency (622ms p99). Additionally, there's an availability issue with 1 pod not ready and a rollout in progress. The CPU throttling suggests resource constraints are causing performance degradation. The rollout in progress combined with pod readiness issues indicates potential deployment-related problems. Frontend errors (29.3%) may be downstream effects of checkoutservice issues.\"]"
+      },
+      "timestamp": 1776538707.4636252
+    },
+    {
+      "step": 10,
+      "thought": "Structured compact structured_candidate_analysis.",
+      "tool_called": "structured_candidate_analysis",
+      "call_id": "0369f763-1781-4c65-a54b-2558129748f5",
+      "inputs": {},
+      "output": {
+        "positive_facts": [
+          "checkoutservice has 1 pod not ready out of 2 total pods",
+          "checkoutservice shows elevated CPU throttling at 27.4%",
+          "checkoutservice exhibits elevated p99 latency at 622ms",
+          "checkoutservice rollout is in progress",
+          "frontend shows high error rate at 29.3%",
+          "checkoutservice has low CPU limit utilization at 4.77%",
+          "No error logs found in checkoutservice",
+          "Service targetPort values align with container ports",
+          "Service selector matches deployment pods correctly"
+        ],
+        "anomalies": [
+          "Pod readiness issue: 1/2 pods ready",
+          "CPU throttling at 27.4% despite low CPU limit utilization",
+          "Elevated p99 latency at 622ms",
+          "Rollout in progress with pod creation events",
+          "Frontend error rate at 29.3%"
+        ],
+        "negative_evidence": [
+          "No replica availability gap visible",
+          "Service targetPort values align with container ports",
+          "No error, timeout, OOM, or connection-failure logs",
+          "No error spans in traces",
+          "Service selector matches intended pods"
+        ],
+        "observability_gaps": [
+          "No traces available for checkoutservice",
+          "No traces available for frontend",
+          "No dependency trace data available"
+        ],
+        "candidates": [
+          {
+            "fault_class": "native_cpu_limit_throttle",
+            "affected_service": "checkoutservice",
+            "action_type": "patch_resources",
+            "supporting_evidence": [
+              "CPU throttling at 27.4%",
+              "Elevated p99 latency at 622ms",
+              "Low CPU limit utilization at 4.77% suggests limits are too restrictive",
+              "Pod readiness issues may be related to resource constraints"
+            ],
+            "contradicting_evidence": [
+              "No error logs indicating resource issues",
+              "Memory utilization appears normal at 13.3%"
+            ],
+            "score": 0.85
+          },
+          {
+            "fault_class": "native_bad_probe_rollout",
+            "affected_service": "checkoutservice",
+            "action_type": "rollout_undo",
+            "supporting_evidence": [
+              "Rollout in progress",
+              "1 pod not ready",
+              "Recent pod creation events",
+              "No error logs despite readiness failure"
+            ],
+            "contradicting_evidence": [
+              "No obvious probe configuration issues visible",
+              "Existing pod is healthy and running"
+            ],
+            "score": 0.65
+          },
+          {
+            "fault_class": "native_bad_image_rollout",
+            "affected_service": "checkoutservice",
+            "action_type": "rollout_undo",
+            "supporting_evidence": [
+              "Rollout in progress",
+              "Pod readiness issues",
+              "Image pull events in recent Kubernetes events"
+            ],
+            "contradicting_evidence": [
+              "Image pull was successful",
+              "No error logs from the application",
+              "Existing pod is running normally"
+            ],
+            "score": 0.45
+          }
+        ],
+        "rejected_candidates": [
+          "native_service_selector_mismatch - Service selector correctly matches deployment pods",
+          "native_service_port_mismatch - Service targetPort aligns with container ports",
+          "native_memory_limit_oom - No OOM evidence in logs or events",
+          "native_scale_zero - Service has desired replicas of 1",
+          "native_dependency_bad_endpoint - No error traces or logs indicating dependency issues"
+        ]
+      },
+      "timestamp": 1776538707.4646251
+    },
+    {
+      "step": 11,
+      "thought": "Submit structured compact diagnosis.",
+      "tool_called": "submit_solution",
+      "call_id": "5f7342a6-edb5-4647-8039-1ef7af0c4257",
+      "inputs": {},
+      "output": {
+        "call_id": "5f7342a6-edb5-4647-8039-1ef7af0c4257",
+        "solution_logged": true,
+        "evidence_valid": true,
+        "invalid_evidence": [],
+        "error": null,
+        "root_cause": "checkoutservice is experiencing significant CPU throttling (27.4%) despite low CPU limit utilization (4.77%), indicating CPU limits are too restrictive. This is causing elevated p99 latency (622ms) and contributing to pod readiness issues during rollout.",
+        "action_taken": "Increase CPU resource limits for checkoutservice to resolve throttling and improve performance",
+        "fault_class": "native_cpu_limit_throttle",
+        "affected_service": "checkoutservice",
+        "action_type": "patch_resources",
+        "confidence": 0.85,
+        "evidence": [
+          "CPU throttling at 27.4% from get_metrics(checkoutservice)",
+          "Elevated p99 latency at 622ms from get_metrics(checkoutservice)",
+          "Low CPU limit utilization at 4.77% despite throttling from get_metrics(checkoutservice)",
+          "Pod readiness issues: 1/2 pods ready from get_k8s_state(checkoutservice)",
+          "Rollout in progress from get_k8s_state(checkoutservice)",
+          "No error logs found despite performance issues from get_logs(checkoutservice)"
+        ]
+      },
+      "timestamp": 1776538707.465625
+    }
+  ],
+  "structured_trace": {
+    "triage": {
+      "key_observations": [
+        "checkoutservice has 1 pod not ready out of 2 total pods running",
+        "checkoutservice shows elevated CPU throttling at 27.4%",
+        "checkoutservice exhibits elevated p99 latency at 622ms",
+        "checkoutservice rollout is in progress",
+        "frontend shows high error rate at 29.3%",
+        "No traces available for either checkoutservice or frontend",
+        "No error logs found in checkoutservice"
+      ],
+      "needed_evidence": [
+        "logs",
+        "service_config"
+      ],
+      "suspected_categories": [
+        "resource_performance",
+        "availability_rollout"
+      ],
+      "why": "[\"The primary evidence points to resource issues: checkoutservice has significant CPU throttling (27.4%) and elevated latency (622ms p99). Additionally, there's an availability issue with 1 pod not ready and a rollout in progress. The CPU throttling suggests resource constraints are causing performance degradation. The rollout in progress combined with pod readiness issues indicates potential deployment-related problems. Frontend errors (29.3%) may be downstream effects of checkoutservice issues.\"]"
+    },
+    "candidate_analysis": {
+      "positive_facts": [
+        "checkoutservice has 1 pod not ready out of 2 total pods",
+        "checkoutservice shows elevated CPU throttling at 27.4%",
+        "checkoutservice exhibits elevated p99 latency at 622ms",
+        "checkoutservice rollout is in progress",
+        "frontend shows high error rate at 29.3%",
+        "checkoutservice has low CPU limit utilization at 4.77%",
+        "No error logs found in checkoutservice",
+        "Service targetPort values align with container ports",
+        "Service selector matches deployment pods correctly"
+      ],
+      "anomalies": [
+        "Pod readiness issue: 1/2 pods ready",
+        "CPU throttling at 27.4% despite low CPU limit utilization",
+        "Elevated p99 latency at 622ms",
+        "Rollout in progress with pod creation events",
+        "Frontend error rate at 29.3%"
+      ],
+      "negative_evidence": [
+        "No replica availability gap visible",
+        "Service targetPort values align with container ports",
+        "No error, timeout, OOM, or connection-failure logs",
+        "No error spans in traces",
+        "Service selector matches intended pods"
+      ],
+      "observability_gaps": [
+        "No traces available for checkoutservice",
+        "No traces available for frontend",
+        "No dependency trace data available"
+      ],
+      "candidates": [
+        {
+          "fault_class": "native_cpu_limit_throttle",
+          "affected_service": "checkoutservice",
+          "action_type": "patch_resources",
+          "supporting_evidence": [
+            "CPU throttling at 27.4%",
+            "Elevated p99 latency at 622ms",
+            "Low CPU limit utilization at 4.77% suggests limits are too restrictive",
+            "Pod readiness issues may be related to resource constraints"
+          ],
+          "contradicting_evidence": [
+            "No error logs indicating resource issues",
+            "Memory utilization appears normal at 13.3%"
+          ],
+          "score": 0.85
+        },
+        {
+          "fault_class": "native_bad_probe_rollout",
+          "affected_service": "checkoutservice",
+          "action_type": "rollout_undo",
+          "supporting_evidence": [
+            "Rollout in progress",
+            "1 pod not ready",
+            "Recent pod creation events",
+            "No error logs despite readiness failure"
+          ],
+          "contradicting_evidence": [
+            "No obvious probe configuration issues visible",
+            "Existing pod is healthy and running"
+          ],
+          "score": 0.65
+        },
+        {
+          "fault_class": "native_bad_image_rollout",
+          "affected_service": "checkoutservice",
+          "action_type": "rollout_undo",
+          "supporting_evidence": [
+            "Rollout in progress",
+            "Pod readiness issues",
+            "Image pull events in recent Kubernetes events"
+          ],
+          "contradicting_evidence": [
+            "Image pull was successful",
+            "No error logs from the application",
+            "Existing pod is running normally"
+          ],
+          "score": 0.45
+        }
+      ],
+      "rejected_candidates": [
+        "native_service_selector_mismatch - Service selector correctly matches deployment pods",
+        "native_service_port_mismatch - Service targetPort aligns with container ports",
+        "native_memory_limit_oom - No OOM evidence in logs or events",
+        "native_scale_zero - Service has desired replicas of 1",
+        "native_dependency_bad_endpoint - No error traces or logs indicating dependency issues"
+      ]
+    }
+  },
+  "solution": {
+    "root_cause": "checkoutservice is experiencing significant CPU throttling (27.4%) despite low CPU limit utilization (4.77%), indicating CPU limits are too restrictive. This is causing elevated p99 latency (622ms) and contributing to pod readiness issues during rollout.",
+    "action_taken": "Increase CPU resource limits for checkoutservice to resolve throttling and improve performance",
+    "fault_class": "native_cpu_limit_throttle",
+    "affected_service": "checkoutservice",
+    "action_type": "patch_resources",
+    "confidence": 0.85,
+    "evidence": [
+      "CPU throttling at 27.4% from get_metrics(checkoutservice)",
+      "Elevated p99 latency at 622ms from get_metrics(checkoutservice)",
+      "Low CPU limit utilization at 4.77% despite throttling from get_metrics(checkoutservice)",
+      "Pod readiness issues: 1/2 pods ready from get_k8s_state(checkoutservice)",
+      "Rollout in progress from get_k8s_state(checkoutservice)",
+      "No error logs found despite performance issues from get_logs(checkoutservice)"
+    ]
+  },
+  "verification": {},
+  "error": null
+}

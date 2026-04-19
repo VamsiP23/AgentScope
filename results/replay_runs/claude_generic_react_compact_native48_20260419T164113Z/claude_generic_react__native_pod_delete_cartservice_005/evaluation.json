@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_pod_delete_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "pure_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "dependency_localization",
+  "expected_fault_family": "native_pod_delete",
+  "action_correct": false,
+  "tool_calls_to_solution": 4,
+  "time_to_diagnosis_seconds": 142.814,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "cartservice pods are failing readiness probes with connection timeouts to port 7070, likely due to redis-cart dependency being unavailable or misconfigured, preventing cartservice from establishing required database connections during startup. This causes deployment availability issues with only 1 of 2 desired replicas available and a stalled rollout.",
+  "submitted_action": "rollout_restart(cartservice)",
+  "submitted_fault_class": "dependency_localization",
+  "expected_fault_class": "native_pod_delete",
+  "submitted_affected_service": "cartservice",
+  "expected_affected_service": "cartservice",
+  "submitted_action_type": "rollout_restart",
+  "expected_action_types": [
+    "wait_and_monitor"
+  ]
+}

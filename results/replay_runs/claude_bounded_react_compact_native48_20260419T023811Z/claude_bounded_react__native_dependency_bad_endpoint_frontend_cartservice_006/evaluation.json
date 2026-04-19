@@ -1,0 +1,31 @@
+{
+  "problem_id": "native_dependency_bad_endpoint_frontend_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "bounded_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_bad_probe_rollout",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": false,
+  "tool_calls_to_solution": 5,
+  "time_to_diagnosis_seconds": 216.878,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 0.667,
+  "missing_required_evidence": [
+    "get_dependency_traces(frontend)"
+  ],
+  "submitted_root_cause": "The cartservice readiness probe is misconfigured to check port 1 instead of the correct container port 7070, causing probe failures and service instability that prevents frontend from connecting successfully",
+  "submitted_action": "Fix the cartservice readiness probe configuration to check the correct port 7070 instead of port 1",
+  "submitted_fault_class": "native_bad_probe_rollout",
+  "expected_fault_class": "native_dependency_bad_endpoint",
+  "submitted_affected_service": "cartservice",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "rollout_undo",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

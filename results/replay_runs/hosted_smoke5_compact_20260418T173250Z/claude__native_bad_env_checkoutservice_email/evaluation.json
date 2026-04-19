@@ -1,0 +1,26 @@
+{
+  "problem_id": "native_bad_env_checkoutservice_email",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "compact_one_shot",
+  "model": "claude-sonnet-4-20250514",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "action_correct": false,
+  "tool_calls_to_solution": 5,
+  "time_to_diagnosis_seconds": 0.005,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "checkoutservice is experiencing connection timeouts to emailservice (10.96.84.80:5999), indicating a dependency endpoint issue. The logs show repeated \"i/o timeout\" errors when attempting to dial the email service, while readiness probe failures suggest pods are not becoming healthy due to this downstream dependency problem.",
+  "submitted_action": "Monitor the emailservice dependency and investigate its availability, as the timeout errors indicate the email service endpoint may be unreachable or unresponsive",
+  "submitted_fault_class": "native_dependency_bad_endpoint",
+  "expected_fault_class": "native_bad_env",
+  "submitted_affected_service": "checkoutservice",
+  "expected_affected_service": "checkoutservice",
+  "submitted_action_type": "wait_and_monitor",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_pod_delete_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "pure_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_memory_limit_oom",
+  "expected_fault_family": "native_pod_delete",
+  "action_correct": false,
+  "tool_calls_to_solution": 4,
+  "time_to_diagnosis_seconds": 202.45,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "cartservice pod is experiencing severe memory limit pressure at 129% of configured limit, causing readiness probe failures and preventing the pod from becoming available",
+  "submitted_action": "patch_resources(cartservice, memory_limit=\"512Mi\")",
+  "submitted_fault_class": "native_memory_limit_oom",
+  "expected_fault_class": "native_pod_delete",
+  "submitted_affected_service": "cartservice",
+  "expected_affected_service": "cartservice",
+  "submitted_action_type": "patch_resources",
+  "expected_action_types": [
+    "wait_and_monitor"
+  ]
+}

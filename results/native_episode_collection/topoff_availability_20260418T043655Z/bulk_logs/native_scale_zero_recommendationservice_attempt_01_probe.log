@@ -1,0 +1,60 @@
+COMMAND: /Library/Frameworks/Python.framework/Versions/3.12/bin/python3 scripts/run_evidence_probe.py /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/native_scale_zero_recommendationservice_baseline.yaml --out-dir /Users/aarnavsawant/Documents/CS6365/AgentScope/results/native_episode_collection/topoff_availability_20260418T043655Z --lookback-minutes 5 --warm-cluster
+STARTED_AT_UTC: 2026-04-18T04:36:56Z
+FINISHED_AT_UTC: 2026-04-18T04:40:17Z
+RETURNCODE: 1
+
+STDOUT:
+[2026-04-18T04:36:56Z] starting evidence probe 'native_scale_zero_recommendationservice_baseline_evidence'
+[2026-04-18T04:36:56Z] artifacts directory: /Users/aarnavsawant/Documents/CS6365/AgentScope/results/native_episode_collection/topoff_availability_20260418T043655Z/20260418T043656Z_native_scale_zero_recommendationservice_baseline_evidence
+[2026-04-18T04:36:56Z] phase=startup: skipped
+[2026-04-18T04:36:56Z] phase=reset: skipped (warm cluster)
+[2026-04-18T04:36:56Z] phase=environment: verified
+[2026-04-18T04:36:56Z] phase=port_forward: reusing session access for prometheus at http://localhost:9090
+[2026-04-18T04:36:56Z] phase=port_forward: reusing session access for jaeger at http://localhost:16686
+[2026-04-18T04:36:56Z] phase=port_forward: reusing session access for frontend-external at http://localhost:8080
+[2026-04-18T04:36:56Z] phase=traffic: started (pid=51801)
+[2026-04-18T04:36:56Z] phase=baseline: started (pid=51802)
+[2026-04-18T04:36:56Z] phase=monitor: started (pid=51803)
+[2026-04-18T04:36:56Z] phase=pre_fault_delay: waiting 30s
+[monitor] [2026-04-18T04:36:57Z] detector initialized: incident_detected=False; no detector triggered
+[2026-04-18T04:37:01Z] phase=pre_fault_delay: 25s remaining
+[2026-04-18T04:37:06Z] phase=pre_fault_delay: 20s remaining
+[2026-04-18T04:37:11Z] phase=pre_fault_delay: 15s remaining
+[2026-04-18T04:37:16Z] phase=pre_fault_delay: 10s remaining
+[2026-04-18T04:37:21Z] phase=pre_fault_delay: 5s remaining
+[2026-04-18T04:37:26Z] phase=pre_fault_delay: done
+[2026-04-18T04:37:26Z] phase=fault_apply: applying fault
+[2026-04-18T04:37:27Z] phase=fault_apply: completed
+[2026-04-18T04:37:27Z] phase=evidence_delay: waiting 20s after fault injection before collecting evidence
+[2026-04-18T04:37:27Z] phase=evidence_delay: waiting 20s
+[monitor] [2026-04-18T04:37:29Z] detector state change: incident_detected; deployment recommendationservice available=0 updated=0 unavailable=0 desired=0; service recommendationservice ready_endpoints=0 not_ready_endpoints=0
+[2026-04-18T04:37:32Z] phase=evidence_delay: 15s remaining
+[2026-04-18T04:37:37Z] phase=evidence_delay: 10s remaining
+[2026-04-18T04:37:42Z] phase=evidence_delay: 5s remaining
+[2026-04-18T04:37:47Z] phase=evidence_delay: done
+[2026-04-18T04:37:47Z] phase=evidence: collecting ACI evidence
+[monitor] [2026-04-18T04:38:01Z] detector update: top error service frontend at 2.564 rps; deployment recommendationservice available=0 updated=0 unavailable=0 desired=0; service recommendationservice ready_endpoints=0 not_ready_endpoints=0
+[2026-04-18T04:38:09Z] phase=evidence: collected for target=recommendationservice
+[2026-04-18T04:38:09Z] phase=post_fault_delay: waiting 90s
+[monitor] [2026-04-18T04:38:12Z] detector update: top error service frontend at 5.927 rps; deployment recommendationservice available=0 updated=0 unavailable=0 desired=0; service recommendationservice ready_endpoints=0 not_ready_endpoints=0
+[2026-04-18T04:38:19Z] phase=post_fault_delay: 80s remaining
+[monitor] [2026-04-18T04:38:23Z] detector update: top error service frontend at 8.582 rps; deployment recommendationservice available=0 updated=0 unavailable=0 desired=0; service recommendationservice ready_endpoints=0 not_ready_endpoints=0
+[2026-04-18T04:38:29Z] phase=post_fault_delay: 70s remaining
+[2026-04-18T04:38:39Z] phase=post_fault_delay: 60s remaining
+[2026-04-18T04:38:49Z] phase=post_fault_delay: 50s remaining
+[2026-04-18T04:38:59Z] phase=post_fault_delay: 40s remaining
+[2026-04-18T04:39:09Z] phase=post_fault_delay: 30s remaining
+[2026-04-18T04:39:19Z] phase=post_fault_delay: 20s remaining
+[2026-04-18T04:39:29Z] phase=post_fault_delay: 10s remaining
+[2026-04-18T04:39:39Z] phase=post_fault_delay: done
+[2026-04-18T04:39:39Z] phase=fault_revert: reverting active fault
+[2026-04-18T04:39:56Z] phase=fault_revert_on_exit: reverting active fault
+
+STDERR:
+Traceback (most recent call last):
+  File "/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_evidence_probe.py", line 670, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_evidence_probe.py", line 640, in main
+    raise RuntimeError("fault revert failed; see fault_revert.log")
+RuntimeError: fault revert failed; see fault_revert.log

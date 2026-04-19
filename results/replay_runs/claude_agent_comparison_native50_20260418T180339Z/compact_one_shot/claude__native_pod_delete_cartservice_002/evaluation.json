@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_pod_delete_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "compact_one_shot",
+  "model": "claude-sonnet-4-20250514",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_bad_probe_rollout",
+  "expected_fault_family": "native_pod_delete",
+  "action_correct": false,
+  "tool_calls_to_solution": 7,
+  "time_to_diagnosis_seconds": 0.007,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "The cartservice pod is running but failing readiness checks, causing 0 available replicas despite 1 desired. The pod shows ready=false status while in Running phase with 0 restarts, indicating a readiness probe failure rather than startup issues.",
+  "submitted_action": "Restart the cartservice pod to resolve the readiness probe failure and restore service availability",
+  "submitted_fault_class": "native_bad_probe",
+  "expected_fault_class": "native_pod_delete",
+  "submitted_affected_service": "cartservice",
+  "expected_affected_service": "cartservice",
+  "submitted_action_type": "restart_pod",
+  "expected_action_types": [
+    "wait_and_monitor"
+  ]
+}

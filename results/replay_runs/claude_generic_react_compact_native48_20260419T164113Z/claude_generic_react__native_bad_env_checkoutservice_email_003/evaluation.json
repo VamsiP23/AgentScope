@@ -1,0 +1,31 @@
+{
+  "problem_id": "native_bad_env_checkoutservice_email",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "pure_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_service_port_mismatch",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": false,
+  "tool_calls_to_solution": 5,
+  "time_to_diagnosis_seconds": 179.108,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 0.667,
+  "missing_required_evidence": [
+    "get_dependency_traces(checkoutservice)"
+  ],
+  "submitted_root_cause": "Service port mismatch: checkoutservice is configured to call emailservice on port 5999, but emailservice Service is listening on port 5000",
+  "submitted_action": "patch service/emailservice port to 5999",
+  "submitted_fault_class": "native_service_port_mismatch",
+  "expected_fault_class": "native_bad_env",
+  "submitted_affected_service": "emailservice",
+  "expected_affected_service": "checkoutservice",
+  "submitted_action_type": "patch_service_target_port",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

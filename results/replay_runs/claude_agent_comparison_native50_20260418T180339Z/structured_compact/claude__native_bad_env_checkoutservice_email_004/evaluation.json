@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_bad_env_checkoutservice_email",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "structured_compact",
+  "model": "claude-sonnet-4-20250514",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_bad_probe_rollout",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": true,
+  "tool_calls_to_solution": 10,
+  "time_to_diagnosis_seconds": 0.01,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "Checkoutservice rollout is failing due to health probe timeouts - both liveness and readiness probes are consistently timing out after 5s, preventing new pods from becoming ready and causing service unavailability",
+  "submitted_action": "Undo the current rollout to restore service availability by reverting to the previous working deployment configuration",
+  "submitted_fault_class": "native_bad_probe_rollout",
+  "expected_fault_class": "native_bad_env",
+  "submitted_affected_service": "checkoutservice",
+  "expected_affected_service": "checkoutservice",
+  "submitted_action_type": "rollout_undo",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

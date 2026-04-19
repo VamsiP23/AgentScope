@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_memory_limit_oom_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "compact_one_shot",
+  "model": "gemini-2.5-flash",
+  "incident_detected": false,
+  "diagnosis_correct": true,
+  "diagnosis_family_correct": true,
+  "submitted_fault_family": "native_memory_limit_oom",
+  "expected_fault_family": "native_memory_limit_oom",
+  "action_correct": true,
+  "tool_calls_to_solution": 8,
+  "time_to_diagnosis_seconds": 0.008,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "The cartservice application is experiencing severe memory pressure (97.3% utilization) and CPU throttling (26.8%), leading to Out-Of-Memory (OOM) kills and container restarts, causing one pod to be unhealthy and in a 'BackOff' state. This prevents the service from handling traffic.",
+  "submitted_action": "Increase the memory limits for the 'cartservice' deployment to prevent Out-Of-Memory kills and potentially adjust CPU limits/requests to alleviate throttling.",
+  "submitted_fault_class": "native_memory_limit_oom",
+  "expected_fault_class": "native_memory_limit_oom",
+  "submitted_affected_service": "cartservice",
+  "expected_affected_service": "cartservice",
+  "submitted_action_type": "patch_resources",
+  "expected_action_types": [
+    "patch_resources"
+  ]
+}

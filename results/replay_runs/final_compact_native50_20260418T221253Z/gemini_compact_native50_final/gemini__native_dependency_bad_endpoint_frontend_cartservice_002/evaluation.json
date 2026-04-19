@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_dependency_bad_endpoint_frontend_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "compact_one_shot",
+  "model": "gemini-2.5-flash",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": true,
+  "submitted_fault_family": "dependency_configuration_regression",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": true,
+  "tool_calls_to_solution": 8,
+  "time_to_diagnosis_seconds": 0.008,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "The frontend service is failing due to a misconfigured dependency address for CART_SERVICE_ADDR, which has an invalid port '1'. This misconfiguration was likely introduced during a recent rollout, causing application errors when frontend attempts to communicate with the cart service and leading to readiness probe failures for new pods. Other services (checkoutservice, currencyservice, recommendationservice) are also showing probe failures, indicating broader dependency issues contributing to frontend's latency.",
+  "submitted_action": "Undo the recent rollout or deployment change for the frontend service to revert the misconfigured CART_SERVICE_ADDR environment variable to a correct port.",
+  "submitted_fault_class": "native_bad_env",
+  "expected_fault_class": "native_dependency_bad_endpoint",
+  "submitted_affected_service": "frontend",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "rollout_undo",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

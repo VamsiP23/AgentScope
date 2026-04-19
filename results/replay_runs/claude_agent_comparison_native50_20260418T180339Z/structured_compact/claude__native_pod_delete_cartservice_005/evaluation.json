@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_pod_delete_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "structured_compact",
+  "model": "claude-sonnet-4-20250514",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_bad_probe_rollout",
+  "expected_fault_family": "native_pod_delete",
+  "action_correct": false,
+  "tool_calls_to_solution": 6,
+  "time_to_diagnosis_seconds": 0.006,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "A readiness probe is failing during a rollout, causing the cartservice deployment to be stuck with only 1 out of 2 desired replicas available. The readiness probe is timing out when trying to connect to port 7070, preventing the new pod from becoming ready and completing the rollout.",
+  "submitted_action": "Undo the current rollout to revert to the previous working configuration",
+  "submitted_fault_class": "native_bad_probe_rollout",
+  "expected_fault_class": "native_pod_delete",
+  "submitted_affected_service": "cartservice",
+  "expected_affected_service": "cartservice",
+  "submitted_action_type": "rollout_undo",
+  "expected_action_types": [
+    "wait_and_monitor"
+  ]
+}

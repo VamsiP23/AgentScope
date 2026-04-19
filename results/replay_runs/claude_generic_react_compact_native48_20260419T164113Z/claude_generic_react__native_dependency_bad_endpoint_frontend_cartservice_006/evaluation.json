@@ -1,0 +1,31 @@
+{
+  "problem_id": "native_dependency_bad_endpoint_frontend_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "pure_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_bad_probe_rollout",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": false,
+  "tool_calls_to_solution": 3,
+  "time_to_diagnosis_seconds": 117.171,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 0.667,
+  "missing_required_evidence": [
+    "get_dependency_traces(frontend)"
+  ],
+  "submitted_root_cause": "Cartservice readiness probe is misconfigured to check port 1 instead of the correct application port 7070, causing intermittent readiness failures and preventing stable service connectivity from frontend",
+  "submitted_action": "rollout_undo(cartservice) to revert to the previous ReplicaSet that had the correct readiness probe configuration",
+  "submitted_fault_class": "native_bad_probe_rollout",
+  "expected_fault_class": "native_dependency_bad_endpoint",
+  "submitted_affected_service": "cartservice",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "rollout_undo",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

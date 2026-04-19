@@ -1,0 +1,31 @@
+{
+  "problem_id": "native_memory_pressure_stress_job",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "pure_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_cpu_limit_throttle",
+  "expected_fault_family": "native_memory_pressure_stress_job",
+  "action_correct": false,
+  "tool_calls_to_solution": 5,
+  "time_to_diagnosis_seconds": 177.202,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 0.667,
+  "missing_required_evidence": [
+    "get_logs(frontend)"
+  ],
+  "submitted_root_cause": "Frontend is experiencing elevated P99 latency (488ms) due to CPU throttling (5.58%) during load spikes. While average CPU utilization is moderate (40%), throttling events occur during traffic peaks, causing intermittent performance degradation that manifests as high tail latency.",
+  "submitted_action": "patch_resources(frontend, cpu_limit='800m')",
+  "submitted_fault_class": "native_cpu_limit_throttle",
+  "expected_fault_class": "native_memory_pressure_stress_job",
+  "submitted_affected_service": "frontend",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "patch_resources",
+  "expected_action_types": [
+    "delete_stress_job"
+  ]
+}

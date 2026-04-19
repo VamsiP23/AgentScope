@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_memory_pressure_stress_job",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "pure_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "dependency_localization",
+  "expected_fault_family": "native_memory_pressure_stress_job",
+  "action_correct": false,
+  "tool_calls_to_solution": 8,
+  "time_to_diagnosis_seconds": 270.073,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "Frontend is experiencing dependency-driven latency due to a downstream service (likely recommendationservice handling ads functionality) that is experiencing severe performance issues or partial outages, causing DeadlineExceeded timeout errors and contributing to elevated P99 latency of 945ms",
+  "submitted_action": "investigate and remediate the downstream service responsible for ads functionality (likely recommendationservice) - check its deployment health, resource utilization, and consider rollout restart if deployment issues are found",
+  "submitted_fault_class": "dependency_localization",
+  "expected_fault_class": "native_memory_pressure_stress_job",
+  "submitted_affected_service": "recommendationservice",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "wait_and_monitor",
+  "expected_action_types": [
+    "delete_stress_job"
+  ]
+}

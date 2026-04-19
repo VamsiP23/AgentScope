@@ -1,0 +1,328 @@
+{
+  "name": "Native Bad Image Productcatalogservice Baseline",
+  "run_id": "20260416T070329Z_native_bad_image_productcatalogservice_baseline_evidence",
+  "started_at_utc": "2026-04-16T07:03:29Z",
+  "experiment_file": "/Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/native_bad_image_productcatalogservice_baseline.yaml",
+  "namespace": "default",
+  "mode": "evidence_probe",
+  "steps": {
+    "port_forward_prometheus": {
+      "mode": "reused",
+      "url": "http://localhost:9090",
+      "probe_path": "/-/ready",
+      "state_dir": ".runtime/port_forwards"
+    },
+    "port_forward_jaeger": {
+      "mode": "reused",
+      "url": "http://localhost:16686",
+      "probe_path": "/api/services",
+      "state_dir": ".runtime/port_forwards"
+    },
+    "port_forward_frontend": {
+      "mode": "reused",
+      "url": "http://localhost:8080",
+      "probe_path": "/_healthz",
+      "state_dir": ".runtime/port_forwards"
+    },
+    "traffic": {
+      "cmd": [
+        "./scripts/generate_traffic.sh",
+        "-u",
+        "http://localhost:8080",
+        "-d",
+        "300",
+        "-r",
+        "3",
+        "-m",
+        "realistic"
+      ],
+      "pid": 41520
+    },
+    "baseline": {
+      "cmd": [
+        "./scripts/collect_baseline.sh",
+        "-n",
+        "default",
+        "-i",
+        "15",
+        "-d",
+        "300"
+      ],
+      "pid": 41521
+    },
+    "monitor": {
+      "cmd": [
+        "./scripts/monitor_loop.py",
+        "--namespace",
+        "default",
+        "--prom-url",
+        "http://localhost:9090",
+        "--window",
+        "1m",
+        "--target-deployment",
+        "productcatalogservice",
+        "--error-ratio-threshold",
+        "0.1",
+        "--service-error-rps-threshold",
+        "0.5",
+        "--service-latency-threshold-ms",
+        "1000.0",
+        "--latency-consecutive-required",
+        "2",
+        "--service-error-consecutive-required",
+        "1",
+        "--min-total-rps",
+        "0.1",
+        "--restart-count-threshold",
+        "1",
+        "--primary-detectors",
+        "error_ratio,service_error_rate,service_latency,deployment_availability,service_endpoints,service_port_alignment,native_stress_job",
+        "--out-dir",
+        "/Users/aarnavsawant/Documents/CS6365/AgentScope/results/native_episode_collection/native_bad_image_productcatalogservice/20260416T070329Z_native_bad_image_productcatalogservice_baseline_evidence/detector_runs",
+        "--interval-seconds",
+        "10"
+      ],
+      "pid": 41522
+    },
+    "fault_apply": {
+      "cmd": [
+        "python3",
+        "-m",
+        "faults.native",
+        "apply",
+        "--namespace",
+        "default",
+        "--spec-json",
+        "{\"container\": \"server\", \"deployment\": \"productcatalogservice\", \"id\": \"bad-image-productcatalogservice\", \"image\": \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing\", \"type\": \"deployment_image\"}"
+      ],
+      "returncode": 0,
+      "started_at_utc": "2026-04-16T07:04:00Z",
+      "finished_at_utc": "2026-04-16T07:04:00Z",
+      "log": "results/native_episode_collection/native_bad_image_productcatalogservice/20260416T070329Z_native_bad_image_productcatalogservice_baseline_evidence/fault_apply.log"
+    },
+    "detection": {
+      "timestamp_utc": "2026-04-16T07:04:14Z",
+      "config": {
+        "namespace": "default",
+        "prom_url": "http://localhost:9090",
+        "window": "1m",
+        "target_deployment": "productcatalogservice",
+        "error_ratio_threshold": 0.1,
+        "service_error_rps_threshold": 0.5,
+        "service_latency_threshold_ms": 1000.0,
+        "latency_consecutive_required": 2,
+        "service_error_consecutive_required": 1,
+        "min_total_rps": 0.1,
+        "restart_count_threshold": 1,
+        "primary_detectors": [
+          "error_ratio",
+          "service_error_rate",
+          "service_latency",
+          "deployment_availability",
+          "service_endpoints",
+          "service_port_alignment",
+          "native_stress_job"
+        ],
+        "out_file": ""
+      },
+      "incident_detected": true,
+      "suspicious_services": [
+        "productcatalogservice"
+      ],
+      "findings": [
+        {
+          "name": "error_ratio",
+          "triggered": false,
+          "severity": "info",
+          "reason": "global error ratio 0.000 with total_rps=196.498",
+          "service": "",
+          "value": 0.0,
+          "threshold": 0.1,
+          "details": {
+            "total_rps": 196.49805447470814,
+            "error_rps": 0.0,
+            "error_ratio": 0.0
+          }
+        },
+        {
+          "name": "service_error_rate",
+          "triggered": false,
+          "severity": "info",
+          "reason": "top error service checkoutservice at 0.000 rps",
+          "service": "checkoutservice",
+          "value": 0.0,
+          "threshold": 0.5,
+          "details": {
+            "top_error_services": [
+              {
+                "service_name": "checkoutservice",
+                "error_rps": 0.0
+              }
+            ]
+          }
+        },
+        {
+          "name": "service_latency",
+          "triggered": false,
+          "severity": "info",
+          "reason": "service productcatalogservice p99 latency 4.986 ms",
+          "service": "productcatalogservice",
+          "value": 4.98622,
+          "threshold": 1000.0,
+          "details": {
+            "service_name": "productcatalogservice",
+            "p99_latency_ms": 4.986219512195121
+          }
+        },
+        {
+          "name": "deployment_availability",
+          "triggered": true,
+          "severity": "critical",
+          "reason": "deployment productcatalogservice available=2 updated=1 unavailable=1 desired=2",
+          "service": "productcatalogservice",
+          "value": 2,
+          "threshold": 2,
+          "details": {
+            "exists": true,
+            "desired": 2,
+            "available": 2,
+            "ready": 2,
+            "updated": 1,
+            "unavailable": 1,
+            "generation": 132,
+            "observed_generation": 132,
+            "rollout_observed": true,
+            "rollout_updated": false,
+            "progressing_reason": "ReplicaSetUpdated",
+            "progressing_message": "ReplicaSet \"productcatalogservice-58456b5c7f\" is progressing.",
+            "healthy": false
+          }
+        },
+        {
+          "name": "service_endpoints",
+          "triggered": false,
+          "severity": "info",
+          "reason": "service productcatalogservice ready_endpoints=2 not_ready_endpoints=1",
+          "service": "productcatalogservice",
+          "value": 2,
+          "threshold": 1,
+          "details": {
+            "exists": true,
+            "ready_addresses": 2,
+            "not_ready_addresses": 1,
+            "ports": [
+              3550
+            ],
+            "healthy": true
+          }
+        },
+        {
+          "name": "service_port_alignment",
+          "triggered": false,
+          "severity": "info",
+          "reason": "service productcatalogservice port alignment ok",
+          "service": "productcatalogservice",
+          "value": 0,
+          "threshold": 0,
+          "details": {
+            "exists": true,
+            "aligned": true,
+            "selector": {
+              "app": "productcatalogservice"
+            },
+            "service_ports": [
+              {
+                "name": "grpc",
+                "port": 3550,
+                "protocol": "TCP",
+                "targetPort": 3550
+              }
+            ],
+            "container_ports": [
+              3550
+            ],
+            "named_ports": {},
+            "mismatches": []
+          }
+        },
+        {
+          "name": "native_stress_job",
+          "triggered": false,
+          "severity": "info",
+          "reason": "no active native stress jobs",
+          "service": "productcatalogservice",
+          "value": 0,
+          "threshold": 0,
+          "details": {
+            "active_stress_jobs": []
+          }
+        },
+        {
+          "name": "restart_history",
+          "triggered": false,
+          "severity": "info",
+          "reason": "historical restart count observed on redis-cart-6d7f4dbc57-d7ghm count=25",
+          "service": "redis-cart-6d7f4dbc57-d7ghm",
+          "value": 25,
+          "threshold": 1,
+          "details": {
+            "top_pod_restarts": [
+              {
+                "pod": "redis-cart-6d7f4dbc57-d7ghm",
+                "container": "redis",
+                "restart_count": 25
+              },
+              {
+                "pod": "kube-state-metrics-55bfbb9f49-cb599",
+                "container": "kube-state-metrics",
+                "restart_count": 20
+              },
+              {
+                "pod": "jaeger-6bcc9945c-6qhph",
+                "container": "jaeger",
+                "restart_count": 12
+              },
+              {
+                "pod": "emailservice-6b86f5f8fd-vvj82",
+                "container": "server",
+                "restart_count": 8
+              },
+              {
+                "pod": "adservice-86d9dc8dd9-gpql6",
+                "container": "server",
+                "restart_count": 7
+              }
+            ]
+          }
+        }
+      ],
+      "summary": "deployment productcatalogservice available=2 updated=1 unavailable=1 desired=2"
+    },
+    "fault_revert_on_exit": {
+      "cmd": [
+        "python3",
+        "-m",
+        "faults.native",
+        "revert",
+        "--namespace",
+        "default",
+        "--spec-json",
+        "{\"container\": \"server\", \"deployment\": \"productcatalogservice\", \"id\": \"bad-image-productcatalogservice\", \"image\": \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing\", \"type\": \"deployment_image\"}"
+      ],
+      "returncode": 0,
+      "started_at_utc": "2026-04-16T07:04:21Z",
+      "finished_at_utc": "2026-04-16T07:04:22Z",
+      "log": "results/native_episode_collection/native_bad_image_productcatalogservice/20260416T070329Z_native_bad_image_productcatalogservice_baseline_evidence/fault_revert_on_exit.log"
+    },
+    "traffic_exit": {
+      "returncode": -15
+    },
+    "baseline_exit": {
+      "returncode": -15
+    },
+    "monitor_exit": {
+      "returncode": -15
+    }
+  },
+  "finished_at_utc": "2026-04-16T07:04:25Z"
+}

@@ -1,0 +1,26 @@
+{
+  "problem_id": "native_bad_env_checkoutservice_email",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "compact_one_shot",
+  "model": "gpt-4o-mini",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "action_correct": false,
+  "tool_calls_to_solution": 5,
+  "time_to_diagnosis_seconds": 0.005,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "The checkoutservice is experiencing issues with one of its pods being not fully healthy due to readiness probe failures, which suggests that the pod is unable to serve requests properly. This is confirmed by logs showing multiple timeout errors when trying to communicate with other services, indicating potential dependency issues as well.",
+  "submitted_action": "Recommended to restart the pod to recover from its unhealthy state and then monitor to see if the issue persists.",
+  "submitted_fault_class": "native_bad_probe",
+  "expected_fault_class": "native_bad_env",
+  "submitted_affected_service": "checkoutservice",
+  "expected_affected_service": "checkoutservice",
+  "submitted_action_type": "restart_pod",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

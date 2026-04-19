@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_bad_env_checkoutservice_email",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "compact_one_shot",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_scale_zero",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": false,
+  "tool_calls_to_solution": 8,
+  "time_to_diagnosis_seconds": 0.008,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "The checkoutservice was scaled down to zero replicas and is experiencing pod replacement events during rollout recovery, with one pod not yet ready, causing elevated error rates and latency",
+  "submitted_action": "Scale the checkoutservice deployment to restore desired replica count and wait for pods to become ready",
+  "submitted_fault_class": "native_scale_zero",
+  "expected_fault_class": "native_bad_env",
+  "submitted_affected_service": "checkoutservice",
+  "expected_affected_service": "checkoutservice",
+  "submitted_action_type": "scale_deployment",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

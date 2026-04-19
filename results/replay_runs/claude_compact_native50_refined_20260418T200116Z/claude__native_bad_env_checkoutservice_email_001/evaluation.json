@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_bad_env_checkoutservice_email",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "compact_one_shot",
+  "model": "claude-sonnet-4-20250514",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_cpu_limit_throttle",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": false,
+  "tool_calls_to_solution": 8,
+  "time_to_diagnosis_seconds": 0.008,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "checkoutservice has elevated CPU throttling (53.9%) due to insufficient CPU resource limits (600m), causing liveness probe timeouts and pod restarts",
+  "submitted_action": "Increase CPU limits from 600m to 1000m to reduce throttling and prevent liveness probe failures",
+  "submitted_fault_class": "native_cpu_limit_throttle",
+  "expected_fault_class": "native_bad_env",
+  "submitted_affected_service": "checkoutservice",
+  "expected_affected_service": "checkoutservice",
+  "submitted_action_type": "patch_resources",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

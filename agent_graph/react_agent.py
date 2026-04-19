@@ -48,11 +48,6 @@ Submission gates:
 - Before final submission, explicitly distinguish service wiring vs dependency
   path, resource pressure vs dependency degradation, and lifecycle/rollout vs
   resource failure when those alternatives are plausible.
-- Keep taxonomy and remediation semantics aligned: dependency configuration
-  regressions use rollout_undo, Service wiring mismatches use the corresponding
-  Service patch action, app-local resource limit faults use patch_resources,
-  external stress-job pressure uses delete_stress_job, and pod deletion uses
-  wait_and_monitor.
 """.strip()
 
 
@@ -894,10 +889,6 @@ class ReActAgent:
                 "required_evidence": ["get_cluster_resource_context"],
             }
 
-        action_violation = self._bounded_action_semantics_violation(decision)
-        if action_violation is not None:
-            return action_violation
-
         return None
 
     def _decision_text(self, decision: Dict[str, Any]) -> str:
@@ -986,41 +977,6 @@ class ReActAgent:
 
     def _has_cluster_resource_context(self) -> bool:
         return bool(self._steps_for_tool("get_cluster_resource_context"))
-
-    def _bounded_action_semantics_violation(self, decision: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        tool_input = dict(decision.get("tool_input", {}) or {})
-        fault_class = self._submit_field(decision, tool_input, "fault_class")
-        action_type = self._submit_field(decision, tool_input, "action_type")
-        if not fault_class or not action_type or fault_class == "unknown" or action_type == "unknown":
-            return None
-
-        expected_by_class = {
-            "native_dependency_bad_endpoint": "rollout_undo",
-            "native_bad_env": "rollout_undo",
-            "native_service_port_mismatch": "patch_service_target_port",
-            "native_service_selector_mismatch": "patch_service_selector",
-            "native_bad_image_rollout": "rollout_undo",
-            "native_bad_probe_rollout": "rollout_undo",
-            "native_scale_zero": "scale_deployment",
-            "native_pod_delete": "wait_and_monitor",
-            "native_cpu_limit_throttle": "patch_resources",
-            "native_memory_limit_oom": "patch_resources",
-            "native_cpu_pressure_stress_job": "delete_stress_job",
-            "native_memory_pressure_stress_job": "delete_stress_job",
-        }
-        expected = expected_by_class.get(fault_class)
-        if expected is None or action_type == expected:
-            return None
-        return {
-            "type": "bounded_submit_incoherent_action",
-            "reason": (
-                f"The proposed fault_class={fault_class} is not semantically aligned with "
-                f"action_type={action_type}. Use action_type={expected} unless new evidence supports a "
-                "different fault class."
-            ),
-            "disallow_tool": "submit_solution",
-            "expected_action_type": expected,
-        }
 
     def _has_service_port_mismatch_evidence(self) -> bool:
         for step in self._steps_for_tool("get_k8s_state"):

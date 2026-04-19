@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_dependency_bad_endpoint_frontend_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "structured_compact",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": true,
+  "submitted_fault_family": "dependency_configuration_regression",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": true,
+  "tool_calls_to_solution": 10,
+  "time_to_diagnosis_seconds": 0.01,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "Frontend deployment has a misconfigured CART_SERVICE_ADDR environment variable set to 'cartservice:1' instead of the correct port 7070. This configuration error causes cart operations to fail and contributes to application errors. The issue was introduced during a deployment rollout currently in progress.",
+  "submitted_action": "Rollback the frontend deployment to the previous version to restore the correct cart service configuration and resolve the dependency addressing issue",
+  "submitted_fault_class": "native_bad_env",
+  "expected_fault_class": "native_dependency_bad_endpoint",
+  "submitted_affected_service": "frontend",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "rollout_undo",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

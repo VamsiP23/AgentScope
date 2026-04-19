@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_dependency_bad_endpoint_frontend_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "bounded_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_memory_limit_oom",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": false,
+  "tool_calls_to_solution": 7,
+  "time_to_diagnosis_seconds": 295.757,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "currencyservice is experiencing severe resource pressure with 140% memory limit utilization and 15% CPU throttling, causing probe timeout failures and creating a performance bottleneck that consumes 68.5% of frontend request processing time",
+  "submitted_action": "patch_resources(currencyservice, memory_limit=\"512Mi\")",
+  "submitted_fault_class": "native_memory_limit_oom",
+  "expected_fault_class": "native_dependency_bad_endpoint",
+  "submitted_affected_service": "currencyservice",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "patch_resources",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

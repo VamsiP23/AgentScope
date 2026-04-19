@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_memory_pressure_stress_job",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "diagnostic_controller",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "dependency_configuration_regression",
+  "expected_fault_family": "native_memory_pressure_stress_job",
+  "action_correct": false,
+  "tool_calls_to_solution": 7,
+  "time_to_diagnosis_seconds": 35.245,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "The adservice dependency endpoint is not responding properly, causing timeout errors when frontend attempts to retrieve ads. The configured address adservice:9555 appears correct, but the adservice itself may be unhealthy, unavailable, or experiencing issues that prevent it from responding within the expected timeframe.",
+  "submitted_action": "Investigate adservice health status, check if adservice pods are running and healthy, and restart or scale adservice if needed to restore connectivity",
+  "submitted_fault_class": "native_dependency_bad_endpoint",
+  "expected_fault_class": "native_memory_pressure_stress_job",
+  "submitted_affected_service": "adservice",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "restart_pod",
+  "expected_action_types": [
+    "delete_stress_job"
+  ]
+}

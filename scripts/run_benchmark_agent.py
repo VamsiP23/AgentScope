@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from agent_graph.aci import AgentCloudInterface
+from agent_graph.diagnostic_agent import DiagnosticAgent
 from agent_graph.react_agent import ReActAgent
 from benchmarking.replay import ReplayAgentCloudInterface
 from benchmarking.problem import load_benchmark_suite
@@ -127,7 +128,7 @@ def main() -> int:
         initial_context = summarize_seeded_detection(seeded_detection)
 
     agent_type = args.agent_type.strip().lower()
-    if agent_type not in {"react", "bounded_react"}:
+    if agent_type not in {"react", "bounded_react", "diagnostic"}:
         raise RuntimeError(f"unsupported agent type: {args.agent_type}")
 
     problem = {}
@@ -137,16 +138,26 @@ def main() -> int:
         if problem_spec is not None:
             problem = problem_spec.to_dict()
 
-    agent = ReActAgent(
-        aci=aci,  # type: ignore[arg-type]
-        provider=args.provider or None,
-        model=args.model or None,
-        max_steps=args.max_steps,
-        allow_exec_shell=not bool(args.dry_run),
-        diagnosis_only=args.backend == "replay",
-        agent_variant="bounded_react" if agent_type == "bounded_react" else "pure_react",
-        step_callback=None,
-    )
+    if agent_type == "diagnostic":
+        agent = DiagnosticAgent(
+            aci=aci,
+            provider=args.provider or None,
+            model=args.model or None,
+            max_steps=args.max_steps,
+            diagnosis_only=args.backend == "replay",
+            step_callback=None,
+        )
+    else:
+        agent = ReActAgent(
+            aci=aci,  # type: ignore[arg-type]
+            provider=args.provider or None,
+            model=args.model or None,
+            max_steps=args.max_steps,
+            allow_exec_shell=not bool(args.dry_run),
+            diagnosis_only=args.backend == "replay",
+            agent_variant="bounded_react" if agent_type == "bounded_react" else "pure_react",
+            step_callback=None,
+        )
 
     result = agent.run(args.problem_description, initial_context=initial_context)
     payload = {
@@ -169,6 +180,8 @@ def main() -> int:
         "evidence_view": args.evidence_view,
         "seeded_detection": seeded_detection,
         "guardrail_events": result.get("guardrail_events", getattr(agent, "guardrail_events", [])),
+        "diagnostic_events": result.get("diagnostic_events", []),
+        "evidence_ledger": result.get("evidence_ledger", {}),
         "steps": result.get("steps", []),
         "solution": result.get("solution", {}),
         "verification": {},

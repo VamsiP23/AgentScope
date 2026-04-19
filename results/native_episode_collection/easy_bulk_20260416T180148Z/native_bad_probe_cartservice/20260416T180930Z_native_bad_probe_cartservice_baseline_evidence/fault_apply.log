@@ -1,0 +1,32 @@
+COMMAND: python3 -m faults.native apply --namespace default --spec-json '{"container": "server", "deployment": "cartservice", "id": "bad-probe-cartservice", "probe": "readinessProbe", "tcp_port": 1, "type": "deployment_probe"}'
+
+STDOUT:
+{
+  "container": "server",
+  "container_index": 0,
+  "deployment": "cartservice",
+  "fault_spec": {
+    "container": "server",
+    "deployment": "cartservice",
+    "id": "bad-probe-cartservice",
+    "probe": "readinessProbe",
+    "tcp_port": 1,
+    "type": "deployment_probe"
+  },
+  "original_probe": {
+    "failureThreshold": 12,
+    "grpc": {
+      "port": 7070,
+      "service": ""
+    },
+    "initialDelaySeconds": 35,
+    "periodSeconds": 10,
+    "successThreshold": 1,
+    "timeoutSeconds": 10
+  },
+  "probe": "readinessProbe",
+  "state_name": "agentscope-native-bad-probe-cartservice",
+  "type": "deployment_probe"
+}
+
+STDERR:

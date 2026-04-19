@@ -1,0 +1,195 @@
+{
+  "timestamp_utc": "2026-04-16T07:10:23Z",
+  "config": {
+    "namespace": "default",
+    "prom_url": "http://localhost:9090",
+    "window": "1m",
+    "target_deployment": "recommendationservice",
+    "error_ratio_threshold": 0.1,
+    "service_error_rps_threshold": 0.5,
+    "service_latency_threshold_ms": 1000.0,
+    "latency_consecutive_required": 2,
+    "service_error_consecutive_required": 1,
+    "min_total_rps": 0.1,
+    "restart_count_threshold": 1,
+    "primary_detectors": [
+      "error_ratio",
+      "service_error_rate",
+      "service_latency",
+      "deployment_availability",
+      "service_endpoints",
+      "service_port_alignment",
+      "native_stress_job"
+    ],
+    "out_file": ""
+  },
+  "incident_detected": true,
+  "suspicious_services": [
+    "recommendationservice"
+  ],
+  "findings": [
+    {
+      "name": "error_ratio",
+      "triggered": false,
+      "severity": "info",
+      "reason": "global error ratio 0.000 with total_rps=178.331",
+      "service": "",
+      "value": 0.000306,
+      "threshold": 0.1,
+      "details": {
+        "total_rps": 178.3305151002746,
+        "error_rps": 0.054546446299023624,
+        "error_ratio": 0.0003058727569331158
+      }
+    },
+    {
+      "name": "service_error_rate",
+      "triggered": false,
+      "severity": "info",
+      "reason": "top error service frontend at 0.055 rps",
+      "service": "frontend",
+      "value": 0.054546,
+      "threshold": 0.5,
+      "details": {
+        "top_error_services": [
+          {
+            "service_name": "frontend",
+            "error_rps": 0.054546446299023624
+          }
+        ]
+      }
+    },
+    {
+      "name": "service_latency",
+      "triggered": false,
+      "severity": "info",
+      "reason": "service recommendationservice p99 latency 114.500 ms",
+      "service": "recommendationservice",
+      "value": 114.5,
+      "threshold": 1000.0,
+      "details": {
+        "service_name": "recommendationservice",
+        "p99_latency_ms": 114.49999999999908
+      }
+    },
+    {
+      "name": "deployment_availability",
+      "triggered": true,
+      "severity": "critical",
+      "reason": "deployment recommendationservice available=0 updated=0 unavailable=0 desired=0",
+      "service": "recommendationservice",
+      "value": 0,
+      "threshold": 0,
+      "details": {
+        "exists": true,
+        "desired": 0,
+        "available": 0,
+        "ready": 0,
+        "updated": 0,
+        "unavailable": 0,
+        "generation": 135,
+        "observed_generation": 135,
+        "rollout_observed": true,
+        "rollout_updated": true,
+        "progressing_reason": "NewReplicaSetAvailable",
+        "progressing_message": "ReplicaSet \"recommendationservice-5b4c458fb8\" has successfully progressed.",
+        "healthy": false
+      }
+    },
+    {
+      "name": "service_endpoints",
+      "triggered": true,
+      "severity": "high",
+      "reason": "service recommendationservice ready_endpoints=0 not_ready_endpoints=0",
+      "service": "recommendationservice",
+      "value": 0,
+      "threshold": 1,
+      "details": {
+        "exists": true,
+        "ready_addresses": 0,
+        "not_ready_addresses": 0,
+        "ports": [],
+        "healthy": false
+      }
+    },
+    {
+      "name": "service_port_alignment",
+      "triggered": false,
+      "severity": "info",
+      "reason": "service recommendationservice port alignment ok",
+      "service": "recommendationservice",
+      "value": 0,
+      "threshold": 0,
+      "details": {
+        "exists": true,
+        "aligned": true,
+        "selector": {
+          "app": "recommendationservice"
+        },
+        "service_ports": [
+          {
+            "name": "grpc",
+            "port": 8080,
+            "protocol": "TCP",
+            "targetPort": 8080
+          }
+        ],
+        "container_ports": [],
+        "named_ports": {},
+        "mismatches": [],
+        "reason": "service selector currently matches no pods"
+      }
+    },
+    {
+      "name": "native_stress_job",
+      "triggered": false,
+      "severity": "info",
+      "reason": "no active native stress jobs",
+      "service": "recommendationservice",
+      "value": 0,
+      "threshold": 0,
+      "details": {
+        "active_stress_jobs": []
+      }
+    },
+    {
+      "name": "restart_history",
+      "triggered": false,
+      "severity": "info",
+      "reason": "historical restart count observed on redis-cart-6d7f4dbc57-d7ghm count=25",
+      "service": "redis-cart-6d7f4dbc57-d7ghm",
+      "value": 25,
+      "threshold": 1,
+      "details": {
+        "top_pod_restarts": [
+          {
+            "pod": "redis-cart-6d7f4dbc57-d7ghm",
+            "container": "redis",
+            "restart_count": 25
+          },
+          {
+            "pod": "kube-state-metrics-55bfbb9f49-cb599",
+            "container": "kube-state-metrics",
+            "restart_count": 20
+          },
+          {
+            "pod": "jaeger-6bcc9945c-6qhph",
+            "container": "jaeger",
+            "restart_count": 13
+          },
+          {
+            "pod": "emailservice-6b86f5f8fd-vvj82",
+            "container": "server",
+            "restart_count": 8
+          },
+          {
+            "pod": "adservice-86d9dc8dd9-gpql6",
+            "container": "server",
+            "restart_count": 7
+          }
+        ]
+      }
+    }
+  ],
+  "summary": "deployment recommendationservice available=0 updated=0 unavailable=0 desired=0; service recommendationservice ready_endpoints=0 not_ready_endpoints=0"
+}

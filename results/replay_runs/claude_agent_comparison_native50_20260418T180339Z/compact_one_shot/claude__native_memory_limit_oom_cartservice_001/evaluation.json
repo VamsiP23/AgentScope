@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_memory_limit_oom_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "compact_one_shot",
+  "model": "claude-sonnet-4-20250514",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_cpu_limit_throttle",
+  "expected_fault_family": "native_memory_limit_oom",
+  "action_correct": true,
+  "tool_calls_to_solution": 8,
+  "time_to_diagnosis_seconds": 0.008,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "CPU throttling is occurring on cartservice with a 22.2% throttling ratio due to insufficient CPU limits (300m), preventing the pod from becoming ready and causing latency symptoms in the monitoring pipeline",
+  "submitted_action": "Increase CPU limits for cartservice to reduce throttling and allow the pod to become ready",
+  "submitted_fault_class": "native_cpu_limit_throttle",
+  "expected_fault_class": "native_memory_limit_oom",
+  "submitted_affected_service": "cartservice",
+  "expected_affected_service": "cartservice",
+  "submitted_action_type": "patch_resources",
+  "expected_action_types": [
+    "patch_resources"
+  ]
+}

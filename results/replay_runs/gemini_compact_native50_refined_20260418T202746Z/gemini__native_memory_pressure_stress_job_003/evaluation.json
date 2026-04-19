@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_memory_pressure_stress_job",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "compact_one_shot",
+  "model": "gemini-2.5-flash",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "dependency_configuration_regression",
+  "expected_fault_family": "native_memory_pressure_stress_job",
+  "action_correct": false,
+  "tool_calls_to_solution": 4,
+  "time_to_diagnosis_seconds": 0.004,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "The frontend service is experiencing elevated latency and errors due to a timeout when calling adservice, and application errors when interacting with the cart service, indicating upstream dependency issues. The frontend service itself shows no signs of resource saturation or misconfiguration.",
+  "submitted_action": "A rolling restart of the frontend deployment was initiated to refresh network connections and potentially resolve transient client-side issues with its dependencies, given that the frontend's own configuration and resource utilization are healthy.",
+  "submitted_fault_class": "native_dependency_bad_endpoint",
+  "expected_fault_class": "native_memory_pressure_stress_job",
+  "submitted_affected_service": "frontend",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "rollout_restart",
+  "expected_action_types": [
+    "delete_stress_job"
+  ]
+}

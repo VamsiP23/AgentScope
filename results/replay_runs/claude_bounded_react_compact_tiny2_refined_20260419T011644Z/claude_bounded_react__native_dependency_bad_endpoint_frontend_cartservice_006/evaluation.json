@@ -1,0 +1,31 @@
+{
+  "problem_id": "native_dependency_bad_endpoint_frontend_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "bounded_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": true,
+  "diagnosis_family_correct": true,
+  "submitted_fault_family": "dependency_configuration_regression",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": false,
+  "tool_calls_to_solution": 6,
+  "time_to_diagnosis_seconds": 345.174,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 0.667,
+  "missing_required_evidence": [
+    "get_dependency_traces(frontend)"
+  ],
+  "submitted_root_cause": "Frontend service is configured to connect to cartservice on port 1, but cartservice actually runs on port 7070, creating a dependency configuration mismatch that prevents cart functionality from working",
+  "submitted_action": "Fix frontend service environment variables or configuration to connect to cartservice on the correct port 7070 instead of port 1",
+  "submitted_fault_class": "native_dependency_bad_endpoint",
+  "expected_fault_class": "native_dependency_bad_endpoint",
+  "submitted_affected_service": "frontend",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "patch_resources",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

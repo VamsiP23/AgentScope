@@ -1,0 +1,343 @@
+{
+  "agent_type": "benchmark",
+  "timestamp_utc": "2026-04-19T00:02:42Z",
+  "provider": "openai",
+  "model": "gpt-4o",
+  "agent_variant": "compact_one_shot",
+  "backend": "replay",
+  "diagnosis_only": true,
+  "evidence_view": "compact",
+  "replay_dataset": "/Users/aarnavsawant/Documents/CS6365/AgentScope/datasets/episodes/native_service_selector_mismatch_cartservice/native_service_selector_mismatch_cartservice_003.json",
+  "problem": {
+    "id": "native_service_selector_mismatch_cartservice",
+    "status": "candidate",
+    "category": "availability_control",
+    "experiment_file": "/Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/native_service_selector_mismatch_cartservice_baseline.yaml",
+    "target_service": "cartservice",
+    "detector_gate": {
+      "require_incident_detected": true,
+      "target_deployment": "cartservice",
+      "primary_signal": "service_endpoints"
+    },
+    "ground_truth": {
+      "acceptable_root_causes": [
+        "cartservice service selector mismatch",
+        "cartservice service selector does not match pods"
+      ],
+      "acceptable_actions": [
+        "patch service/cartservice selector to app=cartservice"
+      ],
+      "required_evidence": [
+        "get_k8s_state(cartservice)",
+        "get_logs(cartservice)"
+      ],
+      "traces_required": false
+    },
+    "task_family": "native_service_selector_mismatch",
+    "scenario": "cartservice Service selector is changed so it no longer matches healthy cartservice pods",
+    "entry_service": "frontend",
+    "telemetry_contract": {
+      "required_validation_checks": [
+        "otel_spanmetrics_up",
+        "kube_state_metrics_up",
+        "cadvisor_up",
+        "cpu_series_present",
+        "memory_series_present",
+        "jaeger_services"
+      ],
+      "required_services": [
+        "frontend",
+        "cartservice"
+      ],
+      "fail_open": false,
+      "notes": "Full-observability native service-selector episode."
+    },
+    "notes": "Easy native configuration task; Kubernetes Service/endpoints state is primary evidence and logs are a sanity check."
+  },
+  "seeded_detection": {},
+  "guardrail_events": [],
+  "steps": [
+    {
+      "step": 1,
+      "thought": "Compact evidence supplied to one-shot diagnosis.",
+      "tool_called": "get_k8s_state",
+      "call_id": "",
+      "inputs": {
+        "service": "cartservice"
+      },
+      "output": {
+        "status": "anomalous",
+        "summary": "Kubernetes evidence for cartservice has 3 anomaly group(s).",
+        "key_facts": [
+          "Replicas available/desired: 1/1.",
+          "Rollout progressing: False; total restart count: 0.",
+          "Pods ready/total: 1/1; phases: {'Running': 1}.",
+          "Service selector: {'app': 'cartservice-missing'}.",
+          "Service-selected pods/deployment pods: 0/1.",
+          "Service ports/targetPorts: port=7070 targetPort=7070 name=grpc.",
+          "Selected pod container ports: container=server port=7070 name=.",
+          "Effective endpoints ready/not-ready: 0/0.",
+          "Service selector {'app': 'cartservice-missing'} selects 0 pods while deployment pods exist with labels [{'app': 'cartservice', 'pod-template-hash': '6d57458d89'}]"
+        ],
+        "anomalies": [
+          {
+            "type": "service_selector_matches_no_deployment_pods",
+            "selector": {
+              "app": "cartservice-missing"
+            }
+          },
+          {
+            "type": "service_config_signal",
+            "scope": "service",
+            "count": 2
+          },
+          {
+            "type": "meaningful_kubernetes_events",
+            "events": [
+              {
+                "reason": "Unhealthy",
+                "object": "cartservice-6d57458d89-mpw4z",
+                "type": "Warning",
+                "message": "Liveness probe failed: timeout: failed to connect service \"10.244.1.6:7070\" within 10s: context deadline exceeded",
+                "stale": false
+              },
+              {
+                "reason": "Unhealthy",
+                "object": "cartservice-6d57458d89-mpw4z",
+                "type": "Warning",
+                "message": "Readiness probe failed: timeout: failed to connect service \"10.244.1.6:7070\" within 10s: context deadline exceeded",
+                "stale": false
+              },
+              {
+                "reason": "Unhealthy",
+                "object": "cartservice-6d57458d89-mpw4z",
+                "type": "Warning",
+                "message": "Liveness probe failed: timeout: health rpc did not complete within 10s",
+                "stale": false
+              },
+              {
+                "reason": "Unhealthy",
+                "object": "cartservice-6d57458d89-mpw4z",
+                "type": "Warning",
+                "message": "Readiness probe failed: timeout: health rpc did not complete within 10s",
+                "stale": false
+              }
+            ]
+          }
+        ],
+        "negative_evidence": [
+          "All listed pods are Running, ready, and have no restarts.",
+          "No replica availability gap is visible.",
+          "Service targetPort values align with exposed selected-pod container ports."
+        ],
+        "observability_gaps": [],
+        "tool": "get_k8s_state",
+        "call_id": "",
+        "timestamp": "2026-04-16T17:39:44.313937Z",
+        "service": "cartservice",
+        "raw_refs": [
+          {
+            "tool": "get_k8s_state",
+            "call_id": "",
+            "timestamp": "2026-04-16T17:39:44.313937Z"
+          },
+          {
+            "tool": "get_k8s_state",
+            "call_id": "ff17de9c-ec41-4df4-a61a-2c0f65b06cdd",
+            "timestamp": "2026-04-16T17:39:44.313937Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776556962.862063
+    },
+    {
+      "step": 2,
+      "thought": "Compact evidence supplied to one-shot diagnosis.",
+      "tool_called": "get_metrics",
+      "call_id": "",
+      "inputs": {
+        "service": "cartservice"
+      },
+      "output": {
+        "status": "ok",
+        "summary": "Metrics for cartservice show low error rate, bounded latency, and no resource saturation signal.",
+        "key_facts": [
+          "Traffic health: rps=0, error_rate=0%, p95=0ms, p99=0ms.",
+          "CPU: limit_util=9.43%, request_util=0%, throttling=0.216%.",
+          "Memory: limit_util=64.6%, request_util=0%."
+        ],
+        "anomalies": [],
+        "negative_evidence": [
+          "No elevated error rate, latency breach, throttling, CPU pressure, or memory pressure in metrics."
+        ],
+        "observability_gaps": [],
+        "tool": "get_metrics",
+        "call_id": "",
+        "timestamp": "2026-04-16T17:39:45.035784Z",
+        "service": "cartservice",
+        "raw_refs": [
+          {
+            "tool": "get_metrics",
+            "call_id": "",
+            "timestamp": "2026-04-16T17:39:45.035784Z"
+          },
+          {
+            "tool": "get_metrics",
+            "call_id": "ebe5b2d9-9942-488a-bfbc-2b965da88ba3",
+            "timestamp": "2026-04-16T17:39:45.035784Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776556962.863063
+    },
+    {
+      "step": 3,
+      "thought": "Compact evidence supplied to one-shot diagnosis.",
+      "tool_called": "get_logs",
+      "call_id": "",
+      "inputs": {
+        "service": "cartservice"
+      },
+      "output": {
+        "status": "ok",
+        "summary": "Logs for cartservice contain only informational sampled lines.",
+        "key_facts": [
+          "Log signal groups: {'informational': 8}.",
+          {
+            "representative_snippets": [
+              {
+                "signal_class": "informational",
+                "snippet": "GetCartAsync called with userId=3cb54b77-5b28-4395-af60-e2cf5801b2e0"
+              },
+              {
+                "signal_class": "informational",
+                "snippet": "GetCartAsync called with userId=d0103bc4-1fc1-4323-bdc7-82aedbdcd3aa"
+              },
+              {
+                "signal_class": "informational",
+                "snippet": "GetCartAsync called with userId=69f3a56c-c52e-4007-978a-448322507508"
+              },
+              {
+                "signal_class": "informational",
+                "snippet": "GetCartAsync called with userId=cb04c92e-acbc-4b01-993f-4ac1322c9635"
+              }
+            ]
+          }
+        ],
+        "anomalies": [],
+        "negative_evidence": [
+          "No error, timeout, OOM, throttling, or connection-failure log pattern was grouped."
+        ],
+        "observability_gaps": [],
+        "tool": "get_logs",
+        "call_id": "",
+        "timestamp": "2026-04-16T17:39:45.068158Z",
+        "service": "cartservice",
+        "raw_refs": [
+          {
+            "tool": "get_logs",
+            "call_id": "",
+            "timestamp": "2026-04-16T17:39:45.068158Z"
+          },
+          {
+            "tool": "get_logs",
+            "call_id": "eb18516d-f343-44cb-932d-fea929412f8c",
+            "timestamp": "2026-04-16T17:39:45.068158Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776556962.864063
+    },
+    {
+      "step": 4,
+      "thought": "Compact evidence supplied to one-shot diagnosis.",
+      "tool_called": "get_traces",
+      "call_id": "",
+      "inputs": {
+        "service": "cartservice"
+      },
+      "output": {
+        "status": "ok",
+        "summary": "Trace evidence for cartservice has no returned error span or dominant downstream bottleneck.",
+        "key_facts": [
+          "Trace count: 0."
+        ],
+        "anomalies": [],
+        "negative_evidence": [
+          "No error spans were returned."
+        ],
+        "observability_gaps": [
+          "Trace quality is missing.",
+          "No traces returned in the lookback window."
+        ],
+        "tool": "get_traces",
+        "call_id": "",
+        "timestamp": "2026-04-16T17:40:03.220358Z",
+        "service": "cartservice",
+        "raw_refs": [
+          {
+            "tool": "get_traces",
+            "call_id": "",
+            "timestamp": "2026-04-16T17:40:03.220358Z"
+          },
+          {
+            "tool": "get_traces",
+            "call_id": "d528ad6a-4d84-4f2c-a77c-519815b096c1",
+            "timestamp": "2026-04-16T17:40:03.220358Z",
+            "artifact": "packaged_raw_payload"
+          }
+        ]
+      },
+      "timestamp": 1776556962.865063
+    },
+    {
+      "step": 5,
+      "thought": "Submit one-shot compact diagnosis.",
+      "tool_called": "submit_solution",
+      "call_id": "1bc110a4-ada8-4f1d-8770-07e11dcabd70",
+      "inputs": {},
+      "output": {
+        "call_id": "1bc110a4-ada8-4f1d-8770-07e11dcabd70",
+        "timestamp": "2026-04-19T00:02:42Z",
+        "solution_logged": true,
+        "evidence_valid": true,
+        "invalid_evidence": [],
+        "error": null,
+        "root_cause": "The cartservice service selector does not match the labels of the deployment pods, causing no pods to be selected for the service.",
+        "action_taken": "Update the service selector to match deployment pod labels.",
+        "fault_class": "native_service_selector_mismatch",
+        "affected_service": "cartservice",
+        "action_type": "patch_service_selector",
+        "confidence": 0.95,
+        "evidence": [
+          "Service selector {'app': 'cartservice-missing'} selects 0 pods while deployment pods exist with labels [{'app': 'cartservice', 'pod-template-hash': '6d57458d89'}]",
+          "Effective endpoints ready/not-ready: 0/0."
+        ]
+      },
+      "timestamp": 1776556962.866063
+    }
+  ],
+  "solution": {
+    "call_id": "1bc110a4-ada8-4f1d-8770-07e11dcabd70",
+    "timestamp": "2026-04-19T00:02:42Z",
+    "solution_logged": true,
+    "evidence_valid": true,
+    "invalid_evidence": [],
+    "error": null,
+    "root_cause": "The cartservice service selector does not match the labels of the deployment pods, causing no pods to be selected for the service.",
+    "action_taken": "Update the service selector to match deployment pod labels.",
+    "fault_class": "native_service_selector_mismatch",
+    "affected_service": "cartservice",
+    "action_type": "patch_service_selector",
+    "confidence": 0.95,
+    "evidence": [
+      "Service selector {'app': 'cartservice-missing'} selects 0 pods while deployment pods exist with labels [{'app': 'cartservice', 'pod-template-hash': '6d57458d89'}]",
+      "Effective endpoints ready/not-ready: 0/0."
+    ]
+  },
+  "verification": {},
+  "error": null
+}

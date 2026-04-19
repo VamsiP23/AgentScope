@@ -1,0 +1,100 @@
+{
+  "status": "anomalous",
+  "summary": "Kubernetes evidence for productcatalogservice has 3 anomaly group(s).",
+  "key_facts": [
+    "Replicas available/desired: 1/1.",
+    "Rollout progressing: False; total restart count: 0.",
+    "Pods ready/total: 1/1; phases: {'Running': 1}.",
+    "Service selector: {'app': 'productcatalogservice'}.",
+    "Service-selected pods/deployment pods: 1/1.",
+    "Service ports/targetPorts: port=3550 targetPort=1 name=grpc.",
+    "Selected pod container ports: container=server port=3550 name=.",
+    "Effective endpoints ready/not-ready: 1/0.",
+    "Service targetPort does not match exposed deployment container ports: [{'service_port': 3550, 'targetPort': 1, 'reason': 'numeric targetPort is not exposed by any selected deployment pod container'}]"
+  ],
+  "anomalies": [
+    {
+      "type": "service_port_alignment_mismatch",
+      "mismatches": [
+        {
+          "service_port": 3550,
+          "targetPort": 1,
+          "reason": "numeric targetPort is not exposed by any selected deployment pod container"
+        }
+      ]
+    },
+    {
+      "type": "service_config_anomaly",
+      "signal": "service_target_port"
+    },
+    {
+      "type": "meaningful_kubernetes_events",
+      "events": [
+        {
+          "reason": "Failed",
+          "object": "productcatalogservice-956cb8858-fwb29",
+          "type": "Warning",
+          "message": "Error: ImagePullBackOff",
+          "stale": false
+        },
+        {
+          "reason": "Failed",
+          "object": "productcatalogservice-956cb8858-9n9cg",
+          "type": "Warning",
+          "message": "Error: ErrImagePull",
+          "stale": false
+        },
+        {
+          "reason": "Failed",
+          "object": "productcatalogservice-956cb8858-9n9cg",
+          "type": "Warning",
+          "message": "Failed to pull image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing\": rpc error: code = NotFound desc = failed to pull an...",
+          "stale": false
+        },
+        {
+          "reason": "Failed",
+          "object": "productcatalogservice-956cb8858-9n9cg",
+          "type": "Warning",
+          "message": "Error: ImagePullBackOff",
+          "stale": false
+        },
+        {
+          "reason": "BackOff",
+          "object": "productcatalogservice-956cb8858-9n9cg",
+          "type": "Normal",
+          "message": "Back-off pulling image \"us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing\"",
+          "stale": false
+        },
+        {
+          "reason": "SuccessfulDelete",
+          "object": "productcatalogservice-956cb8858",
+          "type": "Normal",
+          "message": "Deleted pod: productcatalogservice-956cb8858-fwb29",
+          "stale": false
+        }
+      ]
+    }
+  ],
+  "negative_evidence": [
+    "All listed pods are Running, ready, and have no restarts.",
+    "No replica availability gap is visible."
+  ],
+  "observability_gaps": [],
+  "tool": "get_k8s_state",
+  "call_id": "d253d941-a280-4ba4-8b3d-d436242092fa",
+  "timestamp": "2026-04-16T18:27:58.511823Z",
+  "service": "productcatalogservice",
+  "raw_refs": [
+    {
+      "tool": "get_k8s_state",
+      "call_id": "d253d941-a280-4ba4-8b3d-d436242092fa",
+      "timestamp": "2026-04-16T18:27:58.511823Z"
+    },
+    {
+      "tool": "get_k8s_state",
+      "call_id": "6075800e-03f7-4a64-a4c5-09bc5e917eca",
+      "timestamp": "2026-04-16T18:27:58.511823Z",
+      "artifact": "packaged_raw_payload"
+    }
+  ]
+}

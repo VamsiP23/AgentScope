@@ -1,0 +1,31 @@
+{
+  "problem_id": "native_dependency_bad_endpoint_frontend_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "pure_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_service_port_mismatch",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": false,
+  "tool_calls_to_solution": 3,
+  "time_to_diagnosis_seconds": 107.357,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 0.667,
+  "missing_required_evidence": [
+    "get_dependency_traces(frontend)"
+  ],
+  "submitted_root_cause": "cartservice Service has targetPort misconfigured to 1 instead of the correct container port 7070, causing connection failures for both cartservice readiness probes and frontend service connections",
+  "submitted_action": "patch service/cartservice targetPort to 7070",
+  "submitted_fault_class": "native_service_port_mismatch",
+  "expected_fault_class": "native_dependency_bad_endpoint",
+  "submitted_affected_service": "cartservice",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "patch_service_target_port",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

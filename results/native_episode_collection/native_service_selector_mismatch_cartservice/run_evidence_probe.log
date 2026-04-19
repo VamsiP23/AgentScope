@@ -1,0 +1,42 @@
+COMMAND: python3 scripts/run_evidence_probe.py experiments/native_service_selector_mismatch_cartservice_baseline.yaml --out-dir /Users/aarnavsawant/Documents/CS6365/AgentScope/results/native_episode_collection/native_service_selector_mismatch_cartservice --lookback-minutes 2 --include-dependencies
+
+[2026-04-16T07:02:33Z] starting evidence probe 'native_service_selector_mismatch_cartservice_baseline_evidence'
+[2026-04-16T07:02:33Z] artifacts directory: /Users/aarnavsawant/Documents/CS6365/AgentScope/results/native_episode_collection/native_service_selector_mismatch_cartservice/20260416T070233Z_native_service_selector_mismatch_cartservice_baseline_evidence
+[2026-04-16T07:02:33Z] phase=startup: skipped
+[2026-04-16T07:02:34Z] phase=environment: verified
+[2026-04-16T07:02:34Z] phase=port_forward: reusing session access for prometheus at http://localhost:9090
+[2026-04-16T07:02:34Z] phase=port_forward: reusing session access for jaeger at http://localhost:16686
+[2026-04-16T07:02:34Z] phase=port_forward: reusing session access for frontend-external at http://localhost:8080
+[2026-04-16T07:02:34Z] phase=traffic: started (pid=32816)
+[2026-04-16T07:02:34Z] phase=baseline: started (pid=32817)
+[2026-04-16T07:02:34Z] phase=monitor: started (pid=32818)
+[2026-04-16T07:02:34Z] phase=pre_fault_delay: waiting 30s
+[monitor] [2026-04-16T07:02:35Z] detector initialized: incident_detected=False; no detector triggered
+[2026-04-16T07:02:39Z] phase=pre_fault_delay: 25s remaining
+[2026-04-16T07:02:44Z] phase=pre_fault_delay: 20s remaining
+[2026-04-16T07:02:49Z] phase=pre_fault_delay: 15s remaining
+[2026-04-16T07:02:54Z] phase=pre_fault_delay: 10s remaining
+[2026-04-16T07:02:59Z] phase=pre_fault_delay: 5s remaining
+[2026-04-16T07:03:04Z] phase=pre_fault_delay: done
+[2026-04-16T07:03:04Z] phase=fault_apply: applying fault
+[2026-04-16T07:03:04Z] phase=fault_apply: completed
+[2026-04-16T07:03:04Z] phase=evidence_delay: waiting 20s after fault injection before collecting evidence
+[2026-04-16T07:03:04Z] phase=evidence_delay: waiting 20s
+[monitor] [2026-04-16T07:03:09Z] detector state change: incident_detected; service cartservice ready_endpoints=0 not_ready_endpoints=0
+[2026-04-16T07:03:09Z] phase=evidence_delay: 15s remaining
+[2026-04-16T07:03:14Z] phase=evidence_delay: 10s remaining
+[2026-04-16T07:03:19Z] phase=evidence_delay: 5s remaining
+[2026-04-16T07:03:24Z] phase=evidence_delay: done
+[2026-04-16T07:03:24Z] phase=evidence: collecting ACI evidence
+[2026-04-16T07:03:26Z] phase=fault_revert_on_exit: reverting active fault
+Traceback (most recent call last):
+  File "/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_evidence_probe.py", line 645, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_evidence_probe.py", line 580, in main
+    evidence = collect_evidence(
+               ^^^^^^^^^^^^^^^^^
+  File "/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_evidence_probe.py", line 247, in collect_evidence
+    aci.reset_trace_cache()
+    ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'AgentCloudInterface' object has no attribute 'reset_trace_cache'

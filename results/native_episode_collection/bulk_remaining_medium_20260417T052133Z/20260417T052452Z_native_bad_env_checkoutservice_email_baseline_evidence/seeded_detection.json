@@ -1,0 +1,193 @@
+{
+  "timestamp_utc": "2026-04-17T05:25:37Z",
+  "config": {
+    "namespace": "default",
+    "prom_url": "http://localhost:9090",
+    "window": "1m",
+    "target_deployment": "checkoutservice",
+    "error_ratio_threshold": 0.1,
+    "service_error_rps_threshold": 0.5,
+    "service_latency_threshold_ms": 750.0,
+    "latency_consecutive_required": 2,
+    "service_error_consecutive_required": 1,
+    "min_total_rps": 0.1,
+    "restart_count_threshold": 1,
+    "primary_detectors": [
+      "error_ratio",
+      "service_error_rate",
+      "service_latency",
+      "deployment_availability",
+      "service_endpoints",
+      "service_port_alignment",
+      "native_stress_job"
+    ],
+    "out_file": ""
+  },
+  "incident_detected": true,
+  "suspicious_services": [
+    "checkoutservice"
+  ],
+  "findings": [
+    {
+      "name": "error_ratio",
+      "triggered": false,
+      "severity": "info",
+      "reason": "global error ratio 0.000 with total_rps=186.861",
+      "service": "",
+      "value": 0.000195,
+      "threshold": 0.1,
+      "details": {
+        "total_rps": 186.86134041237864,
+        "error_rps": 0.03636495872577185,
+        "error_ratio": 0.00019460932178651358
+      }
+    },
+    {
+      "name": "service_error_rate",
+      "triggered": false,
+      "severity": "info",
+      "reason": "top error service frontend at 0.036 rps",
+      "service": "frontend",
+      "value": 0.036365,
+      "threshold": 0.5,
+      "details": {
+        "top_error_services": [
+          {
+            "service_name": "frontend",
+            "error_rps": 0.03636495872577184
+          }
+        ]
+      }
+    },
+    {
+      "name": "service_latency",
+      "triggered": true,
+      "severity": "high",
+      "reason": "service checkoutservice p99 latency 800.385 ms",
+      "service": "checkoutservice",
+      "value": 800.384615,
+      "threshold": 750.0,
+      "details": {
+        "service_name": "checkoutservice",
+        "p99_latency_ms": 800.3846153846139
+      }
+    },
+    {
+      "name": "deployment_availability",
+      "triggered": true,
+      "severity": "critical",
+      "reason": "deployment checkoutservice available=1 updated=1 unavailable=1 desired=1",
+      "service": "checkoutservice",
+      "value": 1,
+      "threshold": 1,
+      "details": {
+        "exists": true,
+        "desired": 1,
+        "available": 1,
+        "ready": 1,
+        "updated": 1,
+        "unavailable": 1,
+        "generation": 8,
+        "observed_generation": 8,
+        "rollout_observed": true,
+        "rollout_updated": true,
+        "progressing_reason": "ReplicaSetUpdated",
+        "progressing_message": "ReplicaSet \"checkoutservice-57fc567f88\" is progressing.",
+        "healthy": false
+      }
+    },
+    {
+      "name": "service_endpoints",
+      "triggered": false,
+      "severity": "info",
+      "reason": "service checkoutservice ready_endpoints=1 not_ready_endpoints=1",
+      "service": "checkoutservice",
+      "value": 1,
+      "threshold": 1,
+      "details": {
+        "exists": true,
+        "ready_addresses": 1,
+        "not_ready_addresses": 1,
+        "ports": [
+          5050
+        ],
+        "healthy": true
+      }
+    },
+    {
+      "name": "service_port_alignment",
+      "triggered": false,
+      "severity": "info",
+      "reason": "service checkoutservice port alignment ok",
+      "service": "checkoutservice",
+      "value": 0,
+      "threshold": 0,
+      "details": {
+        "exists": true,
+        "aligned": true,
+        "selector": {
+          "app": "checkoutservice"
+        },
+        "service_ports": [
+          {
+            "name": "grpc",
+            "port": 5050,
+            "protocol": "TCP",
+            "targetPort": 5050
+          }
+        ],
+        "container_ports": [
+          5050
+        ],
+        "named_ports": {},
+        "mismatches": []
+      }
+    },
+    {
+      "name": "native_stress_job",
+      "triggered": false,
+      "severity": "info",
+      "reason": "no active native stress jobs",
+      "service": "checkoutservice",
+      "value": 0,
+      "threshold": 0,
+      "details": {
+        "active_stress_jobs": []
+      }
+    },
+    {
+      "name": "restart_history",
+      "triggered": false,
+      "severity": "info",
+      "reason": "historical restart count observed on jaeger-845b6c89f7-7bffd count=5",
+      "service": "jaeger-845b6c89f7-7bffd",
+      "value": 5,
+      "threshold": 1,
+      "details": {
+        "top_pod_restarts": [
+          {
+            "pod": "jaeger-845b6c89f7-7bffd",
+            "container": "jaeger",
+            "restart_count": 5
+          },
+          {
+            "pod": "redis-cart-6899b65948-q5mxh",
+            "container": "redis",
+            "restart_count": 2
+          },
+          {
+            "pod": "currencyservice-54dc68fc95-mqfbm",
+            "container": "server",
+            "restart_count": 1
+          },
+          {
+            "pod": "paymentservice-85c5665997-lnpvc",
+            "container": "server",
+            "restart_count": 1
+          }
+        ]
+      }
+    }
+  ],
+  "summary": "service checkoutservice p99 latency 800.385 ms; deployment checkoutservice available=1 updated=1 unavailable=1 desired=1"
+}

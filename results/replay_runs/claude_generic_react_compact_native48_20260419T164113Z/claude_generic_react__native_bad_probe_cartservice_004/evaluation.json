@@ -1,0 +1,31 @@
+{
+  "problem_id": "native_bad_probe_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "pure_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": true,
+  "diagnosis_family_correct": true,
+  "submitted_fault_family": "native_bad_probe_rollout",
+  "expected_fault_family": "native_bad_probe_rollout",
+  "action_correct": false,
+  "tool_calls_to_solution": 2,
+  "time_to_diagnosis_seconds": 103.587,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 0.667,
+  "missing_required_evidence": [
+    "get_metrics(cartservice)"
+  ],
+  "submitted_root_cause": "cartservice readiness probe is misconfigured to check port 1 instead of the correct application port 7070, causing probe failures despite the application running normally",
+  "submitted_action": "patch deployment/cartservice to fix readiness probe port from 1 to 7070",
+  "submitted_fault_class": "native_bad_probe_rollout",
+  "expected_fault_class": "native_bad_probe_rollout",
+  "submitted_affected_service": "cartservice",
+  "expected_affected_service": "cartservice",
+  "submitted_action_type": "patch_resources",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

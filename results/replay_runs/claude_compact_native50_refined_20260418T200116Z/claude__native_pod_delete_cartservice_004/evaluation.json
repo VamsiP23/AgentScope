@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_pod_delete_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "compact_one_shot",
+  "model": "claude-sonnet-4-20250514",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_scale_zero",
+  "expected_fault_family": "native_pod_delete",
+  "action_correct": false,
+  "tool_calls_to_solution": 4,
+  "time_to_diagnosis_seconds": 0.004,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "Deployment was scaled down to zero replicas and subsequently scaled back up, but only 1 of 2 desired replicas is ready and available, causing service availability gap",
+  "submitted_action": "Scale deployment to ensure all desired replicas are ready and healthy",
+  "submitted_fault_class": "native_scale_zero",
+  "expected_fault_class": "native_pod_delete",
+  "submitted_affected_service": "cartservice",
+  "expected_affected_service": "cartservice",
+  "submitted_action_type": "scale_deployment",
+  "expected_action_types": [
+    "wait_and_monitor"
+  ]
+}

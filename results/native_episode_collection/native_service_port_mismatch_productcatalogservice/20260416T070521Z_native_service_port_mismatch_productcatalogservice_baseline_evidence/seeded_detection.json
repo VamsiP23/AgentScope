@@ -1,0 +1,204 @@
+{
+  "timestamp_utc": "2026-04-16T07:06:04Z",
+  "config": {
+    "namespace": "default",
+    "prom_url": "http://localhost:9090",
+    "window": "1m",
+    "target_deployment": "productcatalogservice",
+    "error_ratio_threshold": 0.1,
+    "service_error_rps_threshold": 0.5,
+    "service_latency_threshold_ms": 1000.0,
+    "latency_consecutive_required": 2,
+    "service_error_consecutive_required": 1,
+    "min_total_rps": 0.1,
+    "restart_count_threshold": 1,
+    "primary_detectors": [
+      "error_ratio",
+      "service_error_rate",
+      "service_latency",
+      "deployment_availability",
+      "service_endpoints",
+      "service_port_alignment",
+      "native_stress_job"
+    ],
+    "out_file": ""
+  },
+  "incident_detected": true,
+  "suspicious_services": [
+    "productcatalogservice"
+  ],
+  "findings": [
+    {
+      "name": "error_ratio",
+      "triggered": false,
+      "severity": "info",
+      "reason": "global error ratio 0.000 with total_rps=83.127",
+      "service": "",
+      "value": 0.0,
+      "threshold": 0.1,
+      "details": {
+        "total_rps": 83.12727272727273,
+        "error_rps": 0.0,
+        "error_ratio": 0.0
+      }
+    },
+    {
+      "name": "service_error_rate",
+      "triggered": false,
+      "severity": "info",
+      "reason": "top error service checkoutservice at 0.000 rps",
+      "service": "checkoutservice",
+      "value": 0.0,
+      "threshold": 0.5,
+      "details": {
+        "top_error_services": [
+          {
+            "service_name": "checkoutservice",
+            "error_rps": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "service_latency",
+      "triggered": false,
+      "severity": "info",
+      "reason": "service productcatalogservice p99 latency 6.683 ms",
+      "service": "productcatalogservice",
+      "value": 6.683333,
+      "threshold": 1000.0,
+      "details": {
+        "service_name": "productcatalogservice",
+        "p99_latency_ms": 6.683333333333492
+      }
+    },
+    {
+      "name": "deployment_availability",
+      "triggered": false,
+      "severity": "info",
+      "reason": "deployment productcatalogservice available=2 updated=2 unavailable=0 desired=2",
+      "service": "productcatalogservice",
+      "value": 2,
+      "threshold": 2,
+      "details": {
+        "exists": true,
+        "desired": 2,
+        "available": 2,
+        "ready": 2,
+        "updated": 2,
+        "unavailable": 0,
+        "generation": 133,
+        "observed_generation": 133,
+        "rollout_observed": true,
+        "rollout_updated": true,
+        "progressing_reason": "NewReplicaSetAvailable",
+        "progressing_message": "ReplicaSet \"productcatalogservice-6c7dc657d8\" has successfully progressed.",
+        "healthy": true
+      }
+    },
+    {
+      "name": "service_endpoints",
+      "triggered": false,
+      "severity": "info",
+      "reason": "service productcatalogservice ready_endpoints=2 not_ready_endpoints=0",
+      "service": "productcatalogservice",
+      "value": 2,
+      "threshold": 1,
+      "details": {
+        "exists": true,
+        "ready_addresses": 2,
+        "not_ready_addresses": 0,
+        "ports": [
+          1
+        ],
+        "healthy": true
+      }
+    },
+    {
+      "name": "service_port_alignment",
+      "triggered": true,
+      "severity": "high",
+      "reason": "service productcatalogservice port alignment mismatch: [{'service_port': 3550, 'target_port': 1, 'resolved_target_port': 1}]",
+      "service": "productcatalogservice",
+      "value": 1,
+      "threshold": 0,
+      "details": {
+        "exists": true,
+        "aligned": false,
+        "selector": {
+          "app": "productcatalogservice"
+        },
+        "service_ports": [
+          {
+            "name": "grpc",
+            "port": 3550,
+            "protocol": "TCP",
+            "targetPort": 1
+          }
+        ],
+        "container_ports": [
+          3550
+        ],
+        "named_ports": {},
+        "mismatches": [
+          {
+            "service_port": 3550,
+            "target_port": 1,
+            "resolved_target_port": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "native_stress_job",
+      "triggered": false,
+      "severity": "info",
+      "reason": "no active native stress jobs",
+      "service": "productcatalogservice",
+      "value": 0,
+      "threshold": 0,
+      "details": {
+        "active_stress_jobs": []
+      }
+    },
+    {
+      "name": "restart_history",
+      "triggered": false,
+      "severity": "info",
+      "reason": "historical restart count observed on redis-cart-6d7f4dbc57-d7ghm count=25",
+      "service": "redis-cart-6d7f4dbc57-d7ghm",
+      "value": 25,
+      "threshold": 1,
+      "details": {
+        "top_pod_restarts": [
+          {
+            "pod": "redis-cart-6d7f4dbc57-d7ghm",
+            "container": "redis",
+            "restart_count": 25
+          },
+          {
+            "pod": "kube-state-metrics-55bfbb9f49-cb599",
+            "container": "kube-state-metrics",
+            "restart_count": 20
+          },
+          {
+            "pod": "jaeger-6bcc9945c-6qhph",
+            "container": "jaeger",
+            "restart_count": 12
+          },
+          {
+            "pod": "emailservice-6b86f5f8fd-vvj82",
+            "container": "server",
+            "restart_count": 8
+          },
+          {
+            "pod": "adservice-86d9dc8dd9-gpql6",
+            "container": "server",
+            "restart_count": 7
+          }
+        ]
+      }
+    }
+  ],
+  "summary": "service productcatalogservice port alignment mismatch: [{'service_port': 3550, 'target_port': 1, 'resolved_target_port': 1}]"
+}

@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_pod_delete_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "bounded_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "dependency_configuration_regression",
+  "expected_fault_family": "native_pod_delete",
+  "action_correct": true,
+  "tool_calls_to_solution": 5,
+  "time_to_diagnosis_seconds": 181.749,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "redis-cart dependency is not deployed, causing cartservice readiness probes to fail and preventing full deployment rollout",
+  "submitted_action": "Deploy redis-cart service to restore cartservice dependency and allow readiness probes to pass",
+  "submitted_fault_class": "native_dependency_bad_endpoint",
+  "expected_fault_class": "native_pod_delete",
+  "submitted_affected_service": "cartservice",
+  "expected_affected_service": "cartservice",
+  "submitted_action_type": "wait_and_monitor",
+  "expected_action_types": [
+    "wait_and_monitor"
+  ]
+}

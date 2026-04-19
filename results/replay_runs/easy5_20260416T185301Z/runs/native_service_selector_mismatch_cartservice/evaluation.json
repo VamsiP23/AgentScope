@@ -1,0 +1,28 @@
+{
+  "problem_id": "native_service_selector_mismatch_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "pure_react",
+  "model": "gemini-2.5-flash",
+  "incident_detected": false,
+  "diagnosis_correct": true,
+  "action_correct": true,
+  "tool_calls_to_solution": 2,
+  "time_to_diagnosis_seconds": 80.484,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 0.5,
+  "missing_required_evidence": [
+    "get_logs(cartservice)"
+  ],
+  "submitted_root_cause": "The Kubernetes Service for cartservice has a selector mismatch, pointing to 'app=cartservice-missing' instead of the correct 'app=cartservice' label on its pods. This prevents traffic from reaching the healthy cartservice pods.",
+  "submitted_action": "patch service/cartservice selector to app=cartservice",
+  "submitted_fault_class": "native_service_selector_mismatch",
+  "expected_fault_class": "native_service_selector_mismatch",
+  "submitted_affected_service": "cartservice",
+  "expected_affected_service": "cartservice",
+  "submitted_action_type": "patch_service_selector",
+  "expected_action_types": [
+    "patch_service_selector"
+  ]
+}

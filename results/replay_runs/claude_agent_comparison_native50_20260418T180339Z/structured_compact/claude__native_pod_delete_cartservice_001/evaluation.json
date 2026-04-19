@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_pod_delete_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "structured_compact",
+  "model": "claude-sonnet-4-20250514",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_bad_probe_rollout",
+  "expected_fault_family": "native_pod_delete",
+  "action_correct": false,
+  "tool_calls_to_solution": 9,
+  "time_to_diagnosis_seconds": 0.009,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "Cartservice rollout is progressing but the new pod is running yet failing readiness checks, causing 0/1 available replicas and no service endpoints. The pod starts normally according to logs but cannot pass health checks, indicating a probe configuration issue introduced during the rollout.",
+  "submitted_action": "Undo the cartservice rollout to restore the previous working version while investigating the probe configuration that is preventing the new pods from becoming ready.",
+  "submitted_fault_class": "native_bad_probe_rollout",
+  "expected_fault_class": "native_pod_delete",
+  "submitted_affected_service": "cartservice",
+  "expected_affected_service": "cartservice",
+  "submitted_action_type": "rollout_undo",
+  "expected_action_types": [
+    "wait_and_monitor"
+  ]
+}

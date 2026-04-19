@@ -1,0 +1,413 @@
+COMMAND: /Library/Frameworks/Python.framework/Versions/3.12/bin/python3 scripts/run_evidence_probe.py /Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/native_dependency_bad_endpoint_frontend_cartservice_baseline.yaml --out-dir /Users/aarnavsawant/Documents/CS6365/AgentScope/results/native_episode_collection/topoff_dependency_endpoint_20260418T054817Z --lookback-minutes 5 --warm-cluster --include-dependencies
+STARTED_AT_UTC: 2026-04-18T05:55:31Z
+FINISHED_AT_UTC: 2026-04-18T05:59:03Z
+RETURNCODE: 0
+
+STDOUT:
+[2026-04-18T05:55:31Z] starting evidence probe 'native_dependency_bad_endpoint_frontend_cartservice_baseline_evidence'
+[2026-04-18T05:55:31Z] artifacts directory: /Users/aarnavsawant/Documents/CS6365/AgentScope/results/native_episode_collection/topoff_dependency_endpoint_20260418T054817Z/20260418T055531Z_native_dependency_bad_endpoint_frontend_cartservice_baseline_evidence
+[2026-04-18T05:55:31Z] phase=startup: skipped
+[2026-04-18T05:55:31Z] phase=reset: skipped (warm cluster)
+[2026-04-18T05:55:32Z] phase=environment: verified
+[2026-04-18T05:55:32Z] phase=port_forward: reusing session access for prometheus at http://localhost:9090
+[2026-04-18T05:55:32Z] phase=port_forward: reusing session access for jaeger at http://localhost:16686
+[2026-04-18T05:55:32Z] phase=port_forward: reusing session access for frontend-external at http://localhost:8080
+[2026-04-18T05:55:32Z] phase=traffic: started (pid=96451)
+[2026-04-18T05:55:32Z] phase=baseline: started (pid=96452)
+[2026-04-18T05:55:32Z] phase=monitor: started (pid=96453)
+[2026-04-18T05:55:32Z] phase=pre_fault_delay: waiting 30s
+[monitor] [2026-04-18T05:55:35Z] detector initialized: incident_detected=True; deployment frontend available=2 updated=1 unavailable=1 desired=2
+[2026-04-18T05:55:37Z] phase=pre_fault_delay: 25s remaining
+[2026-04-18T05:55:42Z] phase=pre_fault_delay: 20s remaining
+[2026-04-18T05:55:47Z] phase=pre_fault_delay: 15s remaining
+[2026-04-18T05:55:52Z] phase=pre_fault_delay: 10s remaining
+[2026-04-18T05:55:57Z] phase=pre_fault_delay: 5s remaining
+[2026-04-18T05:56:02Z] phase=pre_fault_delay: done
+[2026-04-18T05:56:02Z] phase=fault_apply: applying fault
+[2026-04-18T05:56:04Z] phase=fault_apply: completed
+[2026-04-18T05:56:04Z] phase=evidence_delay: waiting 20s after fault injection before collecting evidence
+[2026-04-18T05:56:04Z] phase=evidence_delay: waiting 20s
+[2026-04-18T05:56:09Z] phase=evidence_delay: 15s remaining
+[monitor] [2026-04-18T05:56:11Z] detector update: deployment frontend available=2 updated=2 unavailable=1 desired=2
+[2026-04-18T05:56:14Z] phase=evidence_delay: 10s remaining
+[2026-04-18T05:56:19Z] phase=evidence_delay: 5s remaining
+[2026-04-18T05:56:24Z] phase=evidence_delay: done
+[2026-04-18T05:56:24Z] phase=evidence: collecting ACI evidence
+[monitor] [2026-04-18T05:56:37Z] detector state change: incident_cleared; no detector triggered
+[2026-04-18T05:58:01Z] phase=evidence: collected for target=frontend
+[2026-04-18T05:58:01Z] phase=post_fault_delay: waiting 60s
+[2026-04-18T05:58:11Z] phase=post_fault_delay: 50s remaining
+[2026-04-18T05:58:21Z] phase=post_fault_delay: 40s remaining
+[2026-04-18T05:58:31Z] phase=post_fault_delay: 30s remaining
+[2026-04-18T05:58:41Z] phase=post_fault_delay: 20s remaining
+[2026-04-18T05:58:51Z] phase=post_fault_delay: 10s remaining
+[2026-04-18T05:59:01Z] phase=post_fault_delay: done
+[2026-04-18T05:59:01Z] phase=fault_revert: reverting active fault
+{
+  "name": "Native Dependency Bad Endpoint Frontend Cartservice Baseline",
+  "run_id": "20260418T055531Z_native_dependency_bad_endpoint_frontend_cartservice_baseline_evidence",
+  "started_at_utc": "2026-04-18T05:55:31Z",
+  "experiment_file": "/Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/native_dependency_bad_endpoint_frontend_cartservice_baseline.yaml",
+  "namespace": "default",
+  "mode": "evidence_probe",
+  "warm_cluster": true,
+  "skip_startup": true,
+  "skip_reset": true,
+  "steps": {
+    "reset_before": {
+      "skipped": true,
+      "reason": "skip-reset/warm-cluster requested",
+      "finished_at_utc": "2026-04-18T05:55:31Z"
+    },
+    "port_forward_prometheus": {
+      "mode": "reused",
+      "url": "http://localhost:9090",
+      "probe_path": "/-/ready",
+      "state_dir": ".runtime/port_forwards"
+    },
+    "port_forward_jaeger": {
+      "mode": "reused",
+      "url": "http://localhost:16686",
+      "probe_path": "/api/services",
+      "state_dir": ".runtime/port_forwards"
+    },
+    "port_forward_frontend": {
+      "mode": "reused",
+      "url": "http://localhost:8080",
+      "probe_path": "/_healthz",
+      "state_dir": ".runtime/port_forwards"
+    },
+    "traffic": {
+      "cmd": [
+        "./scripts/generate_traffic.sh",
+        "-u",
+        "http://localhost:8080",
+        "-d",
+        "300",
+        "-r",
+        "4",
+        "-m",
+        "cart-heavy"
+      ],
+      "pid": 96451
+    },
+    "baseline": {
+      "cmd": [
+        "./scripts/collect_baseline.sh",
+        "-n",
+        "default",
+        "-i",
+        "15",
+        "-d",
+        "300"
+      ],
+      "pid": 96452
+    },
+    "monitor": {
+      "cmd": [
+        "./scripts/monitor_loop.py",
+        "--namespace",
+        "default",
+        "--prom-url",
+        "http://localhost:9090",
+        "--window",
+        "1m",
+        "--target-deployment",
+        "frontend",
+        "--error-ratio-threshold",
+        "0.1",
+        "--service-error-rps-threshold",
+        "0.5",
+        "--service-latency-threshold-ms",
+        "750",
+        "--latency-consecutive-required",
+        "2",
+        "--service-error-consecutive-required",
+        "1",
+        "--min-total-rps",
+        "0.1",
+        "--restart-count-threshold",
+        "1",
+        "--primary-detectors",
+        "error_ratio,service_error_rate,service_latency,deployment_availability,service_endpoints,service_port_alignment,native_stress_job",
+        "--out-dir",
+        "/Users/aarnavsawant/Documents/CS6365/AgentScope/results/native_episode_collection/topoff_dependency_endpoint_20260418T054817Z/20260418T055531Z_native_dependency_bad_endpoint_frontend_cartservice_baseline_evidence/detector_runs",
+        "--interval-seconds",
+        "10"
+      ],
+      "pid": 96453
+    },
+    "fault_apply": {
+      "cmd": [
+        "python3",
+        "-m",
+        "faults.native",
+        "apply",
+        "--namespace",
+        "default",
+        "--spec-json",
+        "{\"container\": \"server\", \"deployment\": \"frontend\", \"env_name\": \"CART_SERVICE_ADDR\", \"env_value\": \"cartservice:1\", \"id\": \"bad-endpoint-frontend-cartservice\", \"type\": \"deployment_env\"}"
+      ],
+      "returncode": 0,
+      "started_at_utc": "2026-04-18T05:56:02Z",
+      "finished_at_utc": "2026-04-18T05:56:04Z",
+      "log": "results/native_episode_collection/topoff_dependency_endpoint_20260418T054817Z/20260418T055531Z_native_dependency_bad_endpoint_frontend_cartservice_baseline_evidence/fault_apply.log"
+    },
+    "detection": {
+      "timestamp_utc": "2026-04-18T05:56:24Z",
+      "config": {
+        "namespace": "default",
+        "prom_url": "http://localhost:9090",
+        "window": "1m",
+        "target_deployment": "frontend",
+        "error_ratio_threshold": 0.1,
+        "service_error_rps_threshold": 0.5,
+        "service_latency_threshold_ms": 750.0,
+        "latency_consecutive_required": 2,
+        "service_error_consecutive_required": 1,
+        "min_total_rps": 0.1,
+        "restart_count_threshold": 1,
+        "primary_detectors": [
+          "error_ratio",
+          "service_error_rate",
+          "service_latency",
+          "deployment_availability",
+          "service_endpoints",
+          "service_port_alignment",
+          "native_stress_job"
+        ],
+        "out_file": ""
+      },
+      "incident_detected": true,
+      "suspicious_services": [
+        "frontend"
+      ],
+      "findings": [
+        {
+          "name": "error_ratio",
+          "triggered": false,
+          "severity": "info",
+          "reason": "global error ratio 0.000 with total_rps=0.000",
+          "service": "",
+          "value": 0.0,
+          "threshold": 0.1,
+          "details": {
+            "total_rps": 0.0,
+            "error_rps": 0.0,
+            "error_ratio": 0.0
+          }
+        },
+        {
+          "name": "service_error_rate",
+          "triggered": false,
+          "severity": "info",
+          "reason": "top error service checkoutservice at 0.000 rps",
+          "service": "checkoutservice",
+          "value": 0.0,
+          "threshold": 0.5,
+          "details": {
+            "top_error_services": [
+              {
+                "service_name": "checkoutservice",
+                "error_rps": 0.0
+              }
+            ]
+          }
+        },
+        {
+          "name": "service_latency",
+          "triggered": false,
+          "severity": "info",
+          "reason": "service frontend p99 latency 0.000 ms",
+          "service": "frontend",
+          "value": 0.0,
+          "threshold": 750.0,
+          "details": {
+            "service_name": "frontend",
+            "p99_latency_ms": 0.0
+          }
+        },
+        {
+          "name": "deployment_availability",
+          "triggered": true,
+          "severity": "critical",
+          "reason": "deployment frontend available=2 updated=2 unavailable=1 desired=2",
+          "service": "frontend",
+          "value": 2,
+          "threshold": 2,
+          "details": {
+            "exists": true,
+            "desired": 2,
+            "available": 2,
+            "ready": 2,
+            "updated": 2,
+            "unavailable": 1,
+            "generation": 15,
+            "observed_generation": 15,
+            "rollout_observed": true,
+            "rollout_updated": true,
+            "progressing_reason": "ReplicaSetUpdated",
+            "progressing_message": "ReplicaSet \"frontend-6965587bf\" is progressing.",
+            "healthy": false
+          }
+        },
+        {
+          "name": "service_endpoints",
+          "triggered": false,
+          "severity": "info",
+          "reason": "service frontend ready_endpoints=2 not_ready_endpoints=1",
+          "service": "frontend",
+          "value": 2,
+          "threshold": 1,
+          "details": {
+            "exists": true,
+            "ready_addresses": 2,
+            "not_ready_addresses": 1,
+            "ports": [
+              8080
+            ],
+            "healthy": true
+          }
+        },
+        {
+          "name": "service_port_alignment",
+          "triggered": false,
+          "severity": "info",
+          "reason": "service frontend port alignment ok",
+          "service": "frontend",
+          "value": 0,
+          "threshold": 0,
+          "details": {
+            "exists": true,
+            "aligned": true,
+            "selector": {
+              "app": "frontend"
+            },
+            "service_ports": [
+              {
+                "name": "http",
+                "port": 80,
+                "protocol": "TCP",
+                "targetPort": 8080
+              }
+            ],
+            "container_ports": [
+              8080
+            ],
+            "named_ports": {},
+            "mismatches": []
+          }
+        },
+        {
+          "name": "native_stress_job",
+          "triggered": false,
+          "severity": "info",
+          "reason": "no active native stress jobs",
+          "service": "frontend",
+          "value": 0,
+          "threshold": 0,
+          "details": {
+            "active_stress_jobs": []
+          }
+        },
+        {
+          "name": "restart_history",
+          "triggered": false,
+          "severity": "info",
+          "reason": "historical restart count observed on jaeger-845b6c89f7-7bffd count=11",
+          "service": "jaeger-845b6c89f7-7bffd",
+          "value": 11,
+          "threshold": 1,
+          "details": {
+            "top_pod_restarts": [
+              {
+                "pod": "jaeger-845b6c89f7-7bffd",
+                "container": "jaeger",
+                "restart_count": 11
+              },
+              {
+                "pod": "redis-cart-6899b65948-q5mxh",
+                "container": "redis",
+                "restart_count": 6
+              },
+              {
+                "pod": "adservice-69cf6f7b76-m6r9l",
+                "container": "server",
+                "restart_count": 1
+              },
+              {
+                "pod": "recommendationservice-5fbbb8774f-97zmt",
+                "container": "server",
+                "restart_count": 1
+              }
+            ]
+          }
+        }
+      ],
+      "summary": "deployment frontend available=2 updated=2 unavailable=1 desired=2"
+    },
+    "evidence": {
+      "target_service": "frontend",
+      "category": "dependency_trace",
+      "counts": {
+        "rich": 27,
+        "weak": 4,
+        "missing": 0
+      },
+      "trace_probe": {
+        "cmd": [
+          "./scripts/generate_traffic.sh",
+          "-u",
+          "http://localhost:8080",
+          "-d",
+          "12",
+          "-r",
+          "6",
+          "-m",
+          "cart-heavy",
+          "-o",
+          "/Users/aarnavsawant/Documents/CS6365/AgentScope/results/native_episode_collection/topoff_dependency_endpoint_20260418T054817Z/20260418T055531Z_native_dependency_bad_endpoint_frontend_cartservice_baseline_evidence/trace_probe_traffic"
+        ],
+        "returncode": 0,
+        "started_at_utc": "2026-04-18T05:56:38Z",
+        "finished_at_utc": "2026-04-18T05:56:52Z",
+        "log": "results/native_episode_collection/topoff_dependency_endpoint_20260418T054817Z/20260418T055531Z_native_dependency_bad_endpoint_frontend_cartservice_baseline_evidence/trace_probe.log",
+        "attempt": 1,
+        "base_url": "http://localhost:8080",
+        "mode": "cart-heavy",
+        "output_root": "results/native_episode_collection/topoff_dependency_endpoint_20260418T054817Z/20260418T055531Z_native_dependency_bad_endpoint_frontend_cartservice_baseline_evidence/trace_probe_traffic"
+      },
+      "report_file": "results/native_episode_collection/topoff_dependency_endpoint_20260418T054817Z/20260418T055531Z_native_dependency_bad_endpoint_frontend_cartservice_baseline_evidence/evidence_report.json",
+      "aci_run_log": "results/native_episode_collection/topoff_dependency_endpoint_20260418T054817Z/20260418T055531Z_native_dependency_bad_endpoint_frontend_cartservice_baseline_evidence/aci_run_log.jsonl"
+    },
+    "fault_revert": {
+      "cmd": [
+        "python3",
+        "-m",
+        "faults.native",
+        "revert",
+        "--namespace",
+        "default",
+        "--spec-json",
+        "{\"container\": \"server\", \"deployment\": \"frontend\", \"env_name\": \"CART_SERVICE_ADDR\", \"env_value\": \"cartservice:1\", \"id\": \"bad-endpoint-frontend-cartservice\", \"type\": \"deployment_env\"}"
+      ],
+      "returncode": 0,
+      "started_at_utc": "2026-04-18T05:59:01Z",
+      "finished_at_utc": "2026-04-18T05:59:02Z",
+      "log": "results/native_episode_collection/topoff_dependency_endpoint_20260418T054817Z/20260418T055531Z_native_dependency_bad_endpoint_frontend_cartservice_baseline_evidence/fault_revert.log"
+    },
+    "traffic_exit": {
+      "returncode": -15
+    },
+    "baseline_exit": {
+      "returncode": -15
+    },
+    "monitor_exit": {
+      "returncode": -15
+    }
+  },
+  "finished_at_utc": "2026-04-18T05:59:03Z"
+}
+
+STDERR:
+

@@ -1,0 +1,31 @@
+{
+  "problem_id": "native_dependency_bad_endpoint_frontend_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "pure_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "runtime_failure",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": false,
+  "tool_calls_to_solution": 6,
+  "time_to_diagnosis_seconds": 210.599,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 0.667,
+  "missing_required_evidence": [
+    "get_dependency_traces(frontend)"
+  ],
+  "submitted_root_cause": "Cluster-wide networking or node-level infrastructure issue causing health check timeouts across multiple services (frontend, cartservice, productcatalogservice), preventing proper service-to-service communication and health probe completion within the 10-second timeout window.",
+  "submitted_action": "wait_and_monitor(seconds=30) - monitor cluster networking and node health, investigate network connectivity between services and health check infrastructure",
+  "submitted_fault_class": "runtime_failure",
+  "expected_fault_class": "native_dependency_bad_endpoint",
+  "submitted_affected_service": "frontend",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "wait_and_monitor",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

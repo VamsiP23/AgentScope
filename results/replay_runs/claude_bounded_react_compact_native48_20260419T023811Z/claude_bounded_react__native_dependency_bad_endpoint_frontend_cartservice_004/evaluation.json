@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_dependency_bad_endpoint_frontend_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "bounded_react",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_bad_probe_rollout",
+  "expected_fault_family": "dependency_configuration_regression",
+  "action_correct": false,
+  "tool_calls_to_solution": 5,
+  "time_to_diagnosis_seconds": 188.743,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "Currencyservice is experiencing health probe failures (readiness probe timeout and liveness probe connection timeout) causing it to be unresponsive and slow, creating a bottleneck that consumes 72.8% of request trace time and cascades to cause 29.8% error rate and 625ms p99 latency in frontend requests",
+  "submitted_action": "rollout_restart(currencyservice)",
+  "submitted_fault_class": "native_bad_probe_rollout",
+  "expected_fault_class": "native_dependency_bad_endpoint",
+  "submitted_affected_service": "currencyservice",
+  "expected_affected_service": "frontend",
+  "submitted_action_type": "rollout_restart",
+  "expected_action_types": [
+    "rollout_undo"
+  ]
+}

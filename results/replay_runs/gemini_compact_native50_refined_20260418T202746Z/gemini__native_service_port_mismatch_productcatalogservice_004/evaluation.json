@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_service_port_mismatch_productcatalogservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "compact_one_shot",
+  "model": "gemini-2.5-flash",
+  "incident_detected": false,
+  "diagnosis_correct": true,
+  "diagnosis_family_correct": true,
+  "submitted_fault_family": "native_service_port_mismatch",
+  "expected_fault_family": "native_service_port_mismatch",
+  "action_correct": true,
+  "tool_calls_to_solution": 7,
+  "time_to_diagnosis_seconds": 0.007,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "The Kubernetes Service 'productcatalogservice' is misconfigured with a targetPort of '1', which does not match the actual port '3550' exposed by its application pods. This mismatch prevents the service from correctly routing traffic and leads to continuous readiness and liveness probe failures.",
+  "submitted_action": "Patch the Kubernetes Service 'productcatalogservice' to correct its targetPort from '1' to '3550'. This action will align the service definition with the application's listening port, enabling successful traffic routing and restoring service availability.",
+  "submitted_fault_class": "native_service_port_mismatch",
+  "expected_fault_class": "native_service_port_mismatch",
+  "submitted_affected_service": "productcatalogservice",
+  "expected_affected_service": "productcatalogservice",
+  "submitted_action_type": "patch_service_target_port",
+  "expected_action_types": [
+    "patch_service_target_port"
+  ]
+}

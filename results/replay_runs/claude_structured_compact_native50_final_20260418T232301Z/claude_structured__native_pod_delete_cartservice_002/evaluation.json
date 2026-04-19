@@ -1,0 +1,29 @@
+{
+  "problem_id": "native_pod_delete_cartservice",
+  "status": "candidate",
+  "agent_type": "benchmark",
+  "agent_variant": "structured_compact",
+  "model": "claude-sonnet-4-0",
+  "incident_detected": false,
+  "diagnosis_correct": false,
+  "diagnosis_family_correct": false,
+  "submitted_fault_family": "native_bad_probe_rollout",
+  "expected_fault_family": "native_pod_delete",
+  "action_correct": false,
+  "tool_calls_to_solution": 9,
+  "time_to_diagnosis_seconds": 0.009,
+  "invalid_submit_count": 0,
+  "repeated_call_count": 0,
+  "evidence_coverage": 1.0,
+  "missing_required_evidence": [],
+  "submitted_root_cause": "The cartservice deployment rollout has resulted in a pod that starts successfully but fails readiness checks, causing 0/1 replicas to be available. The pod is Running but not ready, indicating the container started normally but the readiness probe is failing, preventing the service from becoming available.",
+  "submitted_action": "Undo the deployment rollout to restore the previous working version",
+  "submitted_fault_class": "native_bad_probe_rollout",
+  "expected_fault_class": "native_pod_delete",
+  "submitted_affected_service": "cartservice",
+  "expected_affected_service": "cartservice",
+  "submitted_action_type": "rollout_undo",
+  "expected_action_types": [
+    "wait_and_monitor"
+  ]
+}
