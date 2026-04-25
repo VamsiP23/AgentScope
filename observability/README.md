@@ -1,60 +1,60 @@
-# Observability Stack (Local Kubernetes)
+# Observability Setup
 
-This repo includes a local observability stack for Online Boutique:
-- OpenTelemetry Collector (`opentelemetrycollector`)
-- Jaeger (`jaeger`)
-- Prometheus (`prometheus`)
-- Grafana (`grafana`)
-- kube-state-metrics (`kube-state-metrics`)
+This README is only for the local live environment. It is not required for replay-only benchmark reproduction.
 
-## 1) Deploy app (full Online Boutique)
+## What The Live Stack Uses
+
+- Online Boutique
+- OpenTelemetry Collector
+- Jaeger
+- Prometheus
+- Grafana
+- kube-state-metrics
+
+## Start The App
 
 ```bash
 kubectl apply -f vendor/microservices-demo/release/kubernetes-manifests.yaml
 ```
 
-## 2) Deploy observability stack + patch service env vars
+## Install The Observability Stack
 
 ```bash
 ./scripts/setup_observability.sh -n default
 ```
 
-The setup script patches these deployments (if present) with:
-- `ENABLE_TRACING=1`
-- `ENABLE_STATS=1`
-- `COLLECTOR_SERVICE_ADDR=opentelemetrycollector:4317`
+This also patches Online Boutique deployments with tracing/metrics environment variables when those deployments are present.
 
-## 3) Open UIs
-
-Run each in a separate terminal:
+## Open The UIs
 
 ```bash
 kubectl port-forward -n default svc/jaeger 16686:16686
 kubectl port-forward -n default svc/prometheus 9090:9090
 kubectl port-forward -n default svc/grafana 3000:3000
+kubectl port-forward -n default svc/frontend-external 8080:80
 ```
 
-- Jaeger: http://localhost:16686
-- Prometheus: http://localhost:9090
-- Grafana: http://localhost:3000 (login `admin/admin`)
+- Jaeger: <http://localhost:16686>
+- Prometheus: <http://localhost:9090>
+- Grafana: <http://localhost:3000>
+- Frontend: <http://localhost:8080>
 
-## 4) Generate traffic
+## Quick Validation
 
 ```bash
-./scripts/generate_traffic.sh -u http://localhost:8080 -d 300 -r 4
+python3 scripts/validate_telemetry.py \
+  --prom-url http://localhost:9090 \
+  --jaeger-url http://localhost:16686 \
+  --namespace default
 ```
 
-This will produce traces and metrics while traffic runs.
-
-## 5) Verify telemetry flow quickly
+## Traffic
 
 ```bash
-kubectl logs deploy/opentelemetrycollector -n default --tail=100
-kubectl get pods -n default | grep -E "opentelemetrycollector|jaeger|prometheus|grafana|kube-state-metrics"
-python3 ./scripts/validate_telemetry.py --prom-url http://localhost:9090 --jaeger-url http://localhost:16686 --namespace default
+./scripts/generate_traffic.sh -u http://localhost:8080 -d 120 -r 4
 ```
 
-## 6) Teardown
+## Teardown
 
 ```bash
 ./scripts/teardown_observability.sh -n default

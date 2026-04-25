@@ -37,6 +37,7 @@ from runner_common import (
     list_value,
     print_status,
     read_json_report,
+    read_detection_report,
     rel_path,
     require_binary,
     run_cmd,
@@ -177,6 +178,113 @@ def write_episode_artifact(
     return payload
 
 
+def summarize_react_remediation(
+    agent_report: Dict[str, Any],
+    detector_runs_dir: Path,
+    fallback_action: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    action_tools = {
+        "restart_pod",
+        "rollout_restart",
+        "rollout_undo",
+        "patch_resources",
+        "wait_and_monitor",
+    }
+    steps = list(agent_report.get("steps", []) or [])
+    executed_actions = []
+    for step in steps:
+        tool_called = str(step.get("tool_called", "")).strip()
+        if tool_called not in action_tools:
+            continue
+        output = step.get("output", {}) or {}
+        if output.get("executed") is not True:
+            continue
+        exit_code = output.get("exit_code")
+        result_returncode = (output.get("result", {}) or {}).get("returncode")
+        normalized_codes = {str(value).strip() for value in (exit_code, result_returncode) if value is not None}
+        if normalized_codes and normalized_codes != {"0"}:
+            continue
+        executed_actions.append(step)
+
+    latest_detection = read_detection_report(detector_runs_dir / "latest_detection.json")
+    executed_action_name = ""
+    action_desc = ""
+    if executed_actions:
+        action_step = executed_actions[-1]
+        action_output = action_step.get("output", {}) or {}
+        executed_action_name = str(action_step.get("tool_called", "")).strip()
+        action_desc = str(
+            action_output.get("stdout")
+            or action_output.get("result", {}).get("stdout", "")
+            or action_output.get("action_taken", "")
+        ).strip()
+    elif fallback_action:
+        executed_action_name = str(fallback_action.get("executed_action", "")).strip()
+        action_desc = str(fallback_action.get("executed_action_detail", "")).strip()
+
+    recovered = bool(executed_actions or fallback_action) and not bool(latest_detection.get("incident_detected", False))
+    root_cause_mitigated = bool(executed_actions or fallback_action)
+    after_summary = str(latest_detection.get("summary", "")).strip()
+    if not action_desc and executed_action_name:
+        action_desc = executed_action_name
+    return {
+        "recovered": recovered,
+        "root_cause_mitigated": root_cause_mitigated,
+        "after_summary": after_summary,
+        "executed_action": executed_action_name,
+        "executed_action_detail": action_desc,
+    }
+
+
+def maybe_execute_react_solution_action(
+    *,
+    namespace: str,
+    run_dir: Path,
+    agent_report: Dict[str, Any],
+    dry_run: bool,
+) -> Dict[str, Any]:
+    if dry_run:
+        return {}
+
+    steps = list(agent_report.get("steps", []) or [])
+    for step in steps:
+        tool_called = str(step.get("tool_called", "")).strip()
+        if tool_called in {"restart_pod", "rollout_restart", "rollout_undo", "patch_resources", "wait_and_monitor"}:
+            output = step.get("output", {}) or {}
+            if output.get("executed") is True:
+                return {}
+
+    solution = dict(agent_report.get("solution", {}) or {})
+    action_type = str(solution.get("action_type", "")).strip()
+    affected_service = str(solution.get("affected_service", "")).strip()
+    if not action_type or not affected_service:
+        return {}
+
+    if action_type == "rollout_undo":
+        cmd = ["kubectl", "rollout", "undo", f"deployment/{affected_service}", "-n", namespace]
+    elif action_type == "rollout_restart":
+        cmd = ["kubectl", "rollout", "restart", f"deployment/{affected_service}", "-n", namespace]
+    else:
+        return {}
+
+    log_name = f"react_solution_action_{action_type}.log"
+    result = run_cmd(cmd, ROOT, run_dir / log_name)
+    if result.get("returncode") != 0:
+        return {
+            "executed_action": action_type,
+            "executed_action_detail": f"{action_type} failed",
+            "log": rel_path(run_dir / log_name),
+            "returncode": result.get("returncode"),
+            "error": "runner fallback action failed",
+        }
+    return {
+        "executed_action": action_type,
+        "executed_action_detail": f"runner executed {action_type} for {affected_service}",
+        "log": rel_path(run_dir / log_name),
+        "returncode": result.get("returncode"),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run an experiment from a YAML file.")
     parser.add_argument("experiment_file", help="Path to experiment YAML file")
@@ -250,6 +358,7 @@ def main() -> int:
     fault_cfg = config.get("fault", {}) or {}
     reset_cfg = config.get("reset", {}) or {}
     detector = config.get("detector", {}) or {}
+    telemetry_cfg = config.get("telemetry", {}) or {}
     agent_cfg = config.get("agent", {}) or {}
     agent_type = str_value(agent_cfg.get("type"), "pipeline").strip().lower()
     prom_url = str_value(detector.get("prom_url"), "http://localhost:9090")
@@ -404,7 +513,7 @@ def main() -> int:
                 monitor_cmd,
                 ROOT,
                 monitor_log,
-                mirror_stdout=True,
+                mirror_stdout=bool_value(detector.get("mirror_stdout"), True),
                 stdout_prefix="[monitor] ",
             )
             summary["steps"]["monitor"] = {
@@ -449,6 +558,8 @@ def main() -> int:
             jaeger_url,
             run_dir,
             required_telemetry_services,
+            wait_seconds=int_value(telemetry_cfg.get("wait_seconds"), 45),
+            poll_seconds=int_value(telemetry_cfg.get("poll_seconds"), 5),
         )
         summary["steps"]["telemetry_contract"] = evaluate_telemetry_contract(
             benchmark_problem,
@@ -551,16 +662,54 @@ def main() -> int:
                 verification = agent_report.get("verification") or {}
                 if agent_type == "react":
                     solution = agent_report.get("solution") or {}
-                    summary["steps"]["agent"]["recovered"] = False
-                    summary["steps"]["agent"]["root_cause_mitigated"] = False
+                    fallback_action = maybe_execute_react_solution_action(
+                        namespace=namespace,
+                        run_dir=run_dir,
+                        agent_report=agent_report,
+                        dry_run=bool_value(agent_cfg.get("dry_run"), True),
+                    )
+                    if fallback_action:
+                        summary["steps"]["agent"]["runner_executed_action"] = fallback_action
+                        print_status(
+                            "phase=agent: executed submitted live action "
+                            f"(action='{fallback_action.get('executed_action', '')}')"
+                        )
+                    remediation = summarize_react_remediation(
+                        agent_report,
+                        run_dir / "detector_runs",
+                        fallback_action=fallback_action or None,
+                    )
+                    summary["steps"]["agent"]["recovered"] = bool(remediation.get("recovered", False))
+                    summary["steps"]["agent"]["root_cause_mitigated"] = bool(
+                        remediation.get("root_cause_mitigated", False)
+                    )
                     summary["steps"]["agent"]["submitted_solution"] = bool(solution)
                     summary["steps"]["agent"]["solution_root_cause"] = str(solution.get("root_cause", ""))
                     summary["steps"]["agent"]["solution_action"] = str(solution.get("action_taken", ""))
-                    summary["steps"]["agent"]["recovery_summary"] = "react agent produced diagnosis only"
-                    print_status(
-                        "phase=agent: react agent produced diagnosis "
-                        f"(root_cause='{solution.get('root_cause', '')}', action='{solution.get('action_taken', '')}')"
+                    summary["steps"]["agent"]["executed_action"] = str(remediation.get("executed_action", ""))
+                    summary["steps"]["agent"]["recovery_summary"] = str(
+                        remediation.get("after_summary")
+                        or remediation.get("executed_action_detail")
+                        or "react agent produced diagnosis only"
                     )
+                    if remediation.get("recovered", False):
+                        fault_active = False
+                        print_status(
+                            "phase=agent: system recovered "
+                            f"(summary='{summary['steps']['agent']['recovery_summary']}')"
+                        )
+                    elif remediation.get("root_cause_mitigated", False):
+                        fault_active = False
+                        print_status(
+                            "phase=agent: root cause mitigated "
+                            f"(action='{remediation.get('executed_action', '')}', "
+                            f"summary='{summary['steps']['agent']['recovery_summary']}')"
+                        )
+                    else:
+                        print_status(
+                            "phase=agent: react agent produced diagnosis "
+                            f"(root_cause='{solution.get('root_cause', '')}', action='{solution.get('action_taken', '')}')"
+                        )
                 elif verification.get("recovered", False):
                     fault_active = False
                     summary["steps"]["agent"]["recovered"] = True
@@ -625,9 +774,21 @@ def main() -> int:
             fault_duration = int_value(fault_cfg.get("duration_seconds"), 0)
             if fault_duration <= 0:
                 raise RuntimeError("fault.duration_seconds must be a positive integer")
-            sleep_with_progress(fault_duration, "phase=fault_duration")
-            fault_end_epoch = time.time()
-            summary["fault_window_end_utc"] = epoch_to_utc(fault_end_epoch)
+            if fault_active and not bool(
+                (summary.get("steps", {}) or {}).get("agent", {}).get("root_cause_mitigated", False)
+            ):
+                sleep_with_progress(fault_duration, "phase=fault_duration")
+                fault_end_epoch = time.time()
+                summary["fault_window_end_utc"] = epoch_to_utc(fault_end_epoch)
+            else:
+                fault_end_epoch = time.time()
+                summary["fault_window_end_utc"] = epoch_to_utc(fault_end_epoch)
+                summary["steps"]["fault_duration"] = {
+                    "skipped": True,
+                    "reason": "fault duration skipped after successful live remediation",
+                    "finished_at_utc": utc_now(),
+                }
+                print_status("phase=fault_duration: skipped (successful live remediation)")
 
         if baseline_start_epoch > 0 and baseline_end_epoch > baseline_start_epoch:
             baseline_metrics = collect_window_metrics(

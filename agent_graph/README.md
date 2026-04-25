@@ -1,24 +1,41 @@
 # Agent Graph
 
-This package now centers on one agent path: a typed-tool ReAct incident agent.
+The repo currently keeps one benchmark-oriented agent stack with three replay/live variants:
 
-Main files:
-- `agent_graph/aci.py`
-- `agent_graph/react_agent.py`
-- `agent_graph/react_prompt.py`
-- `agent_graph/react_support.py`
-- `agent_graph/tools/`
-- `agent_graph/reasoning/llm.py`
+- ReAct (`react`)
+- Bounded ReAct (`bounded_react`)
+- DiagnosticAgent (`diagnostic`)
 
-Design:
-- `AgentCloudInterface` exposes the observation and action tools used by agents.
-- `ReActAgent` runs the investigation loop.
-- `react_prompt.py` holds the system prompt.
-- `react_support.py` holds shared normalization and signal helpers.
-- `tools/` contains the live backend integrations for Kubernetes, Prometheus, Jaeger, and safe actions.
+## Main Files
 
-Current entrypoints:
-- `python3 ./scripts/run_benchmark_agent.py --agent-type react --backend live ...`
-- `python3 ./scripts/run_benchmark_agent.py --agent-type react --backend replay ...`
+- [`agent_graph/react_agent.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/react_agent.py)
+- [`agent_graph/diagnostic_agent.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/diagnostic_agent.py)
+- [`agent_graph/aci.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/aci.py)
+- [`agent_graph/tools`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/tools)
+- [`agent_graph/reasoning/llm.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/reasoning/llm.py)
 
-The older LangGraph workflow agent was removed as part of the cleanup so the repo has one primary agent architecture instead of parallel agent stacks.
+## Entry Points
+
+Replay/live generic runner:
+
+```bash
+python3 scripts/run_benchmark_agent.py --agent-type bounded_react --backend replay ...
+```
+
+Compact one-shot replay runner:
+
+```bash
+python3 scripts/run_compact_diagnosis.py --replay-dataset ... --out-dir ...
+```
+
+Structured compact replay runner:
+
+```bash
+python3 scripts/run_structured_compact_diagnosis.py --replay-dataset ... --out-dir ...
+```
+
+## Notes
+
+- the older LangGraph path is not the benchmark surface anymore
+- the reproducible comparison work in the paper is replay-first
+- live runs are mainly for collection and demo flows

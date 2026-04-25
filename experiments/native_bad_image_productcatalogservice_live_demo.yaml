@@ -1,0 +1,51 @@
+name: Native Bad Image Productcatalogservice Live Demo
+namespace: default
+startup:
+  enabled: false
+  args: []
+timings:
+  pre_fault_delay_seconds: 2
+  post_fault_delay_seconds: 3
+traffic:
+  enabled: true
+  base_url: http://localhost:8080
+  mode: product-heavy
+  duration_seconds: 70
+  rps: 4
+baseline:
+  enabled: false
+  duration_seconds: 70
+  interval_seconds: 10
+fault:
+  kind: native_kubernetes
+  duration_seconds: 35
+  auto_revert: true
+  spec:
+    id: bad-image-productcatalogservice-live-demo
+    type: deployment_image
+    deployment: productcatalogservice
+    container: server
+    image: us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:agentscope-missing
+detector:
+  enabled: true
+  prom_url: http://localhost:9090
+  target_deployment: productcatalogservice
+  interval_seconds: 5
+  mirror_stdout: false
+telemetry:
+  wait_seconds: 8
+  poll_seconds: 2
+agent:
+  enabled: true
+  type: react
+  provider: anthropic
+  model: claude-sonnet-4-0
+  dry_run: false
+  jaeger_enabled: true
+  max_steps: 8
+  jaeger_url: http://localhost:16686
+  target_deployment: productcatalogservice
+  problem_description: A live native Kubernetes incident is affecting Online Boutique product catalog traffic. Investigate with observability tools and execute a safe remediation when the root cause is clear.
+  require_incident_detected: true
+  wait_for_incident_timeout_seconds: 30
+  wait_for_incident_poll_seconds: 5

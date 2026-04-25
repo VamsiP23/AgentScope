@@ -1,188 +1,134 @@
 # AgentScope
 
-AgentScope is an episodic benchmark for distributed-systems failure diagnosis with observability-aware agents.
+AgentScope is a benchmark and live-demo framework for AI-assisted incident diagnosis on the Online Boutique microservice application. The repo contains:
 
-The project evaluates how well different agent architectures and LLM backbones diagnose injected failures in a live microservice environment or against replayed benchmark episodes. Each task is a bounded failure-diagnosis episode with a fixed interaction budget, explicit ground truth, and automatic scoring.
+- a committed replay dataset under [`datasets/episodes`](/Users/aarnavsawant/Documents/CS6365/AgentScope/datasets/episodes)
+- benchmark metadata under [`benchmark_suite.yaml`](/Users/aarnavsawant/Documents/CS6365/AgentScope/benchmark_suite.yaml)
+- scored replay runs and paper-ready analysis under [`results`](/Users/aarnavsawant/Documents/CS6365/AgentScope/results)
+- a native Kubernetes live demo path under [`scripts/run_live_fix_demo.sh`](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_live_fix_demo.sh)
 
-## Benchmark vs Demo
+If you only need the shortest path:
 
-AgentScope has two intended modes:
+1. read [`REPRODUCIBILITY.md`](/Users/aarnavsawant/Documents/CS6365/AgentScope/REPRODUCIBILITY.md)
+2. regenerate the paper figures with `python3 scripts/generate_report_figures.py`
+3. rerun a replay benchmark with `python3 scripts/run_replay_suite.py ...`
 
-- `benchmark`: reproducible episodic evaluation for comparing agents and models
-- `demo`: a presentation-friendly live run that shows one agent investigating one active fault
+## Repository Layout
 
-Benchmark mode is the primary methodology. Demo mode exists to make the system tangible.
+- [`benchmark_suite.yaml`](/Users/aarnavsawant/Documents/CS6365/AgentScope/benchmark_suite.yaml): benchmark problem definitions, scoring expectations, and live experiment mappings
+- [`configs/episode_sets/native_50.yaml`](/Users/aarnavsawant/Documents/CS6365/AgentScope/configs/episode_sets/native_50.yaml): committed `native_48_strict_good` replay manifest
+- [`configs/episode_taxonomy.yaml`](/Users/aarnavsawant/Documents/CS6365/AgentScope/configs/episode_taxonomy.yaml): category, difficulty, and trace-requirement labels used in grouped analysis
+- [`datasets/README.md`](/Users/aarnavsawant/Documents/CS6365/AgentScope/datasets/README.md): dataset structure and what is committed
+- [`scripts/run_replay_suite.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_replay_suite.py): rerun replay benchmarks over a committed episode set
+- [`scripts/run_compact_diagnosis.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_compact_diagnosis.py): one-shot compact replay diagnosis for one episode
+- [`scripts/run_structured_compact_diagnosis.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_structured_compact_diagnosis.py): structured compact replay diagnosis for one episode
+- [`scripts/run_benchmark_agent.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_benchmark_agent.py): generic replay/live entrypoint for ReAct, bounded ReAct, and DiagnosticAgent
+- [`scripts/run_experiment.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_experiment.py): live bounded experiment runner
+- [`scripts/aggregate_results.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/aggregate_results.py): aggregate `evaluation.json` files into markdown/json summaries
+- [`scripts/generate_report_figures.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/generate_report_figures.py): regenerate the charts used in the report
 
-## Core Loop
+## Reproduce The Paper Artifacts
 
-Each benchmark episode follows the same structure:
-
-1. inject one fault into the Online Boutique environment
-2. let the agent inspect the system through observability tools
-3. require a diagnosis and remediation recommendation within a fixed budget
-4. score the result against task ground truth
-5. reset and repeat
-
-This preserves realism while keeping evaluation controlled enough to compare architectures, prompts, and model backbones fairly.
-
-## Repository Map
-
-- [benchmark_suite.yaml](/Users/aarnavsawant/Documents/CS6365/AgentScope/benchmark_suite.yaml): full benchmark task catalog with ground truth and telemetry contracts
-- [configs/core_suite.yaml](/Users/aarnavsawant/Documents/CS6365/AgentScope/configs/core_suite.yaml): initial frozen core suite for benchmark runs
-- [scripts/run_experiment.py](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_experiment.py): runs one bounded live episode
-- [scripts/run_benchmark_suite.py](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_benchmark_suite.py): runs a suite of episodes and aggregates results
-- [scripts/run_replay_suite.py](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_replay_suite.py): runs replay benchmarking over curated episodes in `datasets/episodes/`
-- [scripts/run_benchmark_agent.py](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_benchmark_agent.py): agent-only benchmark entrypoint
-- [scripts/collect_episode.py](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/collect_episode.py): collects a benchmark episode from the live system without running an agent
-- [scripts/promote_episode.py](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/promote_episode.py): promotes a live `episode.json` run into the curated benchmark dataset
-- [benchmarking/evaluator.py](/Users/aarnavsawant/Documents/CS6365/AgentScope/benchmarking/evaluator.py): scoring logic
-- [benchmarking/results.py](/Users/aarnavsawant/Documents/CS6365/AgentScope/benchmarking/results.py): aggregate evaluation utilities
-- [experiments/README.md](/Users/aarnavsawant/Documents/CS6365/AgentScope/experiments/README.md): fault scenario and experiment configuration guidance
-- [agent_graph/README.md](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/README.md): current reference agent implementation
-
-## Environment
-
-The default live environment uses:
-
-- Online Boutique microservices
-- Prometheus
-- Jaeger
-- kube-state-metrics
-- Native Kubernetes fault injection implemented in this repository
-
-Setup details are in [observability/README.md](/Users/aarnavsawant/Documents/CS6365/AgentScope/observability/README.md).
-
-## Running One Benchmark Episode
-
-Run a single bounded live episode:
+All committed analysis inputs already live in [`results/analysis`](/Users/aarnavsawant/Documents/CS6365/AgentScope/results/analysis), so regenerating the figures does not require rerunning the expensive benchmark:
 
 ```bash
-python3 ./scripts/run_experiment.py experiments/bad_rollout_productcatalogservice_react.yaml
+cd /Users/aarnavsawant/Documents/CS6365/AgentScope
+python3 scripts/generate_report_figures.py
 ```
 
-The run writes artifacts under `experiment_runs/<timestamp>_<name>/`, including:
+This writes:
 
-- `episode.json`
-- `summary.json`
-- `agent_report.json`
-- `evaluation.json`
-- tool logs and telemetry validation output
+- [`results/analysis/figures/figure_main_model_comparison.png`](/Users/aarnavsawant/Documents/CS6365/AgentScope/results/analysis/figures/figure_main_model_comparison.png)
+- [`results/analysis/figures/figure_category_breakdown.png`](/Users/aarnavsawant/Documents/CS6365/AgentScope/results/analysis/figures/figure_category_breakdown.png)
+- [`results/analysis/figures/figure_runtime_vs_accuracy.png`](/Users/aarnavsawant/Documents/CS6365/AgentScope/results/analysis/figures/figure_runtime_vs_accuracy.png)
+- [`results/analysis/figures/figure_agent_architectures.png`](/Users/aarnavsawant/Documents/CS6365/AgentScope/results/analysis/figures/figure_agent_architectures.png)
 
-## Running The Core Benchmark Suite
+## Rerun Replay Benchmarks
 
-Run the initial frozen suite:
+The committed replay dataset is the reproducible benchmark surface. The simplest rerun path is:
 
 ```bash
-python3 ./scripts/run_benchmark_suite.py --suite-file configs/core_suite.yaml
+cd /Users/aarnavsawant/Documents/CS6365/AgentScope
+python3 scripts/run_replay_suite.py \
+  --episode-set configs/episode_sets/native_50.yaml \
+  --variant compact_one_shot \
+  --provider anthropic \
+  --model claude-sonnet-4-0
 ```
 
-Optional model overrides:
+Other useful variants:
 
-```bash
-python3 ./scripts/run_benchmark_suite.py \
-  --suite-file configs/core_suite.yaml \
-  --provider ollama \
-  --model qwen2.5:7b \
-  --compact-local-mode true
-```
+- `compact_one_shot`
+- `structured_compact`
+- `generic_react`
+- `bounded_react`
+- `diagnostic`
 
-The suite runner writes:
+Each replay suite run writes a new directory under `results/replay_runs/` containing:
 
-- episode run artifacts under `results/benchmark_runs/<timestamp>/runs/`
+- `run_summary.json`
 - `aggregate_results.json`
 - `aggregate_results.md`
+- one subdirectory per episode with `agent_report.json` and `evaluation.json`
 
-You can also use named presets:
+For a smaller smoke rerun, add `--limit 5`.
 
-```bash
-python3 ./scripts/run_benchmark_suite.py \
-  --suite-file configs/core_suite.yaml \
-  --model-config ollama_qwen_demo \
-  --agent-config react_compact_local
-```
+## Run One Replay Episode
 
-## Curating Episodes
-
-The default collection path does not require an agent. It runs a bounded live evidence probe, converts the collected tool outputs into a replayable benchmark episode, and promotes it into the curated dataset:
+Compact one-shot on a single committed episode:
 
 ```bash
-python3 ./scripts/collect_episode.py experiments/bad_rollout_productcatalogservice_react.yaml --copy-supporting
+python3 scripts/run_compact_diagnosis.py \
+  --replay-dataset datasets/episodes/native_bad_image_productcatalogservice/native_bad_image_productcatalogservice_001.json \
+  --provider anthropic \
+  --model claude-sonnet-4-0 \
+  --out-dir results/replay_runs/manual_bad_image_one_shot
 ```
 
-This writes raw collection artifacts under `results/episode_collection_runs/` and a curated benchmark episode under `datasets/episodes/`.
-
-If you already have a raw run artifact and want to promote it manually, use:
+Bounded ReAct on a single committed episode:
 
 ```bash
-python3 ./scripts/promote_episode.py <run_dir> --copy-supporting
+python3 scripts/run_benchmark_agent.py \
+  --agent-type bounded_react \
+  --backend replay \
+  --replay-dataset datasets/episodes/native_bad_env_checkoutservice_email/native_bad_env_checkoutservice_email_005.json \
+  --benchmark-suite benchmark_suite.yaml \
+  --problem-id native_bad_env_checkoutservice_email \
+  --provider anthropic \
+  --model claude-sonnet-4-0 \
+  --out-file results/replay_runs/manual_bad_env_bounded/agent_report.json
 ```
 
-Curated episodes live under [datasets/episodes](/Users/aarnavsawant/Documents/CS6365/AgentScope/datasets/episodes).
+## Run The Live Demo
 
-For warm native Kubernetes collection, keep the kind cluster running and skip cluster reset/startup between sequential episodes:
+The presentation-friendly native live demo is:
 
 ```bash
-python3 ./scripts/run_evidence_probe.py \
-  experiments/native_pod_delete_cartservice_baseline.yaml \
-  --warm-cluster \
-  --include-dependencies \
-  --lookback-minutes 3 \
-  --out-dir results/native_episode_collection/kind_bulk_manual
+zsh -lic 'cd /Users/aarnavsawant/Documents/CS6365/AgentScope && ./scripts/run_live_fix_demo.sh'
 ```
 
-`--warm-cluster` skips `start_all.sh` and `reset.before_run`, but still verifies the environment and reverts the active fault on exit. Use it only after the cluster and observability checks are already healthy.
+This expects:
 
-## Running Replay Benchmarking
+- a working Kubernetes cluster with Online Boutique deployed
+- observability endpoints available
+- `ANTHROPIC_API_KEY` in the shell environment
 
-Once curated episodes exist, run replay evaluation across them with:
+See [`observability/README.md`](/Users/aarnavsawant/Documents/CS6365/AgentScope/observability/README.md) for the local stack setup.
+
+## Tests
+
+Run the focused test suite with:
 
 ```bash
-python3 ./scripts/run_replay_suite.py \
-  --suite-file configs/core_suite.yaml \
-  --model-config ollama_qwen_demo \
-  --agent-config react_compact_local
+cd /Users/aarnavsawant/Documents/CS6365/AgentScope
+pytest tests
 ```
 
-Replay runs write:
+## Notes On What Is Committed
 
-- replay run artifacts under `results/replay_runs/<timestamp>/runs/`
-- `aggregate_results.json`
-- `aggregate_results.md`
+- the replay dataset is committed
+- the benchmark metadata and taxonomy are committed
+- the scored replay results and report-analysis inputs are committed
+- large live-run artifact directories under `experiment_runs/` are not part of the reproducibility contract
 
-## Demo Mode
-
-Demo mode is intentionally narrower than benchmark mode. For a live demo, prefer:
-
-- rollout failure scenarios first
-- lower step budgets
-- compact local mode for Ollama-backed agents
-
-Example:
-
-```bash
-LLM_PROVIDER=ollama \
-OLLAMA_MODEL=qwen2.5:7b \
-AGENTSCOPE_COMPACT_LOCAL_MODE=true \
-python3 ./scripts/run_experiment.py experiments/bad_rollout_productcatalogservice_react.yaml
-```
-
-## Evaluation Methodology
-
-AgentScope uses episodic evaluation over controlled failure-diagnosis tasks. Each episode begins with a known injected fault in a live microservice environment, after which an LLM agent is given bounded access to observability tools and must identify the root cause within a fixed interaction budget. This design preserves realism while enabling reproducible comparison across agent architectures and LLM backbones.
-
-Primary benchmark metrics include:
-
-- incident detected
-- diagnosis correct
-- action correct
-- tool calls to solution
-- time to diagnosis
-- invalid submit count
-- repeated call count
-- evidence coverage
-
-## Near-Term Roadmap
-
-- improve the replay dataset conversion path and score richer episode metadata
-- add named model and agent configs for easier cross-backbone comparisons
-- expand the core suite once more scenarios become stable and benchmark-ready
+For a cold-start grader, [`REPRODUCIBILITY.md`](/Users/aarnavsawant/Documents/CS6365/AgentScope/REPRODUCIBILITY.md) is the best place to begin.

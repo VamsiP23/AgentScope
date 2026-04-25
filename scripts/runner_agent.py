@@ -217,6 +217,8 @@ def validate_telemetry_sources(
     jaeger_url: str,
     run_dir: Path,
     required_services: List[str],
+    wait_seconds: int = 45,
+    poll_seconds: int = 5,
 ) -> Dict[str, Any]:
     started = utc_now()
     cmd = [
@@ -231,9 +233,9 @@ def validate_telemetry_sources(
         "--require-services",
         ",".join(required_services),
         "--wait-seconds",
-        "45",
+        str(wait_seconds),
         "--poll-seconds",
-        "5",
+        str(poll_seconds),
     ]
     proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
     log_path = run_dir / "telemetry_validation.log"
