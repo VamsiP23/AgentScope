@@ -4,7 +4,7 @@ AgentScope is a benchmark and live-demo framework for AI-assisted incident diagn
 
 - a committed replay dataset under [`datasets/episodes`](/Users/aarnavsawant/Documents/CS6365/AgentScope/datasets/episodes)
 - benchmark metadata under [`benchmark_suite.yaml`](/Users/aarnavsawant/Documents/CS6365/AgentScope/benchmark_suite.yaml)
-- scored replay runs and paper-ready analysis under [`results`](/Users/aarnavsawant/Documents/CS6365/AgentScope/results)
+- the final scored replay runs and paper-ready analysis under [`results`](/Users/aarnavsawant/Documents/CS6365/AgentScope/results)
 - a native Kubernetes live demo path under [`scripts/run_live_fix_demo.sh`](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_live_fix_demo.sh)
 
 If you only need the shortest path:
@@ -128,7 +128,8 @@ pytest tests
 
 - the replay dataset is committed
 - the benchmark metadata and taxonomy are committed
-- the scored replay results and report-analysis inputs are committed
-- large live-run artifact directories under `experiment_runs/` are not part of the reproducibility contract
+- the final scored replay results and report-analysis inputs used by the report are committed
+- one successful live-demo artifact directory is committed under [`experiment_runs/20260425T175830Z_native_bad_image_productcatalogservice_live_demo`](/Users/aarnavsawant/Documents/CS6365/AgentScope/experiment_runs/20260425T175830Z_native_bad_image_productcatalogservice_live_demo)
+- older exploratory live-run and replay-run history has been intentionally pruned so the repo stays focused on the benchmark and demo surfaces described above
 
 For a cold-start grader, [`REPRODUCIBILITY.md`](/Users/aarnavsawant/Documents/CS6365/AgentScope/REPRODUCIBILITY.md) is the best place to begin.

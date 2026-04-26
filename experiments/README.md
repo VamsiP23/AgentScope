@@ -2,14 +2,14 @@
 
 The checked-in experiment YAMLs serve two purposes:
 
-- live collection and calibration
+- the native benchmark collection flow
 - the presentation demo path
 
-The benchmark-grade reproducible evaluation surface is the replay dataset, but these live experiment files are still the source of the original collected incidents.
+The benchmark-grade reproducible evaluation surface is the replay dataset, but these native live experiment files are still the source of the original collected incidents.
 
-## Preferred Fault Backend
+## Fault Backend
 
-The repo now prefers native Kubernetes fault injection implemented in [`faults`](/Users/aarnavsawant/Documents/CS6365/AgentScope/faults) over external chaos frameworks for benchmark collection.
+This repo now keeps only the native Kubernetes fault-injection path implemented in [`faults`](/Users/aarnavsawant/Documents/CS6365/AgentScope/faults).
 
 Use:
 
@@ -19,7 +19,7 @@ Use:
 ## Key Entry Points
 
 - [`scripts/run_experiment.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_experiment.py): run one live experiment
-- [`scripts/collect_episode.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/collect_episode.py): collect and promote a replayable episode from a live run
+- [`scripts/capture_episode_dataset.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/capture_episode_dataset.py): collect and promote replayable episode JSONs from live runs
 - [`scripts/run_live_fix_demo.sh`](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_live_fix_demo.sh): presentation-friendly native live demo
 
 ## Example Live Run
@@ -38,4 +38,5 @@ python3 scripts/run_experiment.py experiments/native_service_selector_mismatch_c
 
 - most benchmark analysis in the report comes from replay evaluation, not repeated live runs
 - live runs are best used for collection, smoke validation, and demos
+- older exploratory live experiments were intentionally removed so this directory only contains the native experiment definitions relevant to the final benchmark and demo
 - if your goal is reproducibility, start from [`REPRODUCIBILITY.md`](/Users/aarnavsawant/Documents/CS6365/AgentScope/REPRODUCIBILITY.md)

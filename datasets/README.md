@@ -31,6 +31,8 @@ Committed families include:
 
 Each episode JSON contains replayable evidence, initial context, and hidden evaluation data used by the scorer. The replay runners load these files through [`benchmarking/replay.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/benchmarking/replay.py).
 
+Some episodes also retain provenance fields such as `source_run_dir` or original `experiment_file` values from the collection pipeline. Those strings are informational only. The older raw collection directories were intentionally pruned from the repo, so reproducibility should rely on the committed replay JSON itself rather than those historical pointers.
+
 ## Counting The Strict Set
 
 ```bash

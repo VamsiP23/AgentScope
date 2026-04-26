@@ -168,7 +168,7 @@ The tests cover:
 
 ## 8. What Not To Rely On
 
-Do not treat `experiment_runs/` as the benchmark reproduction surface. Those directories are useful for demos and local debugging, but the reproducible benchmark contract is:
+Do not treat `experiment_runs/` as the benchmark reproduction surface. The single kept demo artifact is there for presentation provenance, but the reproducible benchmark contract is:
 
 - episode manifests in `configs/episode_sets/`
 - episode JSONs in `datasets/episodes/`
