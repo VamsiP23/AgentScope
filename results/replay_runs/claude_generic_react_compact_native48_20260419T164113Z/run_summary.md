@@ -1,7 +1,7 @@
 # Claude Generic ReAct Native48
 
 - Status: `complete`
-- Run root: `/Users/aarnavsawant/Documents/CS6365/AgentScope/results/replay_runs/claude_generic_react_compact_native48_20260419T164113Z`
+- Run root: `<repo-root>/results/replay_runs/claude_generic_react_compact_native48_20260419T164113Z`
 - Completed evaluations: 48/48
 - Exact: 27/48
 - Grouped family: 27/48

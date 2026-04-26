@@ -1,6 +1,6 @@
 # Claude DiagnosticAgent Native48 Aggregate
 
-Run root: `/Users/aarnavsawant/Documents/CS6365/AgentScope/results/replay_runs/claude_diagnostic_compact_native48_20260419T081015Z`
+Run root: `<repo-root>/results/replay_runs/claude_diagnostic_compact_native48_20260419T081015Z`
 
 ## Headline
 

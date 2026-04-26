@@ -1,12 +1,12 @@
 # Dataset
 
-The committed benchmark dataset lives under [`datasets/episodes`](/Users/aarnavsawant/Documents/CS6365/AgentScope/datasets/episodes).
+The committed benchmark dataset lives under [`datasets/episodes`](episodes).
 
 ## What Is In The Repo
 
 - replayable episode JSON files grouped by family
 - enough metadata to rerun replay benchmarking and regenerate scored outputs
-- strict manifest selection under [`configs/episode_sets/native_50.yaml`](/Users/aarnavsawant/Documents/CS6365/AgentScope/configs/episode_sets/native_50.yaml)
+- strict manifest selection under [`configs/episode_sets/native_50.yaml`](../configs/episode_sets/native_50.yaml)
 
 The main report uses the `native_48_strict_good` set, which is defined in that manifest.
 
@@ -29,7 +29,7 @@ Committed families include:
 
 ## Episode Shape
 
-Each episode JSON contains replayable evidence, initial context, and hidden evaluation data used by the scorer. The replay runners load these files through [`benchmarking/replay.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/benchmarking/replay.py).
+Each episode JSON contains replayable evidence, initial context, and hidden evaluation data used by the scorer. The replay runners load these files through [`benchmarking/replay.py`](../benchmarking/replay.py).
 
 Some episodes also retain provenance fields such as `source_run_dir` or original `experiment_file` values from the collection pipeline. Those strings are informational only. The older raw collection directories were intentionally pruned from the repo, so reproducibility should rely on the committed replay JSON itself rather than those historical pointers.
 
@@ -39,7 +39,7 @@ Some episodes also retain provenance fields such as `source_run_dir` or original
 python3 - <<'PY'
 from pathlib import Path
 import yaml
-root = Path('/Users/aarnavsawant/Documents/CS6365/AgentScope')
+root = Path('.')
 payload = yaml.safe_load((root / 'configs/episode_sets/native_50.yaml').read_text())
 print(payload['name'], len(payload['episodes']))
 PY

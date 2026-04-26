@@ -6,14 +6,14 @@ Generated: `2026-04-19T02:33:32Z`
 
 These are filtered aggregates from the saved native-50 compact one-shot runs, with the two audited ambiguous episodes removed: `native_pod_delete_cartservice_003` and `native_memory_limit_oom_cartservice_001`. No model calls were rerun.
 
-Strict set: `/Users/aarnavsawant/Documents/CS6365/AgentScope/configs/episode_sets/native_50.yaml` (`native_48_strict_good`, 48 episodes).
+Strict set: `<repo-root>/configs/episode_sets/native_50.yaml` (`native_48_strict_good`, 48 episodes).
 
 | Model | Run root | Completed | Exact | Family | Action | Avg wall seconds |
 |---|---|---:|---:|---:|---:|---:|
-| Claude Sonnet 4 (`claude-sonnet-4-0`) | `/Users/aarnavsawant/Documents/CS6365/AgentScope/results/replay_runs/final_compact_native50_20260418T221253Z/claude_compact_native50_final` | 48/48 | 38/48 (79.2%) | 41/48 (85.4%) | 41/48 (85.4%) | 7.907 |
-| OpenAI GPT-4o (`gpt-4o`) | `/Users/aarnavsawant/Documents/CS6365/AgentScope/results/replay_runs/openai_gpt4o_compact_native50_final_20260419T000205Z` | 48/48 | 34/48 (70.8%) | 39/48 (81.2%) | 40/48 (83.3%) | 6.929 |
-| OpenAI GPT-4o-mini (`gpt-4o-mini`) | `/Users/aarnavsawant/Documents/CS6365/AgentScope/results/replay_runs/final_compact_native50_20260418T221253Z/openai_compact_native50_final` | 48/48 | 34/48 (70.8%) | 36/48 (75.0%) | 27/48 (56.2%) | 4.296 |
-| Gemini 2.5 Flash (`gemini-2.5-flash`) | `/Users/aarnavsawant/Documents/CS6365/AgentScope/results/replay_runs/final_compact_native50_20260418T221253Z/gemini_compact_native50_final` | 48/48 | 35/48 (72.9%) | 42/48 (87.5%) | 40/48 (83.3%) | 14.113 |
+| Claude Sonnet 4 (`claude-sonnet-4-0`) | `<repo-root>/results/replay_runs/final_compact_native50_20260418T221253Z/claude_compact_native50_final` | 48/48 | 38/48 (79.2%) | 41/48 (85.4%) | 41/48 (85.4%) | 7.907 |
+| OpenAI GPT-4o (`gpt-4o`) | `<repo-root>/results/replay_runs/openai_gpt4o_compact_native50_final_20260419T000205Z` | 48/48 | 34/48 (70.8%) | 39/48 (81.2%) | 40/48 (83.3%) | 6.929 |
+| OpenAI GPT-4o-mini (`gpt-4o-mini`) | `<repo-root>/results/replay_runs/final_compact_native50_20260418T221253Z/openai_compact_native50_final` | 48/48 | 34/48 (70.8%) | 36/48 (75.0%) | 27/48 (56.2%) | 4.296 |
+| Gemini 2.5 Flash (`gemini-2.5-flash`) | `<repo-root>/results/replay_runs/final_compact_native50_20260418T221253Z/gemini_compact_native50_final` | 48/48 | 35/48 (72.9%) | 42/48 (87.5%) | 40/48 (83.3%) | 14.113 |
 
 ### Model Takeaways
 
@@ -103,7 +103,7 @@ This is still a historical partial Claude structured compact run over the pre-fi
 
 | Setting | Episodes | Exact | Family | Action | Artifact |
 |---|---:|---:|---:|---:|---|
-| Claude structured compact partial | 30/50 historical | 23/30 (76.7%) | 25/30 (83.3%) | 25/30 (83.3%) | `/Users/aarnavsawant/Documents/CS6365/AgentScope/results/replay_runs/claude_structured_compact_native50_final_20260418T232301Z` |
+| Claude structured compact partial | 30/50 historical | 23/30 (76.7%) | 25/30 (83.3%) | 25/30 (83.3%) | `<repo-root>/results/replay_runs/claude_structured_compact_native50_final_20260418T232301Z` |
 | Claude compact one-shot on same 30 | 30/50 historical | 25/30 (83.3%) | 26/30 (86.7%) | 25/30 (83.3%) | final compact Claude run |
 
 ## Current Interpretation

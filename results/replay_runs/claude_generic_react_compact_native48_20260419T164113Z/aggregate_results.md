@@ -1,6 +1,6 @@
 # Claude Generic ReAct Native48
 
-- Run root: `/Users/aarnavsawant/Documents/CS6365/AgentScope/results/replay_runs/claude_generic_react_compact_native48_20260419T164113Z`
+- Run root: `<repo-root>/results/replay_runs/claude_generic_react_compact_native48_20260419T164113Z`
 - Generated: 2026-04-19T19:11:47Z
 
 ## Headline

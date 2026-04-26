@@ -1,8 +1,8 @@
 # Claude Bounded ReAct Compact Native48
 
 - Generated: `2026-04-19T07:24:07Z`
-- Run root: `/Users/aarnavsawant/Documents/CS6365/AgentScope/results/replay_runs/claude_bounded_react_compact_native48_20260419T023811Z`
-- Manifest: `/Users/aarnavsawant/Documents/CS6365/AgentScope/configs/episode_sets/native_50.yaml` (`native_48_strict_good`)
+- Run root: `<repo-root>/results/replay_runs/claude_bounded_react_compact_native48_20260419T023811Z`
+- Manifest: `<repo-root>/configs/episode_sets/native_50.yaml` (`native_48_strict_good`)
 - Completed/evaluated: 48/48
 - Exact/family/action: 33/48 / 34/48 / 35/48
 - Cooldown: 75s between episodes; 180s after 429.

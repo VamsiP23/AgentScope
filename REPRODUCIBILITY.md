@@ -6,36 +6,88 @@ This repo is set up so another human or agent can do three things without recons
 2. regenerate the paper/report figures from committed analysis inputs
 3. rerun benchmark variants over the committed replay dataset
 
+In the commands below, replace `<repo-root>` with the directory where you cloned this repository.
+
 ## 1. Environment
 
 From the repo root:
 
 ```bash
-cd /Users/aarnavsawant/Documents/CS6365/AgentScope
+cd <repo-root>
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+You should keep the virtual environment activated for all commands below:
+
+```bash
+source .venv/bin/activate
+```
+
 Provider-backed replay reruns also need the relevant API key in the environment.
+
+### LLM Keys
+
+The code reads these exact environment variables:
+
+- `anthropic` -> `ANTHROPIC_API_KEY`
+- `openai` -> `OPENAI_API_KEY`
+- `gemini` -> `GEMINI_API_KEY`
+
+Copy-paste examples:
+
+```bash
+export ANTHROPIC_API_KEY=your_key_here
+export OPENAI_API_KEY=your_key_here
+export GEMINI_API_KEY=your_key_here
+```
+
+For the main paper reruns and the live demo, Claude is the default path, so the minimal requirement is:
+
+```bash
+export ANTHROPIC_API_KEY=your_key_here
+```
+
+Optional model overrides:
+
+```bash
+export ANTHROPIC_MODEL=claude-sonnet-4-0
+export OPENAI_MODEL=gpt-4o
+export GEMINI_MODEL=gemini-2.5-flash
+```
+
+If you want these values to persist across new shells, add the relevant `export` lines to `~/.zshrc` or `~/.zprofile`, then restart the shell or run `source ~/.zshrc`.
+
+### One-Time Smoke Check
+
+Before running the benchmark, verify that the environment is usable:
+
+```bash
+python3 -m py_compile \
+  scripts/run_replay_suite.py \
+  scripts/run_experiment.py \
+  scripts/run_benchmark_agent.py \
+  scripts/generate_report_figures.py
+```
 
 ## 2. Verify What Is Committed
 
 Dataset manifest:
 
-- [`configs/episode_sets/native_50.yaml`](/Users/aarnavsawant/Documents/CS6365/AgentScope/configs/episode_sets/native_50.yaml)
+- [`configs/episode_sets/native_50.yaml`](configs/episode_sets/native_50.yaml)
 
 Taxonomy:
 
-- [`configs/episode_taxonomy.yaml`](/Users/aarnavsawant/Documents/CS6365/AgentScope/configs/episode_taxonomy.yaml)
+- [`configs/episode_taxonomy.yaml`](configs/episode_taxonomy.yaml)
 
 Committed replay dataset root:
 
-- [`datasets/episodes`](/Users/aarnavsawant/Documents/CS6365/AgentScope/datasets/episodes)
+- [`datasets/episodes`](datasets/episodes)
 
 Committed analysis inputs used by the report:
 
-- [`results/analysis`](/Users/aarnavsawant/Documents/CS6365/AgentScope/results/analysis)
+- [`results/analysis`](results/analysis)
 
 Quick dataset count check:
 
@@ -43,7 +95,7 @@ Quick dataset count check:
 python3 - <<'PY'
 from pathlib import Path
 import yaml
-root = Path('/Users/aarnavsawant/Documents/CS6365/AgentScope')
+root = Path('.')
 payload = yaml.safe_load((root / 'configs/episode_sets/native_50.yaml').read_text())
 print(payload['name'], len(payload['episodes']))
 PY
@@ -65,10 +117,10 @@ python3 scripts/generate_report_figures.py
 
 Outputs:
 
-- [`results/analysis/figures/figure_main_model_comparison.png`](/Users/aarnavsawant/Documents/CS6365/AgentScope/results/analysis/figures/figure_main_model_comparison.png)
-- [`results/analysis/figures/figure_category_breakdown.png`](/Users/aarnavsawant/Documents/CS6365/AgentScope/results/analysis/figures/figure_category_breakdown.png)
-- [`results/analysis/figures/figure_runtime_vs_accuracy.png`](/Users/aarnavsawant/Documents/CS6365/AgentScope/results/analysis/figures/figure_runtime_vs_accuracy.png)
-- [`results/analysis/figures/figure_agent_architectures.png`](/Users/aarnavsawant/Documents/CS6365/AgentScope/results/analysis/figures/figure_agent_architectures.png)
+- [`results/analysis/figures/figure_main_model_comparison.png`](results/analysis/figures/figure_main_model_comparison.png)
+- [`results/analysis/figures/figure_category_breakdown.png`](results/analysis/figures/figure_category_breakdown.png)
+- [`results/analysis/figures/figure_runtime_vs_accuracy.png`](results/analysis/figures/figure_runtime_vs_accuracy.png)
+- [`results/analysis/figures/figure_agent_architectures.png`](results/analysis/figures/figure_agent_architectures.png)
 
 ## 4. Rerun The Replay Benchmark
 
@@ -109,6 +161,8 @@ python3 scripts/run_replay_suite.py \
   --limit 5
 ```
 
+If this fails with `ANTHROPIC_API_KEY is not set`, `OPENAI_API_KEY is not set`, or `GEMINI_API_KEY is not set`, the provider key is missing from the active shell.
+
 ## 5. Reproduce A Single Case Study
 
 Compact one-shot:
@@ -140,7 +194,7 @@ python3 scripts/run_benchmark_agent.py \
 The live demo is intentionally separate from the reproducible replay benchmark. To run it:
 
 ```bash
-zsh -lic 'cd /Users/aarnavsawant/Documents/CS6365/AgentScope && ./scripts/run_live_fix_demo.sh'
+zsh -lic 'cd <repo-root> && ./scripts/run_live_fix_demo.sh'
 ```
 
 This requires:
@@ -150,13 +204,21 @@ This requires:
 - the observability stack
 - `ANTHROPIC_API_KEY`
 
-Setup instructions are in [`observability/README.md`](/Users/aarnavsawant/Documents/CS6365/AgentScope/observability/README.md).
+Setup instructions are in [`observability/README.md`](observability/README.md).
+
+If your key is stored in zsh startup files, this form is safest because it forces a zsh login shell to load them:
+
+```bash
+zsh -lic 'cd <repo-root> && ./scripts/run_live_fix_demo.sh'
+```
 
 ## 7. Tests
 
 ```bash
 pytest tests
 ```
+
+If `pytest` is missing, reactivate the virtual environment and rerun `pip install -r requirements.txt`.
 
 The tests cover:
 
@@ -175,3 +237,17 @@ Do not treat `experiment_runs/` as the benchmark reproduction surface. The singl
 - benchmark problem metadata in `benchmark_suite.yaml`
 - replay runners in `scripts/`
 - analysis inputs in `results/analysis/`
+
+## 9. Cold-Start Checklist
+
+For a new human or agent, this is the intended order:
+
+1. clone the repo
+2. create and activate `.venv`
+3. run `pip install -r requirements.txt`
+4. export at least `ANTHROPIC_API_KEY`
+5. run the `py_compile` smoke check
+6. run `python3 scripts/generate_report_figures.py`
+7. run a replay smoke benchmark with `--limit 5`
+8. optionally run the full replay benchmark
+9. only after that, move on to the live demo / Kubernetes setup

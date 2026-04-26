@@ -9,7 +9,7 @@ The benchmark-grade reproducible evaluation surface is the replay dataset, but t
 
 ## Fault Backend
 
-This repo now keeps only the native Kubernetes fault-injection path implemented in [`faults`](/Users/aarnavsawant/Documents/CS6365/AgentScope/faults).
+This repo now keeps only the native Kubernetes fault-injection path implemented in [`faults`](../faults).
 
 Use:
 
@@ -18,9 +18,9 @@ Use:
 
 ## Key Entry Points
 
-- [`scripts/run_experiment.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_experiment.py): run one live experiment
-- [`scripts/capture_episode_dataset.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/capture_episode_dataset.py): collect and promote replayable episode JSONs from live runs
-- [`scripts/run_live_fix_demo.sh`](/Users/aarnavsawant/Documents/CS6365/AgentScope/scripts/run_live_fix_demo.sh): presentation-friendly native live demo
+- [`scripts/run_experiment.py`](../scripts/run_experiment.py): run one live experiment
+- [`scripts/capture_episode_dataset.py`](../scripts/capture_episode_dataset.py): collect and promote replayable episode JSONs from live runs
+- [`scripts/run_live_fix_demo.sh`](../scripts/run_live_fix_demo.sh): presentation-friendly native live demo
 
 ## Example Live Run
 
@@ -39,4 +39,4 @@ python3 scripts/run_experiment.py experiments/native_service_selector_mismatch_c
 - most benchmark analysis in the report comes from replay evaluation, not repeated live runs
 - live runs are best used for collection, smoke validation, and demos
 - older exploratory live experiments were intentionally removed so this directory only contains the native experiment definitions relevant to the final benchmark and demo
-- if your goal is reproducibility, start from [`REPRODUCIBILITY.md`](/Users/aarnavsawant/Documents/CS6365/AgentScope/REPRODUCIBILITY.md)
+- if your goal is reproducibility, start from [`REPRODUCIBILITY.md`](../REPRODUCIBILITY.md)

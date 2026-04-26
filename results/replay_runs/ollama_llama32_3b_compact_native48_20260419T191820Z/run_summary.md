@@ -1,7 +1,7 @@
 # Ollama Llama 3.2 3B Compact Native48
 
 - Status: `complete`
-- Run root: `/Users/aarnavsawant/Documents/CS6365/AgentScope/results/replay_runs/ollama_llama32_3b_compact_native48_20260419T191820Z`
+- Run root: `<repo-root>/results/replay_runs/ollama_llama32_3b_compact_native48_20260419T191820Z`
 - Completed evaluations: 46/48
 - Exact: 6/46
 - Grouped family: 6/46

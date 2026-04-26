@@ -1,6 +1,6 @@
 # Ollama Llama 3.2 3B Compact Native48
 
-- Run root: `/Users/aarnavsawant/Documents/CS6365/AgentScope/results/replay_runs/ollama_llama32_3b_compact_native48_20260419T191820Z`
+- Run root: `<repo-root>/results/replay_runs/ollama_llama32_3b_compact_native48_20260419T191820Z`
 - Generated: 2026-04-19T20:02:03Z
 - Model: `llama3.2:3b` via Ollama
 
@@ -40,8 +40,8 @@
 
 | Episode | Status | Error | Seconds |
 |---|---|---|---:|
-| native_service_selector_mismatch_cartservice_004 | error | {   "timestamp_utc": "2026-04-19T19:27:58Z",   "provider": "ollama",   "model": "llama3.2:3b",   "replay_dataset": "/Users/aarnavsawant/Documents/CS6365/AgentScope/datasets/episodes/native_service_selector_mismatch_carts | 181.74 |
-| native_bad_probe_cartservice_004 | error | {   "timestamp_utc": "2026-04-19T19:37:46Z",   "provider": "ollama",   "model": "llama3.2:3b",   "replay_dataset": "/Users/aarnavsawant/Documents/CS6365/AgentScope/datasets/episodes/native_bad_probe_cartservice/native_ba | 181.809 |
+| native_service_selector_mismatch_cartservice_004 | error | {   "timestamp_utc": "2026-04-19T19:27:58Z",   "provider": "ollama",   "model": "llama3.2:3b",   "replay_dataset": "<repo-root>/datasets/episodes/native_service_selector_mismatch_carts | 181.74 |
+| native_bad_probe_cartservice_004 | error | {   "timestamp_utc": "2026-04-19T19:37:46Z",   "provider": "ollama",   "model": "llama3.2:3b",   "replay_dataset": "<repo-root>/datasets/episodes/native_bad_probe_cartservice/native_ba | 181.809 |
 
 ## Readout
 

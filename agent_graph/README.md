@@ -8,11 +8,11 @@ The repo currently keeps one benchmark-oriented agent stack with three replay/li
 
 ## Main Files
 
-- [`agent_graph/react_agent.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/react_agent.py)
-- [`agent_graph/diagnostic_agent.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/diagnostic_agent.py)
-- [`agent_graph/aci.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/aci.py)
-- [`agent_graph/tools`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/tools)
-- [`agent_graph/reasoning/llm.py`](/Users/aarnavsawant/Documents/CS6365/AgentScope/agent_graph/reasoning/llm.py)
+- [`agent_graph/react_agent.py`](react_agent.py)
+- [`agent_graph/diagnostic_agent.py`](diagnostic_agent.py)
+- [`agent_graph/aci.py`](aci.py)
+- [`agent_graph/tools`](tools)
+- [`agent_graph/reasoning/llm.py`](reasoning/llm.py)
 
 ## Entry Points
 
